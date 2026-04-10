@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+output/
+slurm/logs/
+*.duckdb
+*.ipynb_checkpoints/
+.ipynb_checkpoints/
+dist/
+*.egg-info/

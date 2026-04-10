@@ -1,0 +1,64 @@
+# Site configuration: MIT Green Building sky camera (concam pipeline)
+# Camera is a 4K fisheye mounted on the roof of MIT Building 54 (Green Building).
+# All coordinates and calibration values come from LAE_skycam/calibration/.
+
+name: mit_green_building
+timezone: America/New_York
+
+# Camera GPS position (WGS84): latitude, longitude, altitude (m above ellipsoid)
+# Source: pointpicker_calibration_estimate.npz -> camera_gps field
+camera_lat: 42.360444
+camera_lon: -71.089238
+camera_alt_m: 84.226575
+
+# --- Video ---
+video:
+  root: /net/d16/data/contrail-camera
+  # Daily timelapse: 30fps playback, 1 frame/real-second, AV1 codec
+  timelapse_glob: "{date:%Y_%m_%d}_0000_2359.mp4"
+  # Raw hourly segments: 4fps, H.265 codec
+  raw_segment_glob: "raw_segments_clean/{date:%Y-%m-%d}_*.mp4"
+
+# --- Timestamp OCR ---
+# The timestamp is burned into the top-right corner of every frame.
+# Region dimensions confirmed by probing real frames.
+ocr:
+  timestamp_position: top_right
+  # (height, width) of the timestamp crop region in pixels at native 3840x2160
+  timestamp_region: [80, 875]
+  # EasyOCR fallback is triggered when per-character confidence drops below this
+  fallback_confidence_threshold: 0.6
+
+# --- ADS-B ---
+adsb:
+  data_dir: /home/mcast/data/feder
+  # Only include flights above this altitude (cruising altitude filter)
+  min_altitude_m: 8000.0
+  # Horizontal radius around the camera site; pings outside this are discarded
+  max_radius_km: 50.0
+  site_lat: 42.360444
+  site_lon: -71.089238
+
+# --- Camera calibration ---
+calibration:
+  # pointpicker_calibration_estimate.npz has the best GPS-anchored extrinsics
+  npz_path: /home/prash/contrails/LAE_skycam/calibration/pointpicker_calibration_estimate.npz
+  # Resolution at which the calibration was performed
+  calibration_resolution: [3840, 2160]
+
+# --- Detection (Hough+Canny) ---
+# Initial parameter values; will be refined in the detection validation notebook.
+detection:
+  score_threshold: 0.3
+  canny_low: 50
+  canny_high: 150
+  hough_threshold: 30
+  hough_min_line_length: 30
+  hough_max_line_gap: 10
+  roi_padding: 20
+
+# --- Episode aggregation ---
+aggregation:
+  detection_threshold: 0.3
+  # Consecutive frames within this gap are merged into a single episode
+  max_gap_seconds: 30.0

@@ -1,0 +1,191 @@
+[
+  {
+    "category": "scaffolding",
+    "description": "Initialize the mit-concam-pipeline project with UV, package layout, YAML config, and SLURM template",
+    "steps": [
+      "Create the package with `uv init` and configure pyproject.toml with the correct name, entry points, and dependencies",
+      "Create the importable package layout: concam/ with __init__.py, cli.py, config.py, and placeholder submodules for ocr, adsb, projection, detection, aggregation, and storage",
+      "Write a YAML config for the MIT Green Building camera site covering: video path, ADS-B filter parameters (altitude threshold, radius), OCR region, detection thresholds, and site timezone",
+      "Write a SLURM submission script that accepts a date argument and runs `uv run concam run --date YYYY-MM-DD`",
+      "Verify `uv sync` completes cleanly and `uv run concam --help` prints usage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "validation-notebook",
+    "description": "OCR validation notebook: compare fixed-format template reader against EasyOCR on real MIT camera frames",
+    "steps": [
+      "Load 100 frames sampled uniformly from the April 8, 2026 daily timelapse",
+      "Crop the timestamp region of interest from each frame using the coordinates in the YAML config",
+      "Run EasyOCR on each crop and record the parsed timestamp and wall-clock latency",
+      "Implement a minimal fixed-format template reader inline in the notebook: binarize the crop, segment characters using fixed slots, match against digit and separator glyphs extracted from the same frames",
+      "Run the template reader on each crop and record the parsed timestamp, confidence, and wall-clock latency",
+      "Compute exact-match accuracy, mean latency, and fallback rate for both methods",
+      "Display side-by-side crops and parsed results for the 10 highest-error cases",
+      "Record the go/no-go decision and chosen slot positions and threshold values as a markdown cell at the end of the notebook"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement the fixed-format timestamp OCR module with TrustButVerifyTracker integration",
+    "steps": [
+      "Implement `concam.ocr.FixedFormatTimestampReader` with `read(frame) -> TimestampRead` using the slot positions and threshold values confirmed in the validation notebook",
+      "Implement `TimestampRead` dataclass with fields: `parsed_dt`, `text`, `confidence`, `per_char_confidence`, `method`, `status`",
+      "Add EasyOCR as an optional fallback path, called only when confidence is below the configurable threshold, with `method='easyocr_fallback'`",
+      "Copy `TrustButVerifyTracker` from the reference codebase into `concam.ocr.tracker`, add attribution comment, and write property-based tests: perfect monotone sequences never re-anchor; one bad read among good reads produces a projected timestamp; a sustained offset triggers re-anchor",
+      "Write parser property tests: all valid canonical strings round-trip; impossible dates fail; invalid separators fail",
+      "Verify the module can be imported and `FixedFormatTimestampReader.read` returns a valid `TimestampRead` on a real frame crop"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement the ADS-B loader using the feder package",
+    "steps": [
+      "Read the feder API documentation and determine the correct call to retrieve pings for a UTC date and bounding box",
+      "Implement `concam.adsb.load_flights(date, config) -> list[Flight]` where each `Flight` carries callsign, a list of timestamped pings, and metadata",
+      "Filter pings to those within the configured horizontal radius and above the configured altitude threshold",
+      "Upsample each flight's ping sequence to one-second resolution by linear interpolation of latitude, longitude, and altitude",
+      "Write an integration test using a small checked-in fixture of real pings that verifies the correct number of pings and their timestamps after filtering and upsampling",
+      "Verify the loader returns a non-empty list of flights for April 9, 2026 using the local feder data store"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement GPS-to-pixel projection using the MIT Green Building camera calibration",
+    "steps": [
+      "Load the camera intrinsics and extrinsics from the calibration files in LAE_skycam/calibration/",
+      "Implement `concam.projection.project_ping(ping, calibration) -> PixelPoint | None` converting GPS (lat, lon, alt) to pixel (x, y) via ECEF -> ENU -> camera frame, applying OpenCV distortion correction",
+      "Return None for pings that project outside the image bounds",
+      "Implement `concam.projection.flight_path_vector(ping_a, ping_b, calibration) -> tuple[float, float]` returning the unit vector of the flight path in pixel space",
+      "Implement `concam.projection.oriented_roi(center_pixel, path_vector, config) -> Rect` returning the oriented bounding rectangle for detection",
+      "Write a test that projects a known GPS coordinate and verifies it falls within the expected image quadrant given the camera orientation"
+    ],
+    "passes": false
+  },
+  {
+    "category": "validation-notebook",
+    "description": "Detection validation notebook: tune Hough+Canny parameters on real April 9 frames",
+    "steps": [
+      "Load 20 frame-flight pairs from April 9, 2026 raw segments where ADS-B data shows a flight overhead",
+      "For each pair, compute the oriented bounding rectangle using the projection module",
+      "Run Canny edge detection on the ROI across a grid of (low_threshold, high_threshold) values",
+      "Run Hough line transform on the Canny output across a grid of (threshold, min_line_length, max_line_gap) values",
+      "Display the ROI, Canny output, detected lines, and score for each parameter combination",
+      "Select the parameter set that maximizes true positive rate on visually confirmed contrail cases",
+      "Record the chosen parameters and go/no-go decision as a markdown cell at the end of the notebook"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement the Hough+Canny contrail detector module",
+    "steps": [
+      "Implement `concam.detection.detect(frame, roi, config) -> DetectionResult` where `DetectionResult` carries `score` (float 0-1), `pixel_line` (x1, y1, x2, y2 or None), and `method`",
+      "Apply Canny edge detection within the oriented ROI using parameters confirmed in the validation notebook",
+      "Apply Hough line transform and compute score as the peak accumulator value normalized to [0, 1]",
+      "Return the pixel line in full-frame coordinates (not ROI-local coordinates)",
+      "Write unit tests: a synthetic frame with a clear line in the ROI scores above 0.7; a blank frame scores below 0.1; corrupting one frame does not raise an exception"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement per-day episode aggregation and DuckDB storage",
+    "steps": [
+      "Implement `concam.aggregation.aggregate_episodes(frame_results) -> list[Episode]` that groups consecutive above-threshold (frame, flight) detections into episodes, recording onset time, end time, peak score, and the pixel line at peak score",
+      "Implement `concam.storage.Database` wrapping DuckDB with methods: `create_schema()`, `insert_episodes(episodes)`, `insert_labels(labels)`, `query(sql)`",
+      "Write the `contrail_episodes` table schema with all fields from the PRD; label fields are nullable",
+      "Write unit tests: three consecutive above-threshold frames merge into one episode; a gap of one frame splits into two episodes; peak score is the maximum over the episode",
+      "Write a schema test: inserting a valid episode row and querying it back returns identical values"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Wire up the end-to-end batch CLI for a single date",
+    "steps": [
+      "Implement `uv run concam run --date YYYY-MM-DD` that executes all stages in order: ocr, adsb, project, detect, aggregate, store",
+      "Each stage reads from and writes to a well-defined intermediate path under an output directory configurable via `--output-dir`",
+      "Add `--from-stage` flag to resume from a named checkpoint without re-running earlier stages",
+      "Add `--dry-run` flag that validates inputs and prints the execution plan without running any stage",
+      "Run the full pipeline on April 8, 2026 (daily timelapse available) and verify a non-empty DuckDB file is produced with at least one episode row",
+      "Verify `--from-stage detect` skips the ocr and adsb stages and reads their cached outputs"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement the labeler bundle generator",
+    "steps": [
+      "Implement `uv run concam bundle --date YYYY-MM-DD --labelers alice bob --overlap-fraction 0.2` that reads the DuckDB file for that date and produces one bundle directory per labeler",
+      "Each bundle contains: a JSON manifest with all episode metadata, ADS-B track pixels per frame, detection line segments, and assigned episode IDs; and the HTML labeler file",
+      "The JSON manifest references the video file by relative path; the video is not copied",
+      "The overlap set is selected deterministically (e.g., by sort order and modulo) so re-running the generator produces the same assignment",
+      "Verify that the two generated manifests together cover all episodes, with approximately 20% in both"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement the browser-based labeler HTML/JS: video playback with canvas overlays",
+    "steps": [
+      "Create a single self-contained HTML file that loads the JSON manifest from a relative path",
+      "Play the video using an HTML5 video element; synchronize a canvas overlay to the video's timeupdate event",
+      "Draw ADS-B flight tracks for all flights visible in the current frame; highlight auto-detected flights (score above threshold) in a distinct color",
+      "Draw the detected line segment for the current frame if one exists",
+      "Implement toggle controls: one toggle for ADS-B track overlays, one toggle for detected line segments",
+      "Verify the overlays are correctly positioned on a synthetic bundle with a short video and three known flight tracks"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement the browser-based labeler HTML/JS: timeline navigation and label controls",
+    "steps": [
+      "Add a timeline panel listing all flight episodes with callsign, score, and assigned label status",
+      "Clicking an episode marker seeks the video to the episode onset time",
+      "Episodes with auto-detected contrails are visually distinguished from undetected flights in the timeline",
+      "Add label controls per episode: three-way toggle (contrail / no_contrail / unsure), persistence slider (1-5), and free-text notes field",
+      "Autosave all label state to localStorage on every change",
+      "Restore previously saved labels from localStorage on page load",
+      "Add an export button that downloads the completed labels as a JSON file matching the schema expected by `concam storage insert_labels`",
+      "Display a clear human-readable error message if the video file is missing or the manifest fails to parse"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement label ingestion from student JSON files into DuckDB",
+    "steps": [
+      "Implement `uv run concam ingest-labels --labels alice_labels.json bob_labels.json --date YYYY-MM-DD` that reads completed label JSON files and populates the label fields in the DuckDB database",
+      "Validate each label JSON against the expected schema before writing; print a clear error for malformed files",
+      "Handle the overlap set correctly: if both labelers labeled the same episode, store both rows with distinct labeler_id values",
+      "Verify that after ingestion, a SQL query returns the correct label, persistence_rating, labeler_id, and label_timestamp for each ingested episode"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement inter-rater agreement computation",
+    "steps": [
+      "Implement a query or notebook cell that joins the two labelers' labels on the overlapping episode set",
+      "Compute percent agreement and Cohen's kappa on the three-class label (contrail / no_contrail / unsure)",
+      "Print a confusion matrix for the overlapping set",
+      "Verify the computation returns the correct kappa for a synthetic overlapping set where all labels agree (kappa=1) and where labels are random (kappa near 0)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "regression-safety",
+    "description": "End-to-end regression on April 8, 2026: full pipeline produces a stable labeled output",
+    "steps": [
+      "Run `uv run concam run --date 2026-04-08` on the daily timelapse and record the number of episodes, the distribution of detector scores, and the number of flights processed",
+      "Re-run the pipeline with the same inputs and verify the episode count and scores are identical (determinism check)",
+      "Verify no stage raises an unhandled exception and the DuckDB file is valid and queryable after the run"
+    ],
+    "passes": false
+  }
+]
