@@ -32,22 +32,34 @@ Prefer risky architectural and cross-module work ahead of cleanup or polish.
 Work on exactly one Ralph-sized task, or one tightly related pair of subtasks only if they must land together.
 Run the repository feedback loops before finishing.
 
-Before you finish, update .ralph/progress.txt with concise notes for the next person working on this code that include:
+## Environment
+
+This project uses UV for dependency management.
+- Install/sync dependencies: \`uv sync\`
+- Run the CLI: \`uv run concam <command>\`
+- Run tests: \`uv run pytest\`
+- Add a dependency: \`uv add <package>\`
+Do NOT use pip, conda, or any other package manager. Do NOT activate a virtualenv manually.
+
+## Tracking files
+
+- .ralph/progress.txt is a local-only file (gitignored). Update it with concise notes for the next session: task completed, files changed, key decisions, blockers or next step.
+- .ralph/prd.json is tracked in git. Update the completed task's entry with passes=true and the git commit hash. Do NOT commit prd.json after each session — it will be committed once at the very end when all tasks are marked done.
+
+Before you finish, update .ralph/progress.txt with:
 - task completed
 - files changed
 - key decisions
 - blockers or next step
 
-Commit your changes on the current branch if you made a meaningful completed step. Include meaningful explanations of what was changed and importantly, why it was done. 
-
-Update the particular task you completed in .ralph/json with the a field with the git commit hash so the next person can see the progress and compare against git history.
+Commit your code changes on the current branch with meaningful explanations of what was changed and importantly, why it was done.
 
 Do not push.
 Do not change git remotes.
 Do not merge into the default branch.
 
-If the PRD is complete, output <promise>COMPLETE</promise>.
+If the PRD is complete, commit prd.json as the final tracking record, then output <promise>COMPLETE</promise>.
 EOF
 )
 
-claude --permission-mode acceptEdits "@.ralph/prd.json @.ralph/progress.txt $PROMPT" 
+claude --permission-mode acceptEdits "@.ralph/prd.json @.ralph/progress.txt $PROMPT"

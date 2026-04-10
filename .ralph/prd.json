@@ -1,5 +1,4 @@
 [
-  {"_session": "v0.1 — initial scaffolding (2026-04-10)"},
   {
     "category": "scaffolding",
     "description": "Initialize the mit-concam-pipeline project with UV, package layout, YAML config, and SLURM template",
