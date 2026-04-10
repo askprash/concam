@@ -1,4 +1,5 @@
 [
+  {"_session": "v0.1 — initial scaffolding (2026-04-10)"},
   {
     "category": "scaffolding",
     "description": "Initialize the mit-concam-pipeline project with UV, package layout, YAML config, and SLURM template",
@@ -9,7 +10,8 @@
       "Write a SLURM submission script that accepts a date argument and runs `uv run concam run --date YYYY-MM-DD`",
       "Verify `uv sync` completes cleanly and `uv run concam --help` prints usage"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "5bad2c0"
   },
   {
     "category": "validation-notebook",
