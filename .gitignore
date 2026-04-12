@@ -10,3 +10,5 @@ slurm/logs/
 .ipynb_checkpoints/
 dist/
 *.egg-info/
+.hypothesis/
+.pytest_cache/
