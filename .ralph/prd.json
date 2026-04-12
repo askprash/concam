@@ -64,7 +64,7 @@
       "Implement `concam.projection.oriented_roi(center_pixel, path_vector, config) -> Rect` returning the oriented bounding rectangle for detection",
       "Write a test that projects a known GPS coordinate and verifies it falls within the expected image quadrant given the camera orientation"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "validation-notebook",
