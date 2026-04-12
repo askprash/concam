@@ -64,7 +64,8 @@
       "Implement `concam.projection.oriented_roi(center_pixel, path_vector, config) -> Rect` returning the oriented bounding rectangle for detection",
       "Write a test that projects a known GPS coordinate and verifies it falls within the expected image quadrant given the camera orientation"
     ],
-    "passes": true
+    "passes": true,
+    "commit": "2f4a5c4"
   },
   {
     "category": "validation-notebook",
@@ -102,7 +103,8 @@
       "Write unit tests: three consecutive above-threshold frames merge into one episode; a gap of one frame splits into two episodes; peak score is the maximum over the episode",
       "Write a schema test: inserting a valid episode row and querying it back returns identical values"
     ],
-    "passes": false
+    "passes": true,
+    "commit": null
   },
   {
     "category": "functional",

@@ -12,6 +12,7 @@ dependencies = [
     "scipy>=1.10",
     "feder>=0.2.4",
     "pyproj>=3.7.2",
+    "pytz>=2026.1.post1",
 ]
 
 [project.optional-dependencies]
