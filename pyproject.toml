@@ -2,7 +2,7 @@
 name = "concam-pipeline"
 version = "0.1.0"
 description = "MIT Green Building sky camera contrail detection and labeling pipeline"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "click>=8.0",
     "pyyaml>=6.0",
@@ -10,6 +10,7 @@ dependencies = [
     "opencv-python-headless>=4.8",
     "duckdb>=0.10",
     "scipy>=1.10",
+    "feder>=0.2.4",
 ]
 
 [project.optional-dependencies]

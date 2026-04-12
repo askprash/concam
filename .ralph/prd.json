@@ -51,7 +51,7 @@
       "Write an integration test using a small checked-in fixture of real pings that verifies the correct number of pings and their timestamps after filtering and upsampling",
       "Verify the loader returns a non-empty list of flights for April 9, 2026 using the local feder data store"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
