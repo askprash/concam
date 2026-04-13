@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ConCam Labeler</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1rem; color: #222; }
+  header { display: flex; gap: 2rem; align-items: baseline; margin-bottom: 1rem; }
+  header h1 { font-size: 1.2rem; margin: 0; }
+  #video-wrap { position: relative; display: inline-block; }
+  #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
+  video { max-width: 100%; background: #000; }
+  #episodes { margin-top: 1rem; max-height: 40vh; overflow-y: auto; border: 1px solid #ccc; padding: 0.5rem; }
+  .episode { padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; cursor: pointer; }
+  .episode:hover { background: #f5f5f5; }
+  .episode .badge { display: inline-block; padding: 0 0.4em; border-radius: 3px; font-size: 0.8em; }
+  .episode .badge.overlap { background: #fffa8a; }
+  .episode .badge.score { background: #cce5ff; }
+  .error { color: #b00; background: #fee; padding: 0.75rem; border: 1px solid #f99; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ConCam Labeler</h1>
+  <span id="hdr-date"></span>
+  <span id="hdr-labeler"></span>
+  <span id="hdr-episode-count"></span>
+</header>
+
+<div id="error-panel" class="error" hidden></div>
+
+<div id="video-wrap">
+  <video id="video" controls muted></video>
+  <canvas id="overlay"></canvas>
+</div>
+
+<section id="episodes">
+  <em>Loading manifest…</em>
+</section>
+
+<script>
+// Minimal skeleton: loads manifest.json, populates header + episode list,
+// wires the video element.  Overlay drawing, timeline controls, labeling
+// controls, and localStorage persistence are implemented in PRD items 12/13.
+(async function () {
+  const errPanel = document.getElementById("error-panel");
+  const showError = (msg) => {
+    errPanel.textContent = msg;
+    errPanel.hidden = false;
+  };
+
+  let manifest;
+  try {
+    const res = await fetch("manifest.json");
+    if (!res.ok) throw new Error("manifest.json HTTP " + res.status);
+    manifest = await res.json();
+  } catch (e) {
+    showError("Failed to load manifest.json: " + e.message);
+    return;
+  }
+
+  document.getElementById("hdr-date").textContent = "date: " + manifest.date;
+  document.getElementById("hdr-labeler").textContent = "labeler: " + manifest.labeler_id;
+  document.getElementById("hdr-episode-count").textContent =
+    "episodes: " + manifest.episodes.length;
+
+  const video = document.getElementById("video");
+  video.src = manifest.video.path;
+  video.addEventListener("error", () => {
+    showError("Video failed to load: " + manifest.video.path);
+  });
+
+  const canvas = document.getElementById("overlay");
+  video.addEventListener("loadedmetadata", () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  });
+
+  const panel = document.getElementById("episodes");
+  panel.innerHTML = "";
+  manifest.episodes.forEach((ep) => {
+    const div = document.createElement("div");
+    div.className = "episode";
+    div.dataset.episodeId = ep.episode_id;
+    const overlapBadge = ep.is_overlap
+      ? '<span class="badge overlap">overlap</span> '
+      : "";
+    div.innerHTML =
+      overlapBadge +
+      '<strong>#' + ep.episode_id + '</strong> ' +
+      ep.callsign + ' ' +
+      '<span class="badge score">score ' + ep.peak_score.toFixed(2) + '</span> ' +
+      '<span>' + ep.onset + ' &rarr; ' + ep.end + '</span>';
+    div.addEventListener("click", () => {
+      const onsetMs = Date.parse(ep.onset);
+      const dayStart = Date.parse(manifest.date + "T00:00:00Z");
+      const sec = (onsetMs - dayStart) / 1000 / manifest.video.seconds_per_frame;
+      if (isFinite(sec) && sec >= 0) video.currentTime = sec;
+    });
+    panel.appendChild(div);
+  });
+})();
+</script>
+
+</body>
+</html>

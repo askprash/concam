@@ -182,11 +182,64 @@ def run(ctx: click.Context, date: str, output_dir: str,
 @click.option("--labelers", required=True, multiple=True, help="Labeler IDs.")
 @click.option("--overlap-fraction", default=0.2, show_default=True, type=float,
               help="Fraction of episodes assigned to both labelers for inter-rater calibration.")
+@click.option("--output-dir", default="output", show_default=True,
+              type=click.Path(), help="Pipeline output root (must contain <date>/pipeline.duckdb etc).")
+@click.option("--bundles-dir", default=None, type=click.Path(),
+              help="Where to write per-labeler bundle directories. Defaults to <output-dir>/<date>/bundles.")
+@click.option("--video", default=None, type=click.Path(exists=False),
+              help="Override the video path resolved from config.")
+@click.option("--seconds-per-frame", default=1.0, show_default=True, type=float,
+              help="Wall-clock seconds between consecutive video frames.")
 @click.pass_context
 def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
-           overlap_fraction: float) -> None:
+           overlap_fraction: float, output_dir: str,
+           bundles_dir: str | None, video: str | None,
+           seconds_per_frame: float) -> None:
     """Generate per-labeler annotation bundles for a given date."""
-    raise click.ClickException("Bundle command not yet implemented.")
+    from concam.bundle import generate_bundles
+    from concam.config import load_config
+    from concam.pipeline import resolve_video_path, stage_paths
+
+    try:
+        parsed_date = datetime.date.fromisoformat(date)
+    except ValueError:
+        raise click.BadParameter(f"Expected YYYY-MM-DD, got: {date!r}", param_hint="--date")
+
+    site_config = load_config(ctx.obj["config_path"])
+    paths = stage_paths(Path(output_dir), parsed_date)
+
+    required = [paths["store"], paths["projections"], paths["detections"]]
+    missing = [str(p) for p in required if not p.exists()]
+    if missing:
+        raise click.ClickException(
+            "Bundle requires pipeline outputs; missing:\n  " + "\n  ".join(missing)
+        )
+
+    if video is not None:
+        video_path = Path(video)
+    else:
+        try:
+            video_path = resolve_video_path(site_config.video, parsed_date)
+        except FileNotFoundError as e:
+            raise click.ClickException(str(e))
+
+    out_root = Path(bundles_dir) if bundles_dir else paths["base"] / "bundles"
+    image_size = tuple(site_config.calibration.calibration_resolution)
+
+    result = generate_bundles(
+        date=parsed_date,
+        labelers=list(labelers),
+        overlap_fraction=overlap_fraction,
+        db_path=paths["store"],
+        projections_path=paths["projections"],
+        detections_path=paths["detections"],
+        video_path=video_path,
+        image_size=image_size,
+        output_dir=out_root,
+        seconds_per_frame=seconds_per_frame,
+    )
+    for lbl, bundle_dir in result.items():
+        click.echo(f"{lbl}: {bundle_dir}")
 
 
 @main.command("ingest-labels")
