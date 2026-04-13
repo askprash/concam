@@ -38,6 +38,18 @@ adsb:
   max_radius_km: 50.0
   site_lat: 42.360444
   site_lon: -71.089238
+  # Altitude source policy for projection:
+  #   auto: prefer GNSS when consistent with barometric; fall back to baro+geoid
+  #     when GNSS is missing or disagrees by more than altitude_discrepancy_threshold_m
+  #   gnss: always use GNSS (WGS-84 HAE)
+  #   barometric: always use barometric (ISA) + geoid offset
+  altitude_source: auto
+  # Baro/GNSS disagreement above this (meters) triggers the baro fallback.
+  # ~400 ft / 122 m is the surveillance-literature red-flag threshold.
+  altitude_discrepancy_threshold_m: 122.0
+  # EGM96 geoid height relative to the WGS-84 ellipsoid at the site.
+  # Boston, MA: approximately -28 m. Applied as: h_ellipsoid = h_msl + offset
+  site_geoid_offset_m: -28.0
 
 # --- Camera calibration ---
 calibration:

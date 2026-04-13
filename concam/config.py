@@ -35,6 +35,23 @@ class AdsbConfig:
     # Camera site center (lat, lon) used for radius filter
     site_lat: float = 42.360444
     site_lon: float = -71.089238
+    # Altitude source policy:
+    #   "auto" (default): GNSS when available and consistent with barometric; fall
+    #     back to barometric+geoid-offset when GNSS is missing or disagrees by more
+    #     than altitude_discrepancy_threshold_m
+    #   "gnss": always use GNSS (WGS-84 HAE)
+    #   "barometric": always use barometric (ISA pressure altitude) + geoid offset
+    altitude_source: str = "auto"
+    # Red-flag threshold for baro/GNSS disagreement. ~400 ft per surveillance
+    # literature is a typical indicator of GNSS trouble (spoofing, RAIM drop,
+    # severe temperature deviation from ISA).
+    altitude_discrepancy_threshold_m: float = 122.0
+    # Geoid-to-ellipsoid offset used when converting barometric (≈ MSL / ISA) to
+    # WGS-84 HAE for projection. Positive = ellipsoid above geoid.
+    #   h_ellipsoid = h_msl + site_geoid_offset_m
+    # EGM96 at Boston MA is approximately -28 m. Leave as a site-level constant;
+    # a per-point geoid query is overkill inside a 50 km radius.
+    site_geoid_offset_m: float = -28.0
 
 
 @dataclass

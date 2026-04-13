@@ -9,7 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from concam.adsb import Flight, Ping, _haversine_km, _upsample_pings, load_flights
+from concam.adsb import (
+    Flight,
+    Ping,
+    _choose_altitude,
+    _haversine_km,
+    _upsample_pings,
+    load_flights,
+)
 from concam.config import AdsbConfig
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -87,6 +94,91 @@ def test_upsample_preserves_order():
     result = _upsample_pings(pings)
     lats = [p.lat for p in result]
     assert lats == sorted(lats)
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: altitude source policy
+# ---------------------------------------------------------------------------
+
+
+def test_choose_altitude_auto_uses_gnss_when_consistent():
+    cfg = AdsbConfig(altitude_source="auto", altitude_discrepancy_threshold_m=122.0)
+    # baro within 50m of gnss -> prefer gnss
+    alt, src = _choose_altitude(alt_baro_m=9950.0, alt_gnss_m=10000.0, config=cfg)
+    assert src == "gnss"
+    assert alt == 10000.0
+
+
+def test_choose_altitude_auto_falls_back_to_baro_on_major_discrepancy():
+    cfg = AdsbConfig(altitude_source="auto", altitude_discrepancy_threshold_m=122.0)
+    # 500m gap -> GNSS is suspect, trust baro
+    alt, src = _choose_altitude(alt_baro_m=9500.0, alt_gnss_m=10000.0, config=cfg)
+    assert src == "barometric"
+    assert alt == 9500.0
+
+
+def test_choose_altitude_auto_handles_missing_gnss():
+    cfg = AdsbConfig(altitude_source="auto")
+    alt, src = _choose_altitude(alt_baro_m=9500.0, alt_gnss_m=None, config=cfg)
+    assert src == "barometric"
+    assert alt == 9500.0
+
+
+def test_choose_altitude_auto_handles_missing_baro():
+    cfg = AdsbConfig(altitude_source="auto")
+    alt, src = _choose_altitude(alt_baro_m=None, alt_gnss_m=10000.0, config=cfg)
+    assert src == "gnss"
+    assert alt == 10000.0
+
+
+def test_choose_altitude_auto_handles_both_missing():
+    cfg = AdsbConfig(altitude_source="auto")
+    alt, src = _choose_altitude(alt_baro_m=None, alt_gnss_m=None, config=cfg)
+    assert alt is None
+    assert src == ""
+
+
+def test_choose_altitude_policy_gnss_ignores_discrepancy():
+    cfg = AdsbConfig(altitude_source="gnss", altitude_discrepancy_threshold_m=122.0)
+    alt, src = _choose_altitude(alt_baro_m=9000.0, alt_gnss_m=10000.0, config=cfg)
+    assert src == "gnss"
+    assert alt == 10000.0
+
+
+def test_choose_altitude_policy_barometric_always_baro():
+    cfg = AdsbConfig(altitude_source="barometric")
+    alt, src = _choose_altitude(alt_baro_m=9500.0, alt_gnss_m=10000.0, config=cfg)
+    assert src == "barometric"
+    assert alt == 9500.0
+
+
+def test_choose_altitude_invalid_policy_raises():
+    cfg = AdsbConfig(altitude_source="invalid")
+    with pytest.raises(ValueError):
+        _choose_altitude(alt_baro_m=9000.0, alt_gnss_m=10000.0, config=cfg)
+
+
+def test_upsample_preserves_both_altitudes_when_present():
+    base = datetime.datetime(2026, 4, 8, 12, 0, 0, tzinfo=_UTC)
+
+    def _ping(s, gnss, baro):
+        return Ping(
+            time=base + datetime.timedelta(seconds=s),
+            lat=42.0,
+            lon=-71.0,
+            alt_m=gnss,
+            alt_gnss_m=gnss,
+            alt_baro_m=baro,
+            alt_source="gnss",
+        )
+
+    pings = [_ping(0, 10000.0, 9950.0), _ping(5, 10100.0, 10050.0)]
+    result = _upsample_pings(pings)
+    assert len(result) == 6
+    midpoint = result[1]
+    assert midpoint.alt_gnss_m == pytest.approx(10020.0)
+    assert midpoint.alt_baro_m == pytest.approx(9970.0)
+    assert midpoint.alt_source == "gnss"
 
 
 # ---------------------------------------------------------------------------

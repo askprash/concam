@@ -82,6 +82,12 @@ ocr = [
     { name = "easyocr" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "hypothesis" },
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=17.0.0" },
@@ -99,6 +105,12 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.10" },
 ]
 provides-extras = ["ocr", "dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "hypothesis", specifier = ">=6.151.12" },
+    { name = "pytest", specifier = ">=9.0.3" },
+]
 
 [[package]]
 name = "cuda-bindings"

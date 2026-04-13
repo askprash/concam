@@ -161,6 +161,9 @@ def _flight_to_dict(flight: Flight) -> dict:
                 "lat": p.lat,
                 "lon": p.lon,
                 "alt_m": p.alt_m,
+                "alt_gnss_m": p.alt_gnss_m,
+                "alt_baro_m": p.alt_baro_m,
+                "alt_source": p.alt_source,
             }
             for p in flight.pings
         ],
@@ -174,6 +177,9 @@ def _flight_from_dict(d: dict) -> Flight:
             lat=p["lat"],
             lon=p["lon"],
             alt_m=p["alt_m"],
+            alt_gnss_m=p.get("alt_gnss_m"),
+            alt_baro_m=p.get("alt_baro_m"),
+            alt_source=p.get("alt_source", "gnss"),
         )
         for p in d["pings"]
     ]
