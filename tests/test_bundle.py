@@ -439,6 +439,59 @@ def test_labeler_html_has_overlay_controls_and_logic(
     assert "drawDetections" in html
 
 
+def test_labeler_html_has_label_controls_and_export(
+    synthetic_pipeline_outputs: dict, tmp_path: Path
+) -> None:
+    """Item 13: verify label controls, localStorage persistence, and export
+    are wired into the template. Static assertions because we have no
+    headless browser in CI — see item 12 tests for the same pattern."""
+    out = tmp_path / "bundles"
+    generate_bundles(
+        date=synthetic_pipeline_outputs["date"],
+        labelers=["alice"],
+        overlap_fraction=0.0,
+        db_path=synthetic_pipeline_outputs["db"],
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        video_path=synthetic_pipeline_outputs["video"],
+        image_size=(3840, 2160),
+        output_dir=out,
+    )
+    html = (out / "alice" / "labeler.html").read_text()
+
+    # Three-way label values come from a VALID_LABELS array that is injected
+    # into radio `value=` attributes at render time.
+    assert '"contrail"' in html
+    assert '"no_contrail"' in html
+    assert '"unsure"' in html
+    assert "VALID_LABELS" in html
+    assert 'type="radio"' in html
+
+    # Persistence slider.
+    assert 'type="range"' in html
+    assert 'min="1"' in html and 'max="5"' in html
+
+    # Notes textarea (constructed dynamically; test the hooks instead).
+    assert 'createElement("textarea")' in html
+    assert "label_notes" in html
+
+    # localStorage persistence: per (date, labeler) key + save/load helpers.
+    assert "localStorage" in html
+    assert "concam-labels:" in html
+    assert "loadLabels" in html and "saveLabels" in html
+
+    # Export button and JSON download path matching insert_labels schema.
+    assert 'id="export-btn"' in html
+    assert "labelsForExport" in html
+    assert "episode_id" in html and "labeler_id" in html
+    assert "persistence_rating" in html and "label_notes" in html
+    assert "label_timestamp" in html
+
+    # Manifest+error handling already covered by item 12 test; re-check the
+    # user-facing error panel so a regression that removes it is caught here.
+    assert 'id="error-panel"' in html
+
+
 def test_cli_bundle_missing_outputs(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(

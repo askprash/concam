@@ -7,21 +7,35 @@
   body { font-family: system-ui, sans-serif; margin: 1rem; color: #222; }
   header { display: flex; gap: 2rem; align-items: baseline; margin-bottom: 0.5rem; flex-wrap: wrap; }
   header h1 { font-size: 1.2rem; margin: 0; }
-  #toolbar { display: flex; gap: 1rem; margin-bottom: 0.5rem; align-items: center; }
+  #toolbar { display: flex; gap: 1rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
   #toolbar label { user-select: none; cursor: pointer; }
   #video-wrap { position: relative; display: inline-block; line-height: 0; }
   #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
   video { max-width: 100%; background: #000; display: block; }
-  #episodes { margin-top: 1rem; max-height: 40vh; overflow-y: auto; border: 1px solid #ccc; padding: 0.5rem; }
-  .episode { padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; cursor: pointer; }
-  .episode:hover { background: #f5f5f5; }
+  #progress { font-size: 0.9em; color: #555; margin-left: auto; }
+  #export-btn { padding: 0.35rem 0.75rem; font-size: 0.9em; cursor: pointer; }
+  #episodes { margin-top: 1rem; max-height: 55vh; overflow-y: auto; border: 1px solid #ccc; padding: 0.25rem; }
+  .episode { padding: 0.5rem; border-bottom: 1px solid #eee; }
+  .episode.labeled { background: #f0fdf4; }
+  .episode-header { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; cursor: pointer; }
+  .episode-header:hover { background: #f5f5f5; }
   .episode .badge { display: inline-block; padding: 0 0.4em; border-radius: 3px; font-size: 0.8em; }
   .episode .badge.overlap { background: #fffa8a; }
   .episode .badge.score { background: #cce5ff; }
   .episode .badge.detected { background: #c8f7c5; }
+  .episode .badge.label-status { background: #e5e7eb; }
+  .episode .badge.label-status.contrail { background: #86efac; }
+  .episode .badge.label-status.no_contrail { background: #fca5a5; }
+  .episode .badge.label-status.unsure { background: #fde68a; }
+  .label-controls { display: flex; gap: 1rem; margin-top: 0.4rem; align-items: center; flex-wrap: wrap; font-size: 0.9em; }
+  .label-controls .group { display: flex; gap: 0.25rem; align-items: center; }
+  .label-controls input[type="radio"] { margin: 0 0.15rem 0 0.5rem; }
+  .label-controls input[type="range"] { vertical-align: middle; }
+  .label-controls textarea { flex: 1 1 20rem; min-height: 1.8em; font-family: inherit; font-size: 0.9em; padding: 0.2rem; }
   .error { color: #b00; background: #fee; padding: 0.75rem; border: 1px solid #f99; border-radius: 4px; }
   .legend { font-size: 0.85em; color: #555; }
   .swatch { display: inline-block; width: 12px; height: 12px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  .seek-btn { padding: 0 0.4em; font-size: 0.85em; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -41,6 +55,8 @@
     <span class="swatch" style="background:#5aa0ff; margin-left:0.5rem"></span>other flight
     <span class="swatch" style="background:#ff3b3b; margin-left:0.5rem"></span>detection line
   </span>
+  <span id="progress"></span>
+  <button id="export-btn" type="button">Export labels</button>
 </div>
 
 <div id="error-panel" class="error" hidden></div>
@@ -274,13 +290,140 @@
     showError("Video failed to load: " + manifest.video.path);
   });
 
-  // --- Episode list ------------------------------------------------------
+  // --- Labels: localStorage persistence + export -------------------------
+  // Keyed by (date, labeler_id) so multiple bundles on the same machine don't
+  // collide. Values are keyed by episode_id (string) with partial state
+  // allowed (e.g. notes without a label) so students don't lose typing if
+  // they reload mid-work.
+  const STORAGE_KEY =
+    "concam-labels:" + manifest.date + ":" + manifest.labeler_id;
+  const VALID_LABELS = ["contrail", "no_contrail", "unsure"];
+
+  function loadLabels() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      console.warn("Failed to parse saved labels:", e);
+      return {};
+    }
+  }
+
+  function saveLabels() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(labelState));
+    } catch (e) {
+      showError("Failed to save to localStorage: " + e.message);
+    }
+  }
+
+  const labelState = loadLabels();
+
+  function getLabelEntry(episodeId) {
+    const key = String(episodeId);
+    if (!labelState[key]) labelState[key] = {};
+    return labelState[key];
+  }
+
+  function updateLabel(episodeId, patch) {
+    const entry = getLabelEntry(episodeId);
+    Object.assign(entry, patch);
+    // Touch timestamp only when a meaningful change happens — we always
+    // update because any edit is a signal the labeler was active at that
+    // moment, which is the audit data we want to preserve.
+    entry.label_timestamp = new Date().toISOString();
+    saveLabels();
+    refreshEpisodeDom(episodeId);
+    updateProgress();
+  }
+
+  function labelsForExport() {
+    // Only episodes with a chosen label are exported. Notes-only or
+    // rating-only entries are preserved in localStorage but not ingested.
+    const out = [];
+    for (const ep of manifest.episodes) {
+      const entry = labelState[String(ep.episode_id)];
+      if (!entry || !VALID_LABELS.includes(entry.label)) continue;
+      const record = {
+        episode_id: ep.episode_id,
+        label: entry.label,
+        labeler_id: manifest.labeler_id,
+      };
+      if (typeof entry.persistence_rating === "number") {
+        record.persistence_rating = entry.persistence_rating;
+      }
+      if (entry.label_timestamp) {
+        record.label_timestamp = entry.label_timestamp;
+      }
+      const notes = (entry.label_notes || "").trim();
+      if (notes) record.label_notes = notes;
+      out.push(record);
+    }
+    return out;
+  }
+
+  function exportLabels() {
+    const payload = {
+      schema_version: 1,
+      date: manifest.date,
+      labeler_id: manifest.labeler_id,
+      exported_at: new Date().toISOString(),
+      labels: labelsForExport(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = manifest.date + "_" + manifest.labeler_id + "_labels.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById("export-btn").addEventListener("click", exportLabels);
+
+  // --- Episode panel -----------------------------------------------------
   const panel = document.getElementById("episodes");
   panel.innerHTML = "";
-  manifest.episodes.forEach((ep) => {
-    const div = document.createElement("div");
-    div.className = "episode";
-    div.dataset.episodeId = ep.episode_id;
+  const episodeDom = new Map();
+
+  function formatLabelStatus(entry) {
+    if (!entry || !entry.label) return "unlabeled";
+    return entry.label;
+  }
+
+  function refreshEpisodeDom(episodeId) {
+    const dom = episodeDom.get(String(episodeId));
+    if (!dom) return;
+    const entry = labelState[String(episodeId)] || {};
+    dom.wrapper.classList.toggle("labeled", VALID_LABELS.includes(entry.label));
+    const cls = VALID_LABELS.includes(entry.label) ? entry.label : "";
+    dom.statusBadge.className = "badge label-status " + cls;
+    dom.statusBadge.textContent = formatLabelStatus(entry);
+  }
+
+  function updateProgress() {
+    const total = manifest.episodes.length;
+    const done = manifest.episodes.filter((ep) => {
+      const entry = labelState[String(ep.episode_id)];
+      return entry && VALID_LABELS.includes(entry.label);
+    }).length;
+    document.getElementById("progress").textContent =
+      "labeled " + done + "/" + total;
+  }
+
+  function buildEpisodeRow(ep) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "episode";
+    wrapper.dataset.episodeId = ep.episode_id;
+
+    const header = document.createElement("div");
+    header.className = "episode-header";
     const overlapBadge = ep.is_overlap
       ? '<span class="badge overlap">overlap</span> '
       : "";
@@ -288,19 +431,103 @@
       ep.peak_score >= detectionThreshold
         ? '<span class="badge detected">auto</span> '
         : "";
-    div.innerHTML =
+    header.innerHTML =
       overlapBadge +
       detectedBadge +
       '<strong>#' + ep.episode_id + '</strong> ' +
       ep.callsign + ' ' +
       '<span class="badge score">score ' + ep.peak_score.toFixed(2) + '</span> ' +
-      '<span>' + ep.onset + ' &rarr; ' + ep.end + '</span>';
-    div.addEventListener("click", () => {
+      '<span>' + ep.onset + ' &rarr; ' + ep.end + '</span> ' +
+      '<span class="badge label-status">unlabeled</span>';
+    const statusBadge = header.querySelector(".badge.label-status");
+
+    header.addEventListener("click", (evt) => {
+      // Ignore clicks that originate on a control inside the row.
+      if (evt.target.closest(".label-controls")) return;
       const sec = wallMsToVideoTime(Date.parse(ep.onset));
-      if (isFinite(sec) && sec >= 0) video.currentTime = sec;
+      if (isFinite(sec) && sec >= 0) {
+        video.currentTime = sec;
+        video.play().catch(() => {});
+      }
     });
-    panel.appendChild(div);
-  });
+
+    const controls = document.createElement("div");
+    controls.className = "label-controls";
+
+    // Three-way label group.
+    const labelGroup = document.createElement("span");
+    labelGroup.className = "group";
+    labelGroup.dataset.role = "label-group";
+    const groupName = "lbl-" + ep.episode_id;
+    VALID_LABELS.forEach((val) => {
+      const id = groupName + "-" + val;
+      labelGroup.insertAdjacentHTML(
+        "beforeend",
+        '<input type="radio" name="' + groupName + '" id="' + id +
+          '" value="' + val + '" data-role="label-radio">' +
+          '<label for="' + id + '">' + val.replace("_", " ") + '</label>'
+      );
+    });
+    controls.appendChild(labelGroup);
+
+    // Persistence slider 1-5.
+    const rating = document.createElement("span");
+    rating.className = "group";
+    rating.innerHTML =
+      '<label>persistence ' +
+      '<input type="range" min="1" max="5" step="1" data-role="rating">' +
+      ' <output data-role="rating-output">—</output></label>';
+    controls.appendChild(rating);
+
+    // Free-text notes.
+    const notes = document.createElement("textarea");
+    notes.placeholder = "notes (optional)";
+    notes.dataset.role = "notes";
+    controls.appendChild(notes);
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(controls);
+
+    // Restore saved state into controls.
+    const entry = labelState[String(ep.episode_id)] || {};
+    if (VALID_LABELS.includes(entry.label)) {
+      const r = labelGroup.querySelector('input[value="' + entry.label + '"]');
+      if (r) r.checked = true;
+    }
+    const ratingInput = rating.querySelector('[data-role="rating"]');
+    const ratingOutput = rating.querySelector('[data-role="rating-output"]');
+    if (typeof entry.persistence_rating === "number") {
+      ratingInput.value = String(entry.persistence_rating);
+      ratingOutput.textContent = String(entry.persistence_rating);
+    } else {
+      // Range inputs default mid-range; show an em dash until user interacts.
+      ratingInput.value = "3";
+    }
+    notes.value = entry.label_notes || "";
+
+    // Wire change handlers — every edit autosaves.
+    labelGroup.querySelectorAll('input[data-role="label-radio"]').forEach((r) => {
+      r.addEventListener("change", () => {
+        if (r.checked) updateLabel(ep.episode_id, { label: r.value });
+      });
+    });
+    ratingInput.addEventListener("input", () => {
+      ratingOutput.textContent = ratingInput.value;
+      updateLabel(ep.episode_id, {
+        persistence_rating: parseInt(ratingInput.value, 10),
+      });
+    });
+    notes.addEventListener("input", () => {
+      updateLabel(ep.episode_id, { label_notes: notes.value });
+    });
+
+    episodeDom.set(String(ep.episode_id), { wrapper, statusBadge });
+    return wrapper;
+  }
+
+  manifest.episodes.forEach((ep) => panel.appendChild(buildEpisodeRow(ep)));
+  manifest.episodes.forEach((ep) => refreshEpisodeDom(ep.episode_id));
+  updateProgress();
 })();
 </script>
 
