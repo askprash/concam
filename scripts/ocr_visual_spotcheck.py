@@ -198,7 +198,23 @@ def main() -> None:
         help="Directory in which to write the grid PNG (created if absent).",
     )
     ap.add_argument("--cols", type=int, default=5, help="Grid column count.")
+    ap.add_argument(
+        "--start-frac", type=float, default=0.0,
+        help="Restrict sampling to frames after this fraction of the video "
+             "(0.0-1.0). Use with --end-frac to limit to e.g. daytime hours "
+             "for more sky/cloud background variety in the OCR ROI.",
+    )
+    ap.add_argument(
+        "--end-frac", type=float, default=1.0,
+        help="Restrict sampling to frames before this fraction of the video.",
+    )
+    ap.add_argument(
+        "--label", default=None,
+        help="Optional suffix appended to output filename (e.g. 'daytime').",
+    )
     args = ap.parse_args()
+    if not (0.0 <= args.start_frac < args.end_frac <= 1.0):
+        raise SystemExit("--start-frac must be < --end-frac, both in [0, 1]")
 
     video_path = Path(args.video)
     if not video_path.exists():
@@ -218,12 +234,18 @@ def main() -> None:
         f"~{total_frames} frames, sampling {args.num_frames} evenly."
     )
 
-    # Uniform indices.  Skip 0 so the first sample isn't the (often unusual)
-    # leading keyframe; pick at half-bucket offsets across the file.
+    # Uniform indices within the requested fractional sub-range.  Half-bucket
+    # offsets so the first sample isn't the (often unusual) leading keyframe.
     n = args.num_frames
+    span = total_frames * (args.end_frac - args.start_frac)
+    base = total_frames * args.start_frac
     sample_indices = [
-        int(round((i + 0.5) * total_frames / n)) for i in range(n)
+        int(round(base + (i + 0.5) * span / n)) for i in range(n)
     ]
+    print(
+        f"Sampling fractional range [{args.start_frac:.2f}, {args.end_frac:.2f}] "
+        f"of video (frames {sample_indices[0]}..{sample_indices[-1]})."
+    )
     print(f"Decoding video to extract {len(sample_indices)} frames "
           "(seek-based, should take ~1 frame per second on average)...")
     samples = _sample_frames(video_path, sample_indices, total_frames, duration_s)
@@ -260,7 +282,9 @@ def main() -> None:
         for r in rows
     ]
     grid = _compose_grid(tiles, cols=args.cols)
-    grid_path = out_dir / "ocr_spotcheck_grid.png"
+    suffix = f"_{args.label}" if args.label else ""
+    stem = video_path.stem
+    grid_path = out_dir / f"ocr_spotcheck_grid_{stem}{suffix}.png"
     cv2.imwrite(str(grid_path), grid)
     print(f"Wrote {grid_path} ({grid.shape[1]}x{grid.shape[0]} px)")
 
