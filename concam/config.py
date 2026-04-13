@@ -42,9 +42,15 @@ class AdsbConfig:
     #   "gnss": always use GNSS (WGS-84 HAE)
     #   "barometric": always use barometric (ISA pressure altitude) + geoid offset
     altitude_source: str = "auto"
-    # Red-flag threshold for baro/GNSS disagreement. ~400 ft per surveillance
-    # literature is a typical indicator of GNSS trouble (spoofing, RAIM drop,
-    # severe temperature deviation from ISA).
+    # Red-flag threshold for baro/GNSS disagreement at cruise. ~400 ft (122 m)
+    # is the level above which the delta is more likely to indicate GNSS trouble
+    # (multipath, RAIM dropout, jamming/spoofing) or a static-system leak than
+    # normal ISA deviation. Under typical conditions the gap is 150-300 ft.
+    # Sourced from a non-primary aviation/surveillance literature sweep (FAA
+    # ATC Altitude Assignment; EUROCONTROL Mode S monitoring guidance summarised
+    # on avionicswest.com; ION/NAVIGATION 71(2), 2024 on baro-augmented GNSS
+    # integrity monitoring). Not independently verified against RTCA DO-260B;
+    # tune if a primary source indicates a different level.
     altitude_discrepancy_threshold_m: float = 122.0
     # Geoid-to-ellipsoid offset used when converting barometric (≈ MSL / ISA) to
     # WGS-84 HAE for projection. Positive = ellipsoid above geoid.
