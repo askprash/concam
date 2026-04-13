@@ -237,6 +237,8 @@ def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
         image_size=image_size,
         output_dir=out_root,
         seconds_per_frame=seconds_per_frame,
+        ocr_path=paths["ocr"] if paths["ocr"].exists() else None,
+        detection_threshold=site_config.aggregation.detection_threshold,
     )
     for lbl, bundle_dir in result.items():
         click.echo(f"{lbl}: {bundle_dir}")

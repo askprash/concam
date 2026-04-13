@@ -5,18 +5,23 @@
 <title>ConCam Labeler</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 1rem; color: #222; }
-  header { display: flex; gap: 2rem; align-items: baseline; margin-bottom: 1rem; }
+  header { display: flex; gap: 2rem; align-items: baseline; margin-bottom: 0.5rem; flex-wrap: wrap; }
   header h1 { font-size: 1.2rem; margin: 0; }
-  #video-wrap { position: relative; display: inline-block; }
+  #toolbar { display: flex; gap: 1rem; margin-bottom: 0.5rem; align-items: center; }
+  #toolbar label { user-select: none; cursor: pointer; }
+  #video-wrap { position: relative; display: inline-block; line-height: 0; }
   #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
-  video { max-width: 100%; background: #000; }
+  video { max-width: 100%; background: #000; display: block; }
   #episodes { margin-top: 1rem; max-height: 40vh; overflow-y: auto; border: 1px solid #ccc; padding: 0.5rem; }
   .episode { padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; cursor: pointer; }
   .episode:hover { background: #f5f5f5; }
   .episode .badge { display: inline-block; padding: 0 0.4em; border-radius: 3px; font-size: 0.8em; }
   .episode .badge.overlap { background: #fffa8a; }
   .episode .badge.score { background: #cce5ff; }
+  .episode .badge.detected { background: #c8f7c5; }
   .error { color: #b00; background: #fee; padding: 0.75rem; border: 1px solid #f99; border-radius: 4px; }
+  .legend { font-size: 0.85em; color: #555; }
+  .swatch { display: inline-block; width: 12px; height: 12px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -27,6 +32,16 @@
   <span id="hdr-labeler"></span>
   <span id="hdr-episode-count"></span>
 </header>
+
+<div id="toolbar">
+  <label><input type="checkbox" id="toggle-tracks" checked> ADS-B tracks</label>
+  <label><input type="checkbox" id="toggle-detections" checked> Detection lines</label>
+  <span class="legend">
+    <span class="swatch" style="background:#f5c542"></span>auto-detected flight
+    <span class="swatch" style="background:#5aa0ff; margin-left:0.5rem"></span>other flight
+    <span class="swatch" style="background:#ff3b3b; margin-left:0.5rem"></span>detection line
+  </span>
+</div>
 
 <div id="error-panel" class="error" hidden></div>
 
@@ -40,9 +55,14 @@
 </section>
 
 <script>
-// Minimal skeleton: loads manifest.json, populates header + episode list,
-// wires the video element.  Overlay drawing, timeline controls, labeling
-// controls, and localStorage persistence are implemented in PRD items 12/13.
+// Browser-based labeler — video playback + canvas overlays.
+//
+// Time mapping:
+//   wall_time_ms = video_start_ms + currentTime_s * 1000 * seconds_per_frame
+// where video_start_ms is the UTC wall time of frame 0 (from manifest.video.start_utc,
+// falling back to midnight UTC of manifest.date if absent). The frame-interval is
+// baked into seconds_per_frame; playback runs at 1 video-frame per video-second
+// (the timelapse encoder writes one frame per compressed second of playback).
 (async function () {
   const errPanel = document.getElementById("error-panel");
   const showError = (msg) => {
@@ -65,18 +85,196 @@
   document.getElementById("hdr-episode-count").textContent =
     "episodes: " + manifest.episodes.length;
 
+  // --- Time mapping -------------------------------------------------------
+  const videoStartMs = manifest.video.start_utc
+    ? Date.parse(manifest.video.start_utc)
+    : Date.parse(manifest.date + "T00:00:00Z");
+  const secondsPerFrame = manifest.video.seconds_per_frame || 1.0;
+  const detectionThreshold =
+    typeof manifest.detection_threshold === "number"
+      ? manifest.detection_threshold
+      : 0.3;
+
+  const currentWallMs = (videoTime) =>
+    videoStartMs + videoTime * 1000 * secondsPerFrame;
+  const wallMsToVideoTime = (wallMs) =>
+    (wallMs - videoStartMs) / 1000 / secondsPerFrame;
+
+  // --- Flight track indexing ---------------------------------------------
+  // Each track.pings is already time-sorted. We pre-parse wall_time_utc once.
+  const flightTracks = Object.entries(manifest.flight_tracks || {}).map(
+    ([tid, track]) => ({
+      tid,
+      callsign: track.callsign,
+      pings: track.pings.map((p) => ({
+        t: Date.parse(p.wall_time_utc),
+        x: p.pixel_x,
+        y: p.pixel_y,
+      })),
+    })
+  );
+
+  // Episodes grouped by transponder_id for fast "is this flight auto-detected now?" lookup.
+  const episodesByTid = new Map();
+  manifest.episodes.forEach((ep) => {
+    const list = episodesByTid.get(ep.transponder_id) || [];
+    list.push({
+      onset: Date.parse(ep.onset),
+      end: Date.parse(ep.end),
+      peak_score: ep.peak_score,
+      frames: (ep.frames || []).map((f) => ({
+        t: Date.parse(f.wall_time_utc),
+        score: f.score,
+        line: f.pixel_line,
+      })),
+    });
+    episodesByTid.set(ep.transponder_id, list);
+  });
+
+  const TRACK_WINDOW_MS = 60_000; // ±60s of track around current time
+  const FRAME_MATCH_MS = Math.max(500, secondsPerFrame * 1000);
+
+  // --- Canvas sizing ------------------------------------------------------
   const video = document.getElementById("video");
+  const canvas = document.getElementById("overlay");
+  const ctx = canvas.getContext("2d");
+  const [imgW, imgH] = manifest.image_size;
+
+  function fitCanvas() {
+    // Back the canvas with the full image pixel resolution so drawing ops
+    // happen in pixel-space coordinates; scale via CSS to match the rendered
+    // video element. This preserves overlay precision on high-dpi displays
+    // without us having to apply a scale factor in every draw call.
+    const rect = video.getBoundingClientRect();
+    canvas.width = imgW;
+    canvas.height = imgH;
+    canvas.style.width = rect.width + "px";
+    canvas.style.height = rect.height + "px";
+  }
+  video.addEventListener("loadedmetadata", fitCanvas);
+  window.addEventListener("resize", fitCanvas);
+
+  // --- Drawing -----------------------------------------------------------
+  const toggleTracks = document.getElementById("toggle-tracks");
+  const toggleDetections = document.getElementById("toggle-detections");
+  toggleTracks.addEventListener("change", draw);
+  toggleDetections.addEventListener("change", draw);
+
+  function findActiveEpisode(tid, wallMs) {
+    const eps = episodesByTid.get(tid);
+    if (!eps) return null;
+    for (const ep of eps) {
+      if (wallMs >= ep.onset - FRAME_MATCH_MS && wallMs <= ep.end + FRAME_MATCH_MS) {
+        return ep;
+      }
+    }
+    return null;
+  }
+
+  function findFrameDetection(ep, wallMs) {
+    // The closest frame within FRAME_MATCH_MS, if any.
+    let best = null;
+    let bestDt = FRAME_MATCH_MS;
+    for (const f of ep.frames) {
+      const dt = Math.abs(f.t - wallMs);
+      if (dt <= bestDt && f.line) {
+        best = f;
+        bestDt = dt;
+      }
+    }
+    return best;
+  }
+
+  function drawTrack(track, wallMs) {
+    // Draw the pings that fall within the sliding window, plus a current-position dot.
+    const inWindow = track.pings.filter(
+      (p) => Math.abs(p.t - wallMs) <= TRACK_WINDOW_MS
+    );
+    if (inWindow.length === 0) return;
+
+    const active = findActiveEpisode(track.tid, wallMs);
+    const highlighted = active && active.peak_score >= detectionThreshold;
+    const strokeColor = highlighted ? "#f5c542" : "#5aa0ff";
+
+    ctx.lineWidth = highlighted ? 4 : 2;
+    ctx.strokeStyle = strokeColor;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(inWindow[0].x, inWindow[0].y);
+    for (let i = 1; i < inWindow.length; i++) {
+      ctx.lineTo(inWindow[i].x, inWindow[i].y);
+    }
+    ctx.stroke();
+
+    // Current position: nearest ping to wallMs.
+    let nearest = inWindow[0];
+    let nearestDt = Math.abs(inWindow[0].t - wallMs);
+    for (let i = 1; i < inWindow.length; i++) {
+      const dt = Math.abs(inWindow[i].t - wallMs);
+      if (dt < nearestDt) {
+        nearest = inWindow[i];
+        nearestDt = dt;
+      }
+    }
+    ctx.fillStyle = strokeColor;
+    ctx.beginPath();
+    ctx.arc(nearest.x, nearest.y, highlighted ? 14 : 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Callsign label next to the dot.
+    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = "#000";
+    ctx.font = "28px system-ui, sans-serif";
+    ctx.fillText(track.callsign, nearest.x + 18, nearest.y - 10);
+  }
+
+  function drawDetections(wallMs) {
+    ctx.strokeStyle = "#ff3b3b";
+    ctx.lineWidth = 5;
+    ctx.globalAlpha = 0.95;
+    for (const [tid, eps] of episodesByTid.entries()) {
+      for (const ep of eps) {
+        if (wallMs < ep.onset - FRAME_MATCH_MS || wallMs > ep.end + FRAME_MATCH_MS) {
+          continue;
+        }
+        const frame = findFrameDetection(ep, wallMs);
+        if (!frame) continue;
+        const [x1, y1, x2, y2] = frame.line;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const wallMs = currentWallMs(video.currentTime);
+    if (toggleTracks.checked) {
+      ctx.globalAlpha = 0.85;
+      for (const track of flightTracks) drawTrack(track, wallMs);
+    }
+    if (toggleDetections.checked) {
+      drawDetections(wallMs);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  video.addEventListener("timeupdate", draw);
+  video.addEventListener("seeked", draw);
+  video.addEventListener("loadeddata", () => {
+    fitCanvas();
+    draw();
+  });
+
+  // --- Video source ------------------------------------------------------
   video.src = manifest.video.path;
   video.addEventListener("error", () => {
     showError("Video failed to load: " + manifest.video.path);
   });
 
-  const canvas = document.getElementById("overlay");
-  video.addEventListener("loadedmetadata", () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-  });
-
+  // --- Episode list ------------------------------------------------------
   const panel = document.getElementById("episodes");
   panel.innerHTML = "";
   manifest.episodes.forEach((ep) => {
@@ -86,16 +284,19 @@
     const overlapBadge = ep.is_overlap
       ? '<span class="badge overlap">overlap</span> '
       : "";
+    const detectedBadge =
+      ep.peak_score >= detectionThreshold
+        ? '<span class="badge detected">auto</span> '
+        : "";
     div.innerHTML =
       overlapBadge +
+      detectedBadge +
       '<strong>#' + ep.episode_id + '</strong> ' +
       ep.callsign + ' ' +
       '<span class="badge score">score ' + ep.peak_score.toFixed(2) + '</span> ' +
       '<span>' + ep.onset + ' &rarr; ' + ep.end + '</span>';
     div.addEventListener("click", () => {
-      const onsetMs = Date.parse(ep.onset);
-      const dayStart = Date.parse(manifest.date + "T00:00:00Z");
-      const sec = (onsetMs - dayStart) / 1000 / manifest.video.seconds_per_frame;
+      const sec = wallMsToVideoTime(Date.parse(ep.onset));
       if (isFinite(sec) && sec >= 0) video.currentTime = sec;
     });
     panel.appendChild(div);

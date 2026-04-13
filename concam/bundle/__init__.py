@@ -158,6 +158,16 @@ def _iter_jsonl(path: Path):
                 yield json.loads(line)
 
 
+def _first_frame_wall_time(ocr_path: Path) -> str | None:
+    """Return the UTC ISO timestamp of frame_idx=0, or None if unavailable."""
+    if not ocr_path.exists():
+        return None
+    for rec in _iter_jsonl(ocr_path):
+        if rec.get("frame_idx") == 0:
+            return rec.get("wall_time_utc")
+    return None
+
+
 def _build_flight_tracks(projections_path: Path) -> dict[str, dict]:
     """Group projections by transponder_id into per-flight pixel tracks."""
     tracks: dict[str, dict] = {}
@@ -233,8 +243,17 @@ def build_manifest(
     bundle_dir: Path,
     image_size: tuple[int, int],
     seconds_per_frame: float,
+    video_start_utc: str | None = None,
+    detection_threshold: float = 0.3,
 ) -> dict:
-    """Assemble the manifest dict for a single labeler."""
+    """Assemble the manifest dict for a single labeler.
+
+    ``video_start_utc`` is the UTC wall time of frame 0 — the labeler UI uses
+    it to map ``video.currentTime`` to absolute wall time, so overlays stay
+    aligned even when the timelapse does not start at local midnight.
+    ``detection_threshold`` is copied from ``AggregationConfig`` so the UI can
+    highlight auto-detected flights with the same cutoff the pipeline used.
+    """
     assigned_ids = set(assignment.episode_ids)
     overlap_ids = set(assignment.overlap_episode_ids)
 
@@ -257,16 +276,21 @@ def build_manifest(
         )
     episodes_out.sort(key=lambda e: (e["onset"], e["episode_id"]))
 
+    video_block: dict = {
+        "path": _relative_video_path(video_path, bundle_dir),
+        "seconds_per_frame": seconds_per_frame,
+    }
+    if video_start_utc is not None:
+        video_block["start_utc"] = video_start_utc
+
     return {
         "schema_version": 1,
         "date": date.isoformat(),
         "labeler_id": labeler_id,
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "video": {
-            "path": _relative_video_path(video_path, bundle_dir),
-            "seconds_per_frame": seconds_per_frame,
-        },
+        "video": video_block,
         "image_size": [int(image_size[0]), int(image_size[1])],
+        "detection_threshold": float(detection_threshold),
         "overlap_episode_ids": sorted(overlap_ids),
         "episodes": episodes_out,
         "flight_tracks": flight_tracks,
@@ -285,10 +309,17 @@ def generate_bundles(
     image_size: tuple[int, int],
     output_dir: Path,
     seconds_per_frame: float = 1.0,
+    ocr_path: Path | None = None,
+    detection_threshold: float = 0.3,
 ) -> dict[str, Path]:
     """Generate one bundle directory per labeler.
 
     Returns a mapping of ``labeler_id -> bundle_dir``.
+
+    If ``ocr_path`` is provided, the wall-time of frame 0 is read from it and
+    stored in each manifest as ``video.start_utc``. This lets the labeler UI
+    map video playhead time to absolute wall time without assuming the video
+    starts at UTC midnight.
     """
     if not labelers:
         raise ValueError("At least one labeler is required.")
@@ -299,6 +330,8 @@ def generate_bundles(
 
     flight_tracks = _build_flight_tracks(projections_path)
     detections_by_flight = _build_detections_by_flight(detections_path)
+
+    video_start_utc = _first_frame_wall_time(ocr_path) if ocr_path else None
 
     output_dir.mkdir(parents=True, exist_ok=True)
     bundle_dirs: dict[str, Path] = {}
@@ -317,6 +350,8 @@ def generate_bundles(
             bundle_dir=bundle_dir,
             image_size=image_size,
             seconds_per_frame=seconds_per_frame,
+            video_start_utc=video_start_utc,
+            detection_threshold=detection_threshold,
         )
         with open(bundle_dir / "manifest.json", "w") as f:
             json.dump(manifest, f, indent=2)

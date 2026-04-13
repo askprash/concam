@@ -122,6 +122,9 @@ def synthetic_pipeline_outputs(tmp_path: Path) -> dict:
     """Build a minimal but complete set of pipeline outputs on disk."""
     date = datetime.date(2026, 4, 8)
     base_ts = datetime.datetime(2026, 4, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    # OCR file: frame 0 starts a few hours before the first episode, matching a
+    # realistic timelapse that covers a full local day (EDT -> UTC+4h shift).
+    ocr_start = datetime.datetime(2026, 4, 8, 4, 0, 0, tzinfo=datetime.timezone.utc)
 
     # 5 episodes from 3 flights (2 flights have multiple episodes over the day).
     episodes: list[Episode] = []
@@ -184,6 +187,20 @@ def synthetic_pipeline_outputs(tmp_path: Path) -> dict:
     video_path = tmp_path / "day.mp4"
     video_path.write_bytes(b"fake-video-bytes")
 
+    # OCR jsonl: one record per frame; frame 0 anchors video start.
+    ocr_records = [
+        {
+            "frame_idx": 0,
+            "wall_time_utc": ocr_start.isoformat(),
+            "confidence": 0.9,
+            "method": "template",
+            "ocr_status": "ok",
+            "tracker_status": "ok",
+        }
+    ]
+    ocr_path = tmp_path / "ocr.jsonl"
+    _write_jsonl(ocr_path, ocr_records)
+
     return {
         "date": date,
         "db": db_path,
@@ -191,6 +208,8 @@ def synthetic_pipeline_outputs(tmp_path: Path) -> dict:
         "detections": det_path,
         "video": video_path,
         "episodes": episodes,
+        "ocr": ocr_path,
+        "video_start_utc": ocr_start.isoformat(),
     }
 
 
@@ -329,6 +348,97 @@ def test_generate_bundles_is_deterministic(
 # ---------- CLI ----------
 
 
+def test_manifest_includes_video_start_utc(
+    synthetic_pipeline_outputs: dict, tmp_path: Path
+) -> None:
+    out = tmp_path / "bundles"
+    generate_bundles(
+        date=synthetic_pipeline_outputs["date"],
+        labelers=["alice"],
+        overlap_fraction=0.0,
+        db_path=synthetic_pipeline_outputs["db"],
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        video_path=synthetic_pipeline_outputs["video"],
+        image_size=(3840, 2160),
+        output_dir=out,
+        ocr_path=synthetic_pipeline_outputs["ocr"],
+        detection_threshold=0.45,
+    )
+    with open(out / "alice" / "manifest.json") as f:
+        m = json.load(f)
+    assert m["video"]["start_utc"] == synthetic_pipeline_outputs["video_start_utc"]
+    assert m["detection_threshold"] == 0.45
+
+
+def test_manifest_omits_start_utc_when_ocr_missing(
+    synthetic_pipeline_outputs: dict, tmp_path: Path
+) -> None:
+    out = tmp_path / "bundles"
+    generate_bundles(
+        date=synthetic_pipeline_outputs["date"],
+        labelers=["alice"],
+        overlap_fraction=0.0,
+        db_path=synthetic_pipeline_outputs["db"],
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        video_path=synthetic_pipeline_outputs["video"],
+        image_size=(3840, 2160),
+        output_dir=out,
+    )
+    with open(out / "alice" / "manifest.json") as f:
+        m = json.load(f)
+    assert "start_utc" not in m["video"]
+    # Default threshold still serialized.
+    assert "detection_threshold" in m
+
+
+# ---------- Labeler HTML structure ----------
+
+
+def test_labeler_html_has_overlay_controls_and_logic(
+    synthetic_pipeline_outputs: dict, tmp_path: Path
+) -> None:
+    """The copied labeler.html must contain the canvas-overlay wiring that the
+    student sees — toggles, manifest fields, per-frame draw loop, time mapping.
+    Verified statically because we have no headless browser in the test env."""
+    out = tmp_path / "bundles"
+    generate_bundles(
+        date=synthetic_pipeline_outputs["date"],
+        labelers=["alice"],
+        overlap_fraction=0.0,
+        db_path=synthetic_pipeline_outputs["db"],
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        video_path=synthetic_pipeline_outputs["video"],
+        image_size=(3840, 2160),
+        output_dir=out,
+        ocr_path=synthetic_pipeline_outputs["ocr"],
+    )
+    html = (out / "alice" / "labeler.html").read_text()
+
+    # Toggle controls (item 12 step 5).
+    assert 'id="toggle-tracks"' in html
+    assert 'id="toggle-detections"' in html
+
+    # Canvas overlay and video element.
+    assert 'id="overlay"' in html
+    assert 'id="video"' in html
+
+    # Time mapping and key manifest fields.
+    assert "manifest.video.start_utc" in html
+    assert "seconds_per_frame" in html
+    assert "detection_threshold" in html
+
+    # Draw loop synced to timeupdate + seeked.
+    assert 'addEventListener("timeupdate"' in html
+    assert 'addEventListener("seeked"' in html
+
+    # Track and detection drawing routines.
+    assert "drawTrack" in html
+    assert "drawDetections" in html
+
+
 def test_cli_bundle_missing_outputs(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(
@@ -365,6 +475,10 @@ def test_cli_bundle_end_to_end(
     (date_dir / "detections.jsonl").write_text(
         synthetic_pipeline_outputs["detections"].read_text()
     )
+    # Also stage the OCR file so the CLI picks up video_start_utc.
+    (date_dir / "ocr.jsonl").write_text(
+        synthetic_pipeline_outputs["ocr"].read_text()
+    )
 
     runner = CliRunner()
     result = runner.invoke(
@@ -388,3 +502,8 @@ def test_cli_bundle_end_to_end(
     assert (bundles_root / "alice" / "manifest.json").exists()
     assert (bundles_root / "bob" / "manifest.json").exists()
     assert (bundles_root / "alice" / "labeler.html").exists()
+    # CLI should propagate video_start_utc and detection_threshold from config.
+    with open(bundles_root / "alice" / "manifest.json") as f:
+        m = json.load(f)
+    assert m["video"]["start_utc"] == synthetic_pipeline_outputs["video_start_utc"]
+    assert "detection_threshold" in m
