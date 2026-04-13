@@ -93,6 +93,8 @@ def _pick_candidates(
     daylight_end: datetime.time,
     n: int,
     seconds_per_frame: float,
+    bucket_minutes: int = 30,
+    exclude_transponders: set[str] | None = None,
 ) -> list[Candidate]:
     """Pick N daylight candidates well-spread in time and pixel space.
 
@@ -115,13 +117,16 @@ def _pick_candidates(
             f"got {len(projections)} rows total"
         )
 
-    # Bucket by 30-minute windows; within each bucket keep the ping closest to
-    # image center (so labels aren't biased toward edge-of-frame geometry).
+    # Bucket by time windows (default 30 min); within each bucket keep the ping
+    # closest to image center (so labels aren't biased toward edge-of-frame geometry).
     buckets: dict[int, dict] = {}  # key: minute_bucket, value: (row, distance_to_center)
     cx, cy = 3840 / 2, 2160 / 2
+    exclude = exclude_transponders or set()
     for row in daylight_rows:
+        if row["transponder_id"] in exclude:
+            continue
         t = datetime.datetime.fromisoformat(row["wall_time_utc"])
-        bucket = (t.hour * 60 + t.minute) // 30
+        bucket = (t.hour * 60 + t.minute) // bucket_minutes
         dist = math.hypot(row["pixel_x"] - cx, row["pixel_y"] - cy)
         if bucket not in buckets or dist < buckets[bucket][1]:
             buckets[bucket] = (row, dist)
@@ -408,6 +413,10 @@ def main():
     )
     ap.add_argument("--seconds-per-frame", type=float, default=1.0)
     ap.add_argument("--video", default=None, help="override the timelapse path")
+    ap.add_argument("--bucket-minutes", type=int, default=30,
+                    help="time-window granularity for candidate spacing (smaller = denser)")
+    ap.add_argument("--exclude-manifest", default=None,
+                    help="path to an existing manifest.json; its transponder_ids will be excluded (use to extract a fresh batch)")
     args = ap.parse_args()
 
     date = datetime.date.fromisoformat(args.date)
@@ -436,6 +445,12 @@ def main():
     daylight_start = _parse_hhmm(daylight_start_s)
     daylight_end = _parse_hhmm(daylight_end_s)
 
+    exclude_tids: set[str] = set()
+    if args.exclude_manifest:
+        ex = json.loads(Path(args.exclude_manifest).read_text())
+        exclude_tids = {c["transponder_id"] for c in ex["candidates"]}
+        print(f"Excluding {len(exclude_tids)} transponder_ids from {args.exclude_manifest}")
+
     candidates = _pick_candidates(
         projections,
         anchor_utc,
@@ -443,8 +458,10 @@ def main():
         daylight_end,
         args.num_candidates,
         args.seconds_per_frame,
+        bucket_minutes=args.bucket_minutes,
+        exclude_transponders=exclude_tids,
     )
-    print(f"Selected {len(candidates)} candidates from {len(projections)} full-day projections ({daylight_start.isoformat(timespec='minutes')}-{daylight_end.isoformat(timespec='minutes')} UTC daylight filter).")
+    print(f"Selected {len(candidates)} candidates from {len(projections)} full-day projections ({daylight_start.isoformat(timespec='minutes')}-{daylight_end.isoformat(timespec='minutes')} UTC daylight filter, {args.bucket_minutes}-min buckets).")
 
     video_path = Path(args.video) if args.video else Path(config.video.root) / config.video.timelapse_glob.format(date=date)
     if not video_path.exists():
