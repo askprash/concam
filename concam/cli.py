@@ -248,7 +248,38 @@ def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
 @click.option("--date", required=True, type=str, help="UTC date (YYYY-MM-DD).")
 @click.option("--labels", required=True, multiple=True, type=click.Path(exists=True),
               help="Path(s) to completed label JSON files.")
+@click.option("--output-dir", default="output", show_default=True,
+              type=click.Path(), help="Pipeline output root (must contain <date>/pipeline.duckdb).")
+@click.option("--db", "db_override", default=None, type=click.Path(),
+              help="Override DuckDB path. Defaults to <output-dir>/<date>/pipeline.duckdb.")
 @click.pass_context
-def ingest_labels(ctx: click.Context, date: str, labels: tuple[str, ...]) -> None:
+def ingest_labels(ctx: click.Context, date: str, labels: tuple[str, ...],
+                  output_dir: str, db_override: str | None) -> None:
     """Ingest completed label JSON files into the DuckDB database."""
-    raise click.ClickException("Ingest-labels command not yet implemented.")
+    from concam.ingest import LabelValidationError, ingest_label_files
+    from concam.pipeline import stage_paths
+
+    try:
+        parsed_date = datetime.date.fromisoformat(date)
+    except ValueError:
+        raise click.BadParameter(f"Expected YYYY-MM-DD, got: {date!r}", param_hint="--date")
+
+    if db_override:
+        db_path = Path(db_override)
+    else:
+        db_path = stage_paths(Path(output_dir), parsed_date)["store"]
+    if not db_path.exists():
+        raise click.ClickException(
+            f"DuckDB not found at {db_path}. Run the pipeline first or pass --db."
+        )
+
+    label_paths = [Path(p) for p in labels]
+    try:
+        counts = ingest_label_files(db_path, label_paths, expected_date=parsed_date)
+    except LabelValidationError as e:
+        raise click.ClickException(str(e))
+
+    total = sum(counts.values())
+    for labeler_id, n in sorted(counts.items()):
+        click.echo(f"{labeler_id}: {n} labels")
+    click.echo(f"Ingested {total} labels into {db_path}")
