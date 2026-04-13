@@ -195,43 +195,65 @@ def flight_path_vector(
     return (dx / mag, dy / mag)
 
 
+def _roi_dimensions(config: DetectionConfig) -> tuple[float, float]:
+    """Return ``(along_half, cross_half)`` for the rotated ROI in pixels.
+
+    ``roi_along_px`` / ``roi_cross_px`` take precedence when set; otherwise
+    fall back to the legacy ``roi_padding``-based derivation (along=3*pad,
+    cross=pad) so older configs keep working.
+    """
+    along_full = getattr(config, "roi_along_px", None)
+    cross_full = getattr(config, "roi_cross_px", None)
+    if along_full and cross_full:
+        return float(along_full) / 2.0, float(cross_full) / 2.0
+    pad = config.roi_padding
+    return float(pad * 3), float(pad)
+
+
+def rotated_polygon(
+    center: PixelPoint,
+    path_vector: tuple[float, float],
+    config: DetectionConfig,
+) -> np.ndarray:
+    """Return the four corners of the oriented detection rectangle.
+
+    The rectangle is centered on ``center``, elongated along ``path_vector``,
+    with along-track half-length and cross-track half-width derived from
+    ``config``. Corners are returned CCW as a ``(4, 2) float32`` array in
+    full-frame pixel coords. Caller is responsible for rounding / clipping
+    if an integer polygon is required.
+    """
+    along, cross = _roi_dimensions(config)
+    vx, vy = path_vector
+    nx, ny = -vy, vx
+    corners = [
+        (center.x - along * vx - cross * nx, center.y - along * vy - cross * ny),
+        (center.x + along * vx - cross * nx, center.y + along * vy - cross * ny),
+        (center.x + along * vx + cross * nx, center.y + along * vy + cross * ny),
+        (center.x - along * vx + cross * nx, center.y - along * vy + cross * ny),
+    ]
+    return np.asarray(corners, dtype=np.float32)
+
+
 def oriented_roi(
     center: PixelPoint,
     path_vector: tuple[float, float],
     config: DetectionConfig,
     image_size: tuple[int, int] = (3840, 2160),
 ) -> Rect:
-    """Compute an axis-aligned bounding box around an oriented region.
+    """Compute an axis-aligned bounding box around the oriented detection region.
 
-    The oriented region is a rectangle centered on ``center``, elongated along
-    ``path_vector``.  The returned Rect is the tightest axis-aligned box that
-    contains this oriented region, clipped to image bounds.
-
-    The along-track half-length is ``roi_padding * 3`` and the cross-track
-    half-width is ``roi_padding``.
+    The oriented region is the rotated rectangle returned by
+    ``rotated_polygon()``; this helper just returns its AABB clipped to the
+    image, which the detection stage uses as a cheap bounding crop before
+    applying the rotated mask.
     """
-    pad = config.roi_padding
-    vx, vy = path_vector
-
-    # Perpendicular vector
-    nx, ny = -vy, vx
-
-    # Along-track half-length is 3x the padding, cross-track is 1x
-    along = pad * 3
-    cross = pad
-
-    # Four corners of the oriented rectangle
-    corners_x = []
-    corners_y = []
-    for sa in (-along, along):
-        for sc in (-cross, cross):
-            corners_x.append(center.x + sa * vx + sc * nx)
-            corners_y.append(center.y + sa * vy + sc * ny)
-
+    poly = rotated_polygon(center, path_vector, config)
     w, h = image_size
-    x_min = max(0, int(math.floor(min(corners_x))))
-    y_min = max(0, int(math.floor(min(corners_y))))
-    x_max = min(w - 1, int(math.ceil(max(corners_x))))
-    y_max = min(h - 1, int(math.ceil(max(corners_y))))
-
+    xs = poly[:, 0]
+    ys = poly[:, 1]
+    x_min = max(0, int(math.floor(float(xs.min()))))
+    y_min = max(0, int(math.floor(float(ys.min()))))
+    x_max = min(w - 1, int(math.ceil(float(xs.max()))))
+    y_max = min(h - 1, int(math.ceil(float(ys.max()))))
     return Rect(x=x_min, y=y_min, w=x_max - x_min, h=y_max - y_min)

@@ -58,19 +58,49 @@ calibration:
   # Resolution at which the calibration was performed
   calibration_resolution: [3840, 2160]
 
-# --- Detection (Hough+Canny) ---
-# Initial parameter values; will be refined in the detection validation notebook.
+# --- Detection (rotated-ROI + angle-constrained Hough) ---
+# Parameters tuned on the April 8, 2026 labeled set (7 positives / 13 negatives
+# extracted via scripts/detection_validation_extract.py + labeller.html). The
+# rotated-ROI rewrite achieves AUC=1.000 on that set — a significant step up
+# from the 0.714 AUC of the original AABB-only Hough+Canny detector (PRD item 7
+# historical, commit 5d2fd82). Caveat: 20 labels is a small calibration set;
+# batch-2 labels (output/validation/detection/2026-04-08-batch2/) and a second
+# date should be added before treating the 1.0 AUC as more than an upper bound.
+# Source: output/validation/detection/2026-04-08/sweep_report.md
 detection:
   score_threshold: 0.3
+  # Legacy / fallback Canny thresholds (used when use_adaptive_canny=false)
   canny_low: 50
   canny_high: 150
-  hough_threshold: 30
-  hough_min_line_length: 30
-  hough_max_line_gap: 10
+  hough_threshold: 15
+  hough_min_line_length: 20
+  hough_max_line_gap: 5
+  # Legacy ROI knob preserved for back-compat; the explicit along/cross below win.
   roi_padding: 20
+  # Rotated rectangle dimensions for the detection ROI.
+  roi_along_px: 120
+  roi_cross_px: 40
+  # Adaptive Canny thresholds derived from percentiles of the masked ROI pixels.
+  use_adaptive_canny: true
+  canny_percentile_low: 96.0
+  canny_percentile_high: 99.0
+  canny_low_ratio: 0.25
+  canny_min_high: 60
+  # Hough lines must align with the flight-path vector within this tolerance.
+  angle_tolerance_deg: 12.0
+  # Minimum length of an aligned Hough line for it to count toward the score.
+  long_line_min_px: 15.0
+  # Count of aligned long lines that maps to score=1.0.
+  score_norm_count: 6
+  # When true, Canny / Hough only see pixels inside the rotated polygon.
+  use_rotated_mask: true
+  # Gaussian blur kernel applied before Canny (set to 0 to disable).
+  blur_kernel: 3
 
 # --- Episode aggregation ---
 aggregation:
-  detection_threshold: 0.3
+  # Matches the Youden-J threshold from the April 8 sweep (one aligned long
+  # line → score 0.167; threshold 0.083 accepts that as a hit).
+  detection_threshold: 0.083
   # Consecutive frames within this gap are merged into a single episode
   max_gap_seconds: 30.0

@@ -72,15 +72,40 @@ class CalibrationConfig:
 class DetectionConfig:
     # Minimum Hough score (0-1) to count as a detection
     score_threshold: float = 0.3
-    # Canny parameters (to be refined in validation notebook)
+    # Fallback Canny thresholds when use_adaptive_canny=False
     canny_low: int = 50
     canny_high: int = 150
-    # Hough parameters (to be refined in validation notebook)
+    # Hough parameters
     hough_threshold: int = 30
     hough_min_line_length: int = 30
     hough_max_line_gap: int = 10
-    # ROI padding around oriented bounding box (pixels)
+    # Legacy ROI knob: along=3*pad, cross=pad. Kept for back-compat when
+    # roi_along_px/roi_cross_px are unset.
     roi_padding: int = 20
+    # Explicit along-track length and cross-track width of the rotated
+    # detection rectangle (pixels). When both are set they override
+    # ``roi_padding``-based sizing. Defaults mirror the legacy 120x40 box.
+    roi_along_px: int = 120
+    roi_cross_px: int = 40
+    # Adaptive percentile-based Canny thresholds on the masked ROI pixel
+    # distribution. Mirrors camera-flight-overlay/contrail_labeler prod detector.
+    use_adaptive_canny: bool = True
+    canny_percentile_low: float = 96.0  # pixel floor (THRESH_TOZERO)
+    canny_percentile_high: float = 99.5  # -> Canny high threshold
+    canny_low_ratio: float = 0.25  # Canny low = ratio * Canny high
+    canny_min_high: int = 60  # clamp floor for Canny high threshold
+    # Angle constraint: keep only Hough lines within ±tol degrees of the
+    # flight-path vector. Disabled when path_vec is None.
+    angle_tolerance_deg: float = 8.0
+    # Minimum Hough-line length (pixels) to count toward the score.
+    long_line_min_px: float = 40.0
+    # Score normalisation: count of aligned long lines that maps to score=1.0.
+    score_norm_count: int = 6
+    # When True, the detector masks the rotated polygon before Canny/Hough.
+    # False falls back to the AABB-only legacy path.
+    use_rotated_mask: bool = True
+    # Preprocessing: Gaussian blur kernel (set to 0 to disable).
+    blur_kernel: int = 3
 
 
 @dataclass

@@ -25,10 +25,12 @@ from concam.config import SiteConfig
 from concam.detection import detect
 from concam.ocr import FixedFormatTimestampReader, TrustButVerifyTracker
 from concam.projection import (
+    PixelPoint,
     Rect,
     load_calibration,
     oriented_roi,
     project_pings,
+    rotated_polygon,
 )
 from concam.storage import Database
 
@@ -337,6 +339,7 @@ def run_detect_stage(
     det_config = site_config.detection
 
     written = 0
+    prev_frame: np.ndarray | None = None
     with open(out_path, "w") as f:
         for frame_idx, frame in enumerate(iter_video_frames(video_path)):
             if max_frames is not None and frame_idx >= max_frames:
@@ -344,6 +347,7 @@ def run_detect_stage(
 
             wall = frame_time.get(frame_idx)
             if wall is None:
+                prev_frame = frame
                 continue
 
             # Round to second resolution for the join.
@@ -357,7 +361,21 @@ def run_detect_stage(
                     w=proj["roi"]["w"],
                     h=proj["roi"]["h"],
                 )
-                result = detect(frame, roi, det_config)
+                # Rebuild the rotated polygon from the projection record so the
+                # detector can mask the along-track strip. Projections written
+                # before this schema field existed fall back to AABB-only mode.
+                poly = None
+                path_vec: tuple[float, float] | None = None
+                if "pixel_x" in proj and "path_dx" in proj:
+                    center = PixelPoint(x=float(proj["pixel_x"]),
+                                        y=float(proj["pixel_y"]))
+                    path_vec = (float(proj["path_dx"]), float(proj["path_dy"]))
+                    poly = rotated_polygon(center, path_vec, det_config)
+                result = detect(
+                    frame, roi, det_config,
+                    polygon=poly, path_vec=path_vec,
+                    prev_frame=prev_frame,
+                )
                 record = {
                     "wall_time_utc": wall,
                     "callsign": proj["callsign"],
@@ -367,10 +385,13 @@ def run_detect_stage(
                     if result.pixel_line is not None
                     else None,
                     "method": result.method,
+                    "num_long_lines": result.num_long_lines,
+                    "aligned_lines": result.aligned_lines,
                 }
                 f.write(json.dumps(record) + "\n")
                 written += 1
 
+            prev_frame = frame
             if (frame_idx + 1) % 1000 == 0:
                 logger.info("DETECT: %d frames scanned", frame_idx + 1)
 
