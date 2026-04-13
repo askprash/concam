@@ -283,3 +283,34 @@ def ingest_labels(ctx: click.Context, date: str, labels: tuple[str, ...],
     for labeler_id, n in sorted(counts.items()):
         click.echo(f"{labeler_id}: {n} labels")
     click.echo(f"Ingested {total} labels into {db_path}")
+
+
+@main.command()
+@click.option("--date", required=True, type=str, help="UTC date (YYYY-MM-DD).")
+@click.option("--output-dir", default="output", show_default=True,
+              type=click.Path(), help="Pipeline output root (must contain <date>/pipeline.duckdb).")
+@click.option("--db", "db_override", default=None, type=click.Path(),
+              help="Override DuckDB path. Defaults to <output-dir>/<date>/pipeline.duckdb.")
+@click.pass_context
+def agreement(ctx: click.Context, date: str, output_dir: str,
+              db_override: str | None) -> None:
+    """Compute inter-rater agreement on the overlap label set for a date."""
+    from concam.agreement import compute_agreement
+    from concam.pipeline import stage_paths
+
+    try:
+        parsed_date = datetime.date.fromisoformat(date)
+    except ValueError:
+        raise click.BadParameter(f"Expected YYYY-MM-DD, got: {date!r}", param_hint="--date")
+
+    if db_override:
+        db_path = Path(db_override)
+    else:
+        db_path = stage_paths(Path(output_dir), parsed_date)["store"]
+    if not db_path.exists():
+        raise click.ClickException(
+            f"DuckDB not found at {db_path}. Run the pipeline and ingest labels first."
+        )
+
+    report = compute_agreement(db_path, parsed_date)
+    click.echo(report.format())
