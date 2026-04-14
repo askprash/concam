@@ -154,12 +154,28 @@ def detect(
         canny_low = int(config.canny_low)
         floor = None
 
-    # Apply the floor and optional mask before Canny.
+    # Apply the floor, rotated mask, and timestamp exclusion region before Canny.
     crop_for_canny = crop
     if mask is not None:
         crop_for_canny = cv2.bitwise_and(crop_for_canny, crop_for_canny, mask=mask)
     if floor is not None and floor > 0:
         _, crop_for_canny = cv2.threshold(crop_for_canny, floor, 255, cv2.THRESH_TOZERO)
+
+    # Zero out the burned-in timestamp region so its glyph edges cannot produce
+    # aligned Hough lines.  The exclusion region is in full-frame coords
+    # [y0, y1, x0, x1]; translate to crop-local coordinates before zeroing.
+    excl = getattr(config, "timestamp_exclusion_region", None)
+    if excl is not None and len(excl) == 4:
+        ey0, ey1, ex0, ex1 = int(excl[0]), int(excl[1]), int(excl[2]), int(excl[3])
+        # Translate to crop-local row/col indices.
+        ry0 = max(0, ey0 - y1)
+        ry1 = min(ch, ey1 - y1)
+        cx0 = max(0, ex0 - x1)
+        cx1 = min(cw, ex1 - x1)
+        if ry1 > ry0 and cx1 > cx0:
+            if crop_for_canny is crop:
+                crop_for_canny = crop_for_canny.copy()
+            crop_for_canny[ry0:ry1, cx0:cx1] = 0
 
     edges = cv2.Canny(crop_for_canny, canny_low, canny_high)
     if mask is not None:

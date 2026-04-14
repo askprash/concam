@@ -106,6 +106,13 @@ class DetectionConfig:
     use_rotated_mask: bool = True
     # Preprocessing: Gaussian blur kernel (set to 0 to disable).
     blur_kernel: int = 3
+    # Pixels in this full-frame region are zeroed before Canny so that burned-in
+    # overlay text (e.g. the clock/date OSD) cannot produce false Hough lines.
+    # Format: [y0, y1, x0, x1] in full-frame pixel coordinates (same convention
+    # as numpy array slicing: frame[y0:y1, x0:x1]).  None = disabled.
+    # For the MIT Green Building camera the timestamp occupies the top-right
+    # corner; set this in the site YAML to mask it with a safety pad.
+    timestamp_exclusion_region: list | None = None
 
 
 @dataclass

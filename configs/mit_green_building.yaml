@@ -96,6 +96,13 @@ detection:
   use_rotated_mask: true
   # Gaussian blur kernel applied before Canny (set to 0 to disable).
   blur_kernel: 3
+  # Burned-in OSD timestamp region to exclude from Canny/Hough.
+  # The clock/date overlay occupies the top-right corner of every frame
+  # (height=80 px, width=875 px at 3840x2160).  Adding a 15 px safety pad on
+  # all sides that are not frame edges.
+  # Format: [y0, y1, x0, x1] — numpy-style row/col slice in full-frame pixels.
+  # y0=0 (top edge), y1=95 (80+15 pad), x0=2950 (3840-875-15), x1=3840
+  timestamp_exclusion_region: [0, 95, 2950, 3840]
 
 # --- Episode aggregation ---
 aggregation:

@@ -172,9 +172,17 @@ def _pick_candidates(
 
 
 def _decode_frames(
-    video_path: Path, frame_indices: list[int], total_frames: int, duration_s: float
+    video_path: Path, frame_indices: list[int], total_frames: int, duration_s: float,
+    upscale_to: tuple[int, int] | None = None,
 ) -> dict[int, np.ndarray]:
-    """Seek to each requested frame and decode. Returns {frame_idx: BGR ndarray}."""
+    """Seek to each requested frame and decode. Returns {frame_idx: BGR ndarray}.
+
+    ``upscale_to`` is ``(width, height)``. When set and the decoded frame is
+    smaller, the frame is bilinearly upscaled. Use this when the video was
+    captured at a lower resolution than the calibration (e.g. 720p Oct 2025
+    archive vs 4K calibration) — the projection ROIs are in calibration coords
+    so the frame must be scaled to match before crops are taken.
+    """
     out: dict[int, np.ndarray] = {}
     container = av.open(str(video_path))
     try:
@@ -190,7 +198,10 @@ def _decode_frames(
                 if frame.pts is not None and frame.pts >= target_pts:
                     break
             if decoded is not None:
-                out[target_idx] = decoded.to_ndarray(format="bgr24")
+                arr = decoded.to_ndarray(format="bgr24")
+                if upscale_to is not None and (arr.shape[1], arr.shape[0]) != upscale_to:
+                    arr = cv2.resize(arr, upscale_to, interpolation=cv2.INTER_LINEAR)
+                out[target_idx] = arr
     finally:
         container.close()
     return out
@@ -417,6 +428,15 @@ def main():
                     help="time-window granularity for candidate spacing (smaller = denser)")
     ap.add_argument("--exclude-manifest", default=None,
                     help="path to an existing manifest.json; its transponder_ids will be excluded (use to extract a fresh batch)")
+    ap.add_argument(
+        "--upscale-to-calibration",
+        action="store_true",
+        help=(
+            "If the video is smaller than the calibration resolution, bilinearly "
+            "upscale every decoded frame to match. Needed for archive dates "
+            "captured at 720p/1080p when the calibration is 4K."
+        ),
+    )
     args = ap.parse_args()
 
     date = datetime.date.fromisoformat(args.date)
@@ -468,8 +488,16 @@ def main():
         raise SystemExit(f"Video not found: {video_path}")
     duration_s, total_frames = _video_meta(video_path)
 
+    upscale_to: tuple[int, int] | None = None
+    if args.upscale_to_calibration:
+        upscale_to = tuple(int(v) for v in config.calibration.calibration_resolution)
+        print(f"Upscaling decoded frames to calibration resolution {upscale_to}.")
+
     print(f"Decoding {len(candidates)} frames from {video_path}...")
-    frames = _decode_frames(video_path, [c.frame_idx for c in candidates], total_frames, duration_s)
+    frames = _decode_frames(
+        video_path, [c.frame_idx for c in candidates],
+        total_frames, duration_s, upscale_to=upscale_to,
+    )
 
     tiles: list[np.ndarray] = []
     manifest_candidates: list[dict] = []

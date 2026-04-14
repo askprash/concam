@@ -19,6 +19,11 @@ dependencies = [
 [project.optional-dependencies]
 ocr = ["easyocr>=1.7"]
 dev = ["pytest>=8.0", "hypothesis>=6.0"]
+review = [
+    "jupyterlab>=4.0",
+    "ipywidgets>=8.0",
+    "matplotlib>=3.8",
+]
 
 [project.scripts]
 concam = "concam.cli:main"

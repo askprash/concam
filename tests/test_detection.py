@@ -213,6 +213,66 @@ class TestLegacyAABBPath:
 # --- Temporal diff path ------------------------------------------------------
 
 
+class TestTimestampExclusion:
+    """Pixels inside timestamp_exclusion_region must not score."""
+
+    def test_exclusion_region_suppresses_line_inside(self):
+        """A bright line entirely inside the exclusion region scores zero."""
+        # Full frame 400x200; exclusion covers rows 80:200, cols 200:400.
+        config = _make_config(timestamp_exclusion_region=[80, 200, 200, 400])
+        frame = np.full((200, 400), 30, dtype=np.uint8)
+        # Bright horizontal line at row 150 — fully inside the exclusion region.
+        cv2.line(frame, (210, 150), (390, 150), 220, 2)
+        center = PixelPoint(x=300, y=150)
+        path_vec = (1.0, 0.0)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(
+            x=int(xs.min()), y=int(ys.min()),
+            w=int(xs.max() - xs.min()) + 1,
+            h=int(ys.max() - ys.min()) + 1,
+        )
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.score == 0.0
+
+    def test_contrail_outside_exclusion_region_still_scores(self):
+        """A contrail outside the exclusion region is unaffected."""
+        # Exclusion covers only the far-right strip (cols 300-400).
+        # The contrail is at row 100 spanning cols 50-250 — completely outside.
+        config = _make_config(timestamp_exclusion_region=[0, 30, 300, 400])
+        frame = np.full((200, 400), 30, dtype=np.uint8)
+        cv2.line(frame, (50, 100), (250, 100), 220, 2)
+        center = PixelPoint(x=150, y=100)
+        path_vec = (1.0, 0.0)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(
+            x=int(xs.min()), y=int(ys.min()),
+            w=int(xs.max() - xs.min()) + 1,
+            h=int(ys.max() - ys.min()) + 1,
+        )
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.score > 0.0
+        assert result.pixel_line is not None
+
+    def test_none_exclusion_region_has_no_effect(self):
+        """timestamp_exclusion_region=None leaves the existing behaviour intact."""
+        config = _make_config(timestamp_exclusion_region=None)
+        frame = _frame_with_line(width=400, height=200,
+                                  pt1=(50, 100), pt2=(350, 100), thickness=2)
+        center = PixelPoint(x=200, y=100)
+        path_vec = (1.0, 0.0)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(
+            x=int(xs.min()), y=int(ys.min()),
+            w=int(xs.max() - xs.min()) + 1,
+            h=int(ys.max() - ys.min()) + 1,
+        )
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.score > 0.0
+
+
 class TestTemporalDiff:
     """prev_frame should subtract static background; shape mismatch is silent."""
 
