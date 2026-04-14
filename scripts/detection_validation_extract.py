@@ -86,6 +86,76 @@ def _parse_hhmm(s: str) -> datetime.time:
     return datetime.time(hour=int(h), minute=int(m))
 
 
+def _pick_forced_candidates(
+    projections: list[dict],
+    callsigns: list[str],
+    anchor_utc: datetime.datetime,
+    seconds_per_frame: float,
+    start_idx: int = 0,
+) -> list[Candidate]:
+    """Return one Candidate per forced callsign.
+
+    Each entry in ``callsigns`` may optionally include a UTC target timestamp in
+    the form ``CALLSIGN@HH:MM:SS``.  When a timestamp is given, the ping closest
+    to that time is chosen.  Without a timestamp the ping closest to the image
+    centre is used instead.  Callsigns not found in projections are skipped with
+    a warning.
+    """
+    # Parse optional @HH:MM:SS suffix.
+    parsed: list[tuple[str, datetime.datetime | None]] = []
+    for entry in callsigns:
+        if "@" in entry:
+            cs_part, time_part = entry.split("@", 1)
+            h, m, s = (int(x) for x in time_part.strip().split(":"))
+            target_dt = anchor_utc.replace(hour=h, minute=m, second=s, microsecond=0)
+            parsed.append((cs_part.strip(), target_dt))
+        else:
+            parsed.append((entry.strip(), None))
+
+    cs_keys = {cs.upper().replace(" ", "") for cs, _ in parsed}
+    by_cs: dict[str, list[dict]] = {}
+    for row in projections:
+        cs = row["callsign"].upper().replace(" ", "")
+        if cs in cs_keys:
+            by_cs.setdefault(cs, []).append(row)
+
+    cx, cy = 3840 / 2, 2160 / 2
+    candidates: list[Candidate] = []
+    idx = start_idx
+    for cs, target_dt in parsed:
+        key = cs.upper().replace(" ", "")
+        rows = by_cs.get(key)
+        if not rows:
+            print(f"  WARN: callsign {cs!r} not found in projections — skipping")
+            continue
+        if target_dt is not None:
+            best = min(rows, key=lambda r: abs(
+                (datetime.datetime.fromisoformat(r["wall_time_utc"]) - target_dt).total_seconds()
+            ))
+            delta = abs((datetime.datetime.fromisoformat(best["wall_time_utc"]) - target_dt).total_seconds())
+            print(f"  {cs}: closest ping at {best['wall_time_utc'][11:19]} UTC  (Δ{delta:.0f}s)")
+        else:
+            best = min(rows, key=lambda r: math.hypot(r["pixel_x"] - cx, r["pixel_y"] - cy))
+        t = datetime.datetime.fromisoformat(best["wall_time_utc"])
+        frame_idx = int(round((t - anchor_utc).total_seconds() / seconds_per_frame))
+        candidates.append(
+            Candidate(
+                idx=idx,
+                frame_idx=frame_idx,
+                wall_time_utc=best["wall_time_utc"],
+                callsign=best["callsign"],
+                transponder_id=best["transponder_id"],
+                pixel_x=float(best["pixel_x"]),
+                pixel_y=float(best["pixel_y"]),
+                roi=best["roi"],
+                path_dx=float(best["path_dx"]),
+                path_dy=float(best["path_dy"]),
+            )
+        )
+        idx += 1
+    return candidates
+
+
 def _pick_candidates(
     projections: list[dict],
     anchor_utc: datetime.datetime,
@@ -428,6 +498,12 @@ def main():
                     help="time-window granularity for candidate spacing (smaller = denser)")
     ap.add_argument("--exclude-manifest", default=None,
                     help="path to an existing manifest.json; its transponder_ids will be excluded (use to extract a fresh batch)")
+    ap.add_argument("--force-callsigns", default=None,
+                    help="comma-separated callsigns to always include (e.g. confirmed contrail flights); "
+                         "bypass bucket sampling for these; combined with --append-to-manifest to extend an existing batch")
+    ap.add_argument("--append-to-manifest", default=None,
+                    help="path to an existing manifest.json; new candidates are appended with higher idx values "
+                         "and existing ROI PNGs are preserved")
     ap.add_argument(
         "--upscale-to-calibration",
         action="store_true",
@@ -471,17 +547,66 @@ def main():
         exclude_tids = {c["transponder_id"] for c in ex["candidates"]}
         print(f"Excluding {len(exclude_tids)} transponder_ids from {args.exclude_manifest}")
 
-    candidates = _pick_candidates(
-        projections,
-        anchor_utc,
-        daylight_start,
-        daylight_end,
-        args.num_candidates,
-        args.seconds_per_frame,
-        bucket_minutes=args.bucket_minutes,
-        exclude_transponders=exclude_tids,
-    )
-    print(f"Selected {len(candidates)} candidates from {len(projections)} full-day projections ({daylight_start.isoformat(timespec='minutes')}-{daylight_end.isoformat(timespec='minutes')} UTC daylight filter, {args.bucket_minutes}-min buckets).")
+    # Load existing manifest for append mode — existing candidates are preserved as-is.
+    existing_manifest: dict | None = None
+    existing_candidates: list[dict] = []
+    if args.append_to_manifest:
+        ap_path = Path(args.append_to_manifest)
+        if ap_path.exists():
+            existing_manifest = json.loads(ap_path.read_text())
+            existing_candidates = existing_manifest.get("candidates", [])
+            print(f"Appending to existing manifest with {len(existing_candidates)} candidates.")
+        else:
+            print(f"  WARN: --append-to-manifest path not found ({ap_path}); starting fresh.")
+    start_idx = max((c["idx"] for c in existing_candidates), default=-1) + 1
+
+    # Forced callsigns — bypass bucket sampling entirely for these.
+    forced: list[Candidate] = []
+    if args.force_callsigns:
+        cs_list = [c.strip() for c in args.force_callsigns.split(",") if c.strip()]
+        forced = _pick_forced_candidates(
+            projections, cs_list, anchor_utc, args.seconds_per_frame, start_idx=start_idx,
+        )
+        print(f"Forced callsigns: selected {len(forced)} candidates ({[c.callsign for c in forced]}).")
+        # Exclude their transponder IDs from the bucket pass.
+        exclude_tids |= {c.transponder_id for c in forced}
+        start_idx += len(forced)
+
+    # Bucket-sampled candidates fill remaining slots (up to --num-candidates total new candidates).
+    n_bucket = max(0, args.num_candidates - len(forced))
+    if n_bucket > 0:
+        bucket_cands = _pick_candidates(
+            projections,
+            anchor_utc,
+            daylight_start,
+            daylight_end,
+            n_bucket,
+            args.seconds_per_frame,
+            bucket_minutes=args.bucket_minutes,
+            exclude_transponders=exclude_tids,
+        )
+        # Re-index bucket candidates to follow forced ones.
+        bucket_cands = [
+            Candidate(
+                idx=start_idx + i,
+                frame_idx=c.frame_idx,
+                wall_time_utc=c.wall_time_utc,
+                callsign=c.callsign,
+                transponder_id=c.transponder_id,
+                pixel_x=c.pixel_x,
+                pixel_y=c.pixel_y,
+                roi=c.roi,
+                path_dx=c.path_dx,
+                path_dy=c.path_dy,
+            )
+            for i, c in enumerate(bucket_cands)
+        ]
+    else:
+        bucket_cands = []
+
+    candidates = forced + bucket_cands
+    total_new = len(candidates)
+    print(f"Selected {total_new} new candidates ({len(forced)} forced + {len(bucket_cands)} bucket-sampled).")
 
     video_path = Path(args.video) if args.video else Path(config.video.root) / config.video.timelapse_glob.format(date=date)
     if not video_path.exists():
@@ -530,29 +655,31 @@ def main():
             }
         )
 
-    grid = _compose_grid(tiles, cols=5)
+    grid = _compose_grid(tiles, cols=5) if tiles else None
     grid_path = validation_dir / "candidate_grid.png"
-    cv2.imwrite(str(grid_path), grid)
+    if grid is not None:
+        cv2.imwrite(str(grid_path), grid)
 
+    all_candidates = existing_candidates + manifest_candidates
     manifest = {
         "schema_version": 1,
         "date": date.isoformat(),
         "video": str(video_path),
         "anchor_utc": anchor_utc.isoformat(),
         "daylight_utc": args.daylight_utc,
-        "candidates": manifest_candidates,
+        "candidates": all_candidates,
     }
     manifest_path = validation_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
     html_path = validation_dir / "labeller.html"
-    _write_labeller_html(html_path, manifest_path.name, len(manifest_candidates))
+    _write_labeller_html(html_path, manifest_path.name, len(all_candidates))
 
     print()
     print(f"  Grid     : {grid_path}")
     print(f"  Manifest : {manifest_path}")
     print(f"  Labeller : {html_path}")
-    print(f"  ROIs     : {rois_dir} ({2 * len(manifest_candidates)} PNGs)")
+    print(f"  ROIs     : {rois_dir} ({2 * len(all_candidates)} total PNGs)")
     print()
     print(f"Next: open {html_path} in a browser, label each candidate, download labels.json, then")
     print(f"  uv run python scripts/detection_validation_sweep.py --date {args.date} \\")
