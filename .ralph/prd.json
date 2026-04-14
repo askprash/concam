@@ -13,39 +13,49 @@
     "commit": "5bad2c0"
   },
   {
-    "category": "validation-notebook",
-    "description": "OCR validation notebook: compare fixed-format template reader against EasyOCR on real MIT camera frames",
-    "steps": [
-      "Load 100 frames sampled uniformly from the April 8, 2026 daily timelapse",
-      "Crop the timestamp region of interest from each frame using the coordinates in the YAML config",
-      "Run EasyOCR on each crop and record the parsed timestamp and wall-clock latency",
-      "Implement a minimal fixed-format template reader inline in the notebook: binarize the crop, segment characters using fixed slots, match against digit and separator glyphs extracted from the same frames",
-      "Run the template reader on each crop and record the parsed timestamp, confidence, and wall-clock latency",
-      "Compute exact-match accuracy, mean latency, and fallback rate for both methods",
-      "Display side-by-side crops and parsed results for the 10 highest-error cases",
-      "Record the go/no-go decision and chosen slot positions and threshold values as a markdown cell at the end of the notebook"
-    ],
-    "passes": false
-  },
-  {
     "category": "functional",
     "description": "Implement the fixed-format timestamp OCR module with TrustButVerifyTracker integration",
     "steps": [
-      "Implement `concam.ocr.FixedFormatTimestampReader` with `read(frame) -> TimestampRead` using the slot positions and threshold values confirmed in the validation notebook",
+      "Implement `concam.ocr.FixedFormatTimestampReader` with `read(frame) -> TimestampRead` using configurable slot positions and threshold values from OcrConfig (defaults derived from probing real frames)",
       "Implement `TimestampRead` dataclass with fields: `parsed_dt`, `text`, `confidence`, `per_char_confidence`, `method`, `status`",
       "Add EasyOCR as an optional fallback path, called only when confidence is below the configurable threshold, with `method='easyocr_fallback'`",
       "Copy `TrustButVerifyTracker` from the reference codebase into `concam.ocr.tracker`, add attribution comment, and write property-based tests: perfect monotone sequences never re-anchor; one bad read among good reads produces a projected timestamp; a sustained offset triggers re-anchor",
       "Write parser property tests: all valid canonical strings round-trip; impossible dates fail; invalid separators fail",
       "Verify the module can be imported and `FixedFormatTimestampReader.read` returns a valid `TimestampRead` on a real frame crop"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "3f4d59e"
+  },
+  {
+    "category": "validation-visual",
+    "description": "OCR visual spot-check: generate a grid of example OCR crops with parsed results for human review. This is important to understand that the key components work before all the paraphernalia is built",
+    "steps": [
+      "Sample 30 frames uniformly from the April 8, 2026 daily timelapse and crop the timestamp region from each",
+      "Run `FixedFormatTimestampReader.read` on each crop and record the parsed timestamp, confidence, per-character confidence, and method (template vs easyocr_fallback)",
+      "Generate a single image grid (saved as PNG) showing each crop alongside its parsed text, confidence score, and method used, sorted by confidence ascending so the weakest reads appear first",
+      "Print a summary table to stdout: total frames, exact-parse rate, fallback rate, mean confidence, and the 5 lowest-confidence parsed results",
+      "User reviews the PNG grid and summary to confirm acceptable accuracy before proceeding to end-to-end CLI wiring"
+    ],
+    "passes": true,
+    "commit": "336c2da"
+  },
+
+  {
+    "category": "functional",
+    "description": "Use appropriate altitude in the ADS-B retireval. GNSS altitudes might not be as good as the barometric altitude that is being meausred by the airplanes",
+    "steps": [
+      "Read the feder API documentation and determine the correct call to retrieve pings for a UTC date and bounding box",
+      "Check how the GNSS vs barometric altitudes compare and get a Hakiu agent to do a quick websearch to understand limitations of aircraft GNSS altitudes vs barometric altitde",
+      "determine the best way to use the barometric altitude. Store both in each ADS-B ping but use the barometric altitude + ISA atmoshpere or other to get the right altitude to use in the overlays if there is major discrepency between the GNSS and barometric altitudes"
+    ],
+    "passes": true,
+    "commit": "021b1b5"
   },
   {
     "category": "functional",
     "description": "Implement the ADS-B loader using the feder package",
     "steps": [
-      "Read the feder API documentation and determine the correct call to retrieve pings for a UTC date and bounding box",
-      "Implement `concam.adsb.load_flights(date, config) -> list[Flight]` where each `Flight` carries callsign, a list of timestamped pings, and metadata",
+      "Read the feder API documentation and determine the correct call to retrieve pings for a UTC date and bounding box", "Implement `concam.adsb.load_flights(date, config) -> list[Flight]` where each `Flight` carries callsign, a list of timestamped pings, and metadata",
       "Filter pings to those within the configured horizontal radius and above the configured altitude threshold",
       "Upsample each flight's ping sequence to one-second resolution by linear interpolation of latitude, longitude, and altitude",
       "Write an integration test using a small checked-in fixture of real pings that verifies the correct number of pings and their timestamps after filtering and upsampling",
@@ -69,17 +79,15 @@
   },
   {
     "category": "validation-notebook",
-    "description": "Detection validation notebook: tune Hough+Canny parameters on real April 9 frames",
+    "description": "CRITICAL one of the key aspects of this project is to create the contrainal detection system. So this really needs to be built carefully. This is one that we should do with users involvement.",
     "steps": [
-      "Load 20 frame-flight pairs from April 9, 2026 raw segments where ADS-B data shows a flight overhead",
-      "For each pair, compute the oriented bounding rectangle using the projection module",
-      "Run Canny edge detection on the ROI across a grid of (low_threshold, high_threshold) values",
-      "Run Hough line transform on the Canny output across a grid of (threshold, min_line_length, max_line_gap) values",
-      "Display the ROI, Canny output, detected lines, and score for each parameter combination",
-      "Select the parameter set that maximizes true positive rate on visually confirmed contrail cases",
-      "Record the chosen parameters and go/no-go decision as a markdown cell at the end of the notebook"
+     "Load 30 frame-flight pairs from April 9, 2026 timelapse where ADS-B data shows a flight overhead",
+     "Use the grill-me skill on the user to understand what is expected of hte detector modeule",
+     "Read the detect_prior_art.md",
+     "Create steps based on the outcome of the grill-me and add new tasks to this PRD.json"
     ],
-    "passes": false
+    "passes": false,
+    "commit": "f90e6d6"
   },
   {
     "category": "functional",
@@ -91,7 +99,8 @@
       "Return the pixel line in full-frame coordinates (not ROI-local coordinates)",
       "Write unit tests: a synthetic frame with a clear line in the ROI scores above 0.7; a blank frame scores below 0.1; corrupting one frame does not raise an exception"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "5d2fd82"
   },
   {
     "category": "functional",
@@ -104,7 +113,7 @@
       "Write a schema test: inserting a valid episode row and querying it back returns identical values"
     ],
     "passes": true,
-    "commit": null
+    "commit": "d70ec24"
   },
   {
     "category": "functional",
@@ -117,7 +126,8 @@
       "Run the full pipeline on April 8, 2026 (daily timelapse available) and verify a non-empty DuckDB file is produced with at least one episode row",
       "Verify `--from-stage detect` skips the ocr and adsb stages and reads their cached outputs"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "16c836e"
   },
   {
     "category": "functional",
@@ -129,7 +139,8 @@
       "The overlap set is selected deterministically (e.g., by sort order and modulo) so re-running the generator produces the same assignment",
       "Verify that the two generated manifests together cover all episodes, with approximately 20% in both"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "c9443f2"
   },
   {
     "category": "functional",
@@ -142,7 +153,8 @@
       "Implement toggle controls: one toggle for ADS-B track overlays, one toggle for detected line segments",
       "Verify the overlays are correctly positioned on a synthetic bundle with a short video and three known flight tracks"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "fc6f8b8"
   },
   {
     "category": "functional",
@@ -157,6 +169,34 @@
       "Add an export button that downloads the completed labels as a JSON file matching the schema expected by `concam storage insert_labels`",
       "Display a clear human-readable error message if the video file is missing or the manifest fails to parse"
     ],
+    "passes": true,
+    "commit": "12dea49"
+  },
+  {
+    "category": "validation-visual",
+    "description": "ADS-B projection alignment check on real frames. The projection unit tests assert that landmarks land within ~80px of ground truth, which is fine for buildings on the ground but has never been verified for aircraft in the sky. A sign-flip or small extrinsics error would still pass landmark tests while putting overhead-flight overlays in the wrong quadrant — and if labelers can't trust the overlay, the labels are garbage regardless of detector quality.",
+    "steps": [
+      "Select 5 flyovers from April 9 raw segments where ADS-B shows an aircraft crossing the camera FOV at high altitude with the aircraft visibly present in the video (use daylight segments so the aircraft itself is identifiable, not just its contrail)",
+      "For each flyover, project the ADS-B ping sequence using `concam.projection.project_pings` and render the pixel track on top of the raw video frames at 1-second intervals",
+      "For each frame, a human marks the pixel position of the visible aircraft and records the offset vector (track_pixel - aircraft_pixel)",
+      "Generate a summary: per-flyover median and max offset in pixels, and a scatter plot of offsets across the FOV to expose systematic distortion (e.g. radial error suggesting a bad distortion coefficient)",
+      "Go/no-go decision: if median offset > 100 px (roughly a small-plane-silhouette width at 4K), investigate calibration or extrinsics before proceeding to labeling",
+      "Record the offsets, summary, and decision as a markdown cell at the end of the notebook"
+    ],
+    "passes": false
+  },
+  {
+    "category": "validation-visual",
+    "description": "Real-bundle browser smoke test: open a bundle produced from the April 8 daily timelapse in a browser and manually verify that overlays, label controls, and export all work end-to-end. Items 12 and 13 ship with only static HTML assertions; nobody has yet confirmed that the UI actually behaves correctly on a real video with thousands of flight tracks and hundreds of episodes.",
+    "steps": [
+      "Run the full pipeline on April 8, 2026 (timelapse) to produce `pipeline.duckdb`, `projections.jsonl`, `detections.jsonl`, and `ocr.jsonl` under the output directory",
+      "Generate a bundle with `uv run concam bundle --date 2026-04-08 --labelers alice bob` and open `bundles/alice/labeler.html` in a browser served over http (file:// may block the fetch of manifest.json in some browsers)",
+      "Visually confirm: video plays, ADS-B tracks render on the canvas, detection lines render when auto-detected episodes are active, toggles show/hide each overlay layer",
+      "Click into 3 episodes (1 auto-detected, 1 undetected, 1 overlap); verify the video seeks to the episode onset and starts playing",
+      "Apply a label to each of the 3 episodes (one contrail, one no_contrail, one unsure), move the persistence slider, type notes, and reload the page — verify all state restores from localStorage",
+      "Click Export labels and verify the downloaded JSON has `{schema_version, date, labeler_id, exported_at, labels: [...]}` with 3 entries whose inner dicts match the `Database.insert_labels` contract",
+      "Record any visual glitches, alignment issues, or missing UX affordances as TODOs against items 12/13 so they can be patched before shipping bundles to real student labelers"
+    ],
     "passes": false
   },
   {
@@ -168,7 +208,8 @@
       "Handle the overlap set correctly: if both labelers labeled the same episode, store both rows with distinct labeler_id values",
       "Verify that after ingestion, a SQL query returns the correct label, persistence_rating, labeler_id, and label_timestamp for each ingested episode"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "6a1ff2f"
   },
   {
     "category": "functional",
@@ -179,7 +220,8 @@
       "Print a confusion matrix for the overlapping set",
       "Verify the computation returns the correct kappa for a synthetic overlapping set where all labels agree (kappa=1) and where labels are random (kappa near 0)"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "dc8e46b"
   },
   {
     "category": "regression-safety",
@@ -187,7 +229,69 @@
     "steps": [
       "Run `uv run concam run --date 2026-04-08` on the daily timelapse and record the number of episodes, the distribution of detector scores, and the number of flights processed",
       "Re-run the pipeline with the same inputs and verify the episode count and scores are identical (determinism check)",
-      "Verify no stage raises an unhandled exception and the DuckDB file is valid and queryable after the run"
+      "Verify no stage raises an unhandled exception and the DuckDB file is valid and queryable after the run",
+      "Correctness spot-check: pick the top 5 episodes by peak_score and the 5 episodes nearest the detection threshold, visually inspect the underlying video frames, and record what fraction are true contrails. The purpose is to detect silent regressions that slip past the determinism check (e.g. a calibration or threshold drift that still produces the same episode count but flags wrong frames).",
+      "Record the full-day run metrics (episode count, flight count, detection rate, top/threshold episode correctness fractions) in `.ralph/progress.txt` so future regressions have a reference baseline"
+    ],
+    "passes": true,
+    "commit": "c8919e3"
+  },
+  {
+    "category": "functional",
+    "description": "URGENT: Mask the burned-in OCR timestamp region so the detector never runs Canny/Hough on it. The April-8 spot-check surfaced BCS378 (13:13Z) where the rotated ROI landed on the 'WED 9:13:42' text and the bright glyph edges produced aligned Hough lines — a systematic false positive at every daytime ping that crosses the top strip. NRBR does not fix this (white text has NRBR≈0 like contrails), so it needs its own masking step. Also land a sun-elevation gate at the same time since downstream NRBR work only applies during daylight.",
+    "steps": [
+      "Add `timestamp_exclusion_region` (or reuse `ocr.timestamp_region`) to the detection config: [y0, y1, x0, x1] in full-frame pixel coords, with a safety pad around the OCR box",
+      "In `concam.detection.detect`, zero out pixels in the exclusion region before Canny (or in `pipeline.stages.run_detect_stage`, skip candidates whose rotated polygon is fully inside the exclusion region)",
+      "Add a sun-elevation helper that returns sun_alt_deg for (timestamp, site_lat, site_lon) using a standard solar-position formula. Gate downstream NRBR-aware logic on sun_alt_deg > 0",
+      "Unit tests: a synthetic frame with a bright rectangle in the exclusion region + a contrail outside it → only the contrail scores; a contrail inside the exclusion region → score=0",
+      "Re-run April-8 regression and confirm BCS378, LOT16M (if it overlaps the strip), and any other top-strip episodes either drop out or drop to score=0. Diff episode count against the baseline 122 in `output/validation/regression/2026-04-08/metrics.json`"
+    ],
+    "passes": true,
+    "commit": "7f5bd3a"
+  },
+  {
+    "category": "functional",
+    "description": "Detector honesty: re-run the April-8 detection sweep with `prev_frame` enabled so tuning is measured against the same input distribution the live pipeline runs against. Surfaced during the April-8 regression: the live pipeline passes `prev_frame` for temporal-diff pre-processing but the sweep / review-panels / NRBR spot-check all pass `prev_frame=None`. Re-running the spot-check without prev_frame produced top-5 BGR scores of 0.333–0.5 vs the stored 1.000, meaning the temporal-diff step is doing far more work than the sweep report implied and the production thresholds are tuned against a different signal than the sweep validated.",
+    "steps": [
+      "Add a `--use-prev-frame` flag to `scripts/detection_validation_sweep.py` that, when set, decodes the frame immediately before each labeled candidate and passes it as `prev_frame` to `detect()`. Prior frames must come from the same video as the labeled candidate",
+      "Re-run the 2187-combo sweep on the April-8 labels with `--use-prev-frame` and compare AUC / Youden-J / top-10 combos against the prev_frame=None baseline already recorded in `output/validation/detection/2026-04-08/sweep_report.md`",
+      "If the top combo shifts, retune `DetectionConfig` defaults in `configs/mit_green_building.yaml` accordingly and re-run the April-8 regression to confirm episode count and score histogram move in the expected direction",
+      "Update `detection_review_panels.py` and `scripts/nrbr_spotcheck.py` to accept the same flag so panels reflect the live-pipeline input"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Widen and lengthen the rotated detection ROI. Spot-check of April-8 top-5 episodes (MSR985, BEL1CP, AAL101, MSR988, DAL289) showed the current roi_along_px=120 / roi_cross_px=40 rectangle clips real contrail pixels on both ends and on the sides, so the detector only sees a fraction of the streak. The sweep validated these specific dimensions on a small label set; a rerun with larger dimensions (along the flight-path axis especially) should catch more aligned Hough lines without introducing FPs, since the mask still constrains Canny to the along-track strip.",
+    "steps": [
+      "Extend the `scripts/detection_validation_sweep.py` grid to include `roi_along_px ∈ {120, 180, 240, 320}` and `roi_cross_px ∈ {40, 60, 80}`. That is a 12-cell sub-grid; keep the other axes frozen at the current best combo so the sweep stays tractable",
+      "Re-run the sweep on the April-8 labels (with `--use-prev-frame` from the honesty task if that landed first) and pick the (along, cross) pair that maximises AUC without regressing Youden-J",
+      "Update defaults in `configs/mit_green_building.yaml` and re-run the April-8 regression baseline. Expected outcome: higher score_mean / more top-bin detections, stable episode count",
+      "Visually re-render the spot-check panels at the new dimensions and confirm the rotated polygon contains the visible contrail streak end-to-end for top-5"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Adaptive along-track ROI + physical-unit contrail length. Once a detection scores above threshold, grow the rotated rectangle progressively along the flight-path vector (both directions) and keep counting aligned long Hough lines until the length stops extending. Use the final along-track pixel length as the detected contrail extent, and convert to metres using aircraft alt_m + pinhole-ray geometry from the calibration. Persist `contrail_length_px` and `contrail_length_m` on each `DetectionResult` and each `Episode`; downstream, an episode's peak length is a natural persistence proxy (short-lived contrails are tens of metres, persistent cirrus-forming contrails stretch kilometres).",
+    "steps": [
+      "Implement an adaptive-growth detector variant in `concam.detection` that, given a seed polygon + score above threshold, iteratively extends the along-track axis by `growth_step_px` until the aligned-long-line count stops increasing (or hits `roi_max_along_px`)",
+      "Add a `project_pixel_to_meters` helper in `concam.projection` that, given a pixel length along a known flight-path vector, the aircraft alt_m, and the camera calibration, returns the corresponding metres (slant-range × angular extent)",
+      "Extend `DetectionResult` with `contrail_length_px` and `contrail_length_m` fields; extend `Episode` with `peak_contrail_length_m`; extend the DuckDB schema and the bundle manifest accordingly",
+      "Unit tests: a synthetic 200-px streak at alt=10 km projects to the expected metres (~2 km ballpark); adaptive growth stops at the contrail's edge and does not drift into blue sky",
+      "Re-run the April-8 regression and add `peak_contrail_length_m` histogram to `metrics.json`. Spot-check: the top-5 peak_score=1.000 episodes should have non-trivial lengths, and very short lengths (<500 m) should cluster with the near-threshold marginal calls"
+    ],
+    "passes": false
+  },
+  {
+    "category": "validation-visual",
+    "description": "LOW-PRIORITY exploratory: evaluate whether NRBR (normalized red-blue ratio) as a detector input channel improves AUC over BGR alone. The April-8 spot-check (`output/validation/regression/2026-04-08/nrbr_panels/`) showed contrails light up dramatically in NRBR for daytime frames — Rayleigh scattering physics working as intended — but under an apples-to-apples `detect()` call the BGR and NRBR scores came out numerically identical because Canny/Hough already captures the gradient structure in either representation. The real value of NRBR may be (a) looser detector thresholds that catch fainter contrails without new FPs, or (b) parallel scoring where the two channels vote. Whether either actually beats the current BGR tuning is an open question; only prioritise this if the timestamp-mask, prev_frame-honesty, ROI-widen, and adaptive-length tasks leave real AUC gains unreached.",
+    "steps": [
+      "Add NRBR as a per-detection secondary score: run `detect()` on both BGR and NRBR-remap-to-uint8 and record both scores on each detection record",
+      "Re-run the April-8 sweep over the BGR-threshold and NRBR-threshold 2-D grid (gated on sun-elevation > 0). Compare AUC and Youden-J against the single-BGR baseline",
+      "If NRBR-only gives equal or better AUC at stricter-threshold, consider a dual-channel gate (score = max(bgr, nrbr) above threshold) vs sum-score (bgr + nrbr) and pick the one with better Youden-J",
+      "Update `concam.detection.DetectionResult` with `nrbr_score` and `Episode.peak_nrbr_score` only if the sweep justifies it; otherwise close this task as 'not worth the wire format churn'",
+      "Only run this AFTER the timestamp-mask task lands, since NRBR has the same timestamp-glyph FP as BGR and needs the mask too"
     ],
     "passes": false
   }

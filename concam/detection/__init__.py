@@ -113,6 +113,28 @@ def detect(
             base = cv2.absdiff(gray, prev_gray)
             method = method + "_diff"
 
+    # Optional spatial pre-processing applied before Canny.
+    preprocessing = getattr(config, "preprocessing", "none")
+    if preprocessing == "local_contrast":
+        # Subtract a large Gaussian to remove slow cloud/background gradients;
+        # keeps the narrow contrail streak, re-centres at 128.
+        sigma = float(getattr(config, "local_contrast_sigma", 25.0))
+        bg = cv2.GaussianBlur(base.astype(np.float32), (0, 0), sigma)
+        lc = base.astype(np.float32) - bg + 128.0
+        base = np.clip(lc, 0, 255).astype(np.uint8)
+        method = method + "_lc"
+    elif preprocessing == "cross_grad" and path_vec is not None:
+        # Project the Sobel gradient onto the cross-track direction (perpendicular
+        # to the flight path).  The contrail's brightness profile creates two
+        # strong perpendicular edges that survive even on a bright cloud background.
+        px_v, py_v = float(path_vec[0]), float(path_vec[1])
+        perp_x, perp_y = -py_v, px_v   # 90° rotation, already unit length
+        sx = cv2.Sobel(base.astype(np.float32), cv2.CV_32F, 1, 0, ksize=3)
+        sy = cv2.Sobel(base.astype(np.float32), cv2.CV_32F, 0, 1, ksize=3)
+        cross = np.abs(sx * perp_x + sy * perp_y)
+        base = np.clip(cross * 2.0, 0, 255).astype(np.uint8)
+        method = method + "_cg"
+
     # Light Gaussian blur to tame high-frequency noise.
     if config.blur_kernel and config.blur_kernel > 1:
         k = int(config.blur_kernel) | 1  # must be odd

@@ -32,14 +32,22 @@ import argparse
 import itertools
 import json
 import statistics
+import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Optional
 
+import av
 import cv2
 import numpy as np
 
-from concam.config import DetectionConfig
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.pipeline import resolve_video_path
 from concam.projection import PixelPoint, Rect, rotated_polygon
 
 # Parameter grid axes. 3^7 = 2187 combos × 20 ROIs × ~1 ms/detect() ≈ under a
@@ -84,7 +92,7 @@ class Combo:
         }
 
 
-def _combo_to_config(combo: Combo) -> DetectionConfig:
+def _combo_to_config(combo: Combo, preprocessing: str = "none") -> DetectionConfig:
     return DetectionConfig(
         score_threshold=0.3,
         canny_low=50, canny_high=150,
@@ -104,6 +112,7 @@ def _combo_to_config(combo: Combo) -> DetectionConfig:
         score_norm_count=SCORE_NORM_COUNT,
         use_rotated_mask=True,
         blur_kernel=3,
+        preprocessing=preprocessing,
     )
 
 
@@ -144,7 +153,85 @@ def _reconstruct_geometry(
     return rect, poly, path_vec, center_local
 
 
-def _sweep(rois: list[tuple[dict, np.ndarray, str]]) -> list[dict]:
+def _video_meta(video_path: Path) -> tuple[float, int]:
+    """Return (duration_s, total_frames) for the video."""
+    container = av.open(str(video_path))
+    try:
+        stream = container.streams.video[0]
+        duration_s = float(stream.duration * stream.time_base) if stream.duration else 0.0
+        frames = int(stream.frames) if stream.frames else int(round(duration_s * float(stream.average_rate or 30)))
+        return duration_s, frames
+    finally:
+        container.close()
+
+
+def _extract_prev_crops(
+    manifest: dict,
+    video_path: Path,
+    rois_meta: list[dict],
+    pad: int = 20,
+    upscale_to: tuple[int, int] | None = None,
+) -> dict[int, np.ndarray]:
+    """Decode the frame at frame_idx-1 for each candidate and return a {cand_idx: crop} dict.
+
+    The crop is taken at the same ROI + pad as the saved roi_png so that calling
+    ``detect(prev_crop, ...)`` produces a same-shaped temporal diff image.
+    Candidates with frame_idx=0 are skipped (no previous frame).
+    """
+    duration_s, total_frames = _video_meta(video_path)
+    target_frames: dict[int, int] = {}  # cand_idx -> frame_idx to seek
+    for meta in rois_meta:
+        fidx = meta.get("frame_idx", 0)
+        if fidx > 0:
+            target_frames[meta["idx"]] = fidx - 1
+
+    if not target_frames:
+        return {}
+
+    # Build a reverse map: seek_frame_idx -> list of cand_idxs needing it.
+    seek_to_cands: dict[int, list[int]] = {}
+    for cand_idx, fidx in target_frames.items():
+        seek_to_cands.setdefault(fidx, []).append(cand_idx)
+
+    prev_crops: dict[int, np.ndarray] = {}
+    container = av.open(str(video_path))
+    try:
+        stream = container.streams.video[0]
+        time_base = stream.time_base
+        for seek_fidx in sorted(seek_to_cands):
+            target_time_s = (seek_fidx / max(1, total_frames)) * duration_s
+            target_pts = int(target_time_s / float(time_base))
+            container.seek(target_pts, stream=stream, any_frame=False, backward=True)
+            decoded = None
+            for frame in container.decode(stream):
+                decoded = frame
+                if frame.pts is not None and frame.pts >= target_pts:
+                    break
+            if decoded is None:
+                continue
+            arr = decoded.to_ndarray(format="bgr24")
+            if upscale_to is not None and (arr.shape[1], arr.shape[0]) != upscale_to:
+                arr = cv2.resize(arr, upscale_to, interpolation=cv2.INTER_LINEAR)
+            fh, fw = arr.shape[:2]
+            for cand_idx in seek_to_cands[seek_fidx]:
+                # Find the matching candidate meta to get its ROI.
+                meta = next(m for m in rois_meta if m["idx"] == cand_idx)
+                roi = meta["roi"]
+                x1 = max(0, roi["x"] - pad)
+                y1 = max(0, roi["y"] - pad)
+                x2 = min(fw, roi["x"] + roi["w"] + pad)
+                y2 = min(fh, roi["y"] + roi["h"] + pad)
+                prev_crops[cand_idx] = arr[y1:y2, x1:x2].copy()
+    finally:
+        container.close()
+    return prev_crops
+
+
+def _sweep(
+    rois: list[tuple[dict, np.ndarray, str]],
+    preprocessing: str = "none",
+    prev_crops: dict[int, np.ndarray] | None = None,
+) -> list[dict]:
     """For each parameter combination, score every labeled ROI and summarise."""
     results: list[dict] = []
     # Pre-build per-ROI geometry once since it doesn't depend on the combo.
@@ -158,12 +245,14 @@ def _sweep(rois: list[tuple[dict, np.ndarray, str]]) -> list[dict]:
         LONG_LINE_MIN_PX,
     ):
         combo = Combo(pct_hi, lo_ratio, ht, hml, hmg, tol, lmin)
-        cfg = _combo_to_config(combo)
+        cfg = _combo_to_config(combo, preprocessing=preprocessing)
         pos_scores: list[float] = []
         neg_scores: list[float] = []
         for meta, crop, label, rect, poly, path_vec, _center in roi_geoms:
+            prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
             result = detect(
                 crop, rect, cfg, polygon=poly, path_vec=path_vec,
+                prev_frame=prev_frame,
             )
             if label == "positive":
                 pos_scores.append(result.score)
@@ -255,14 +344,17 @@ def _visualise_best_combo(
     best: dict,
     rois: list[tuple[dict, np.ndarray, str]],
     out_path: Path,
+    preprocessing: str = "none",
+    prev_crops: dict[int, np.ndarray] | None = None,
 ) -> None:
     combo = Combo(**best["combo"])
-    cfg = _combo_to_config(combo)
+    cfg = _combo_to_config(combo, preprocessing=preprocessing)
     threshold = float(best["threshold"])
     tiles: list[np.ndarray] = []
     for meta, crop, label in rois:
         rect, poly, path_vec, _center = _reconstruct_geometry(meta, crop.shape[:2])
-        result = detect(crop, rect, cfg, polygon=poly, path_vec=path_vec)
+        prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
+        result = detect(crop, rect, cfg, polygon=poly, path_vec=path_vec, prev_frame=prev_frame)
 
         vis_crop = crop if crop.ndim == 3 else cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
         # Draw the rotated polygon on the crop preview.
@@ -314,6 +406,8 @@ def _write_report(
     labels_summary: dict,
     results: list[dict],
     top_n: int = 10,
+    preprocessing: str = "none",
+    use_prev_frame: bool = False,
 ) -> None:
     best = results[0]
     c = best["combo"]
@@ -325,8 +419,12 @@ def _write_report(
         f"Skipped: {labels_summary['skipped']}"
     )
     lines.append("")
-    lines.append("Detector: rotated-ROI + adaptive percentile Canny + angle-constrained Hough "
-                 "(concam.detection.detect).")
+    pp_desc = preprocessing if preprocessing != "none" else "none (raw grayscale)"
+    prev_desc = " + temporal diff (prev_frame)" if use_prev_frame else ""
+    lines.append(
+        f"Detector: rotated-ROI + adaptive percentile Canny + angle-constrained Hough "
+        f"(concam.detection.detect).  Preprocessing: **{pp_desc}**{prev_desc}."
+    )
     lines.append("")
     lines.append("## Best parameter set")
     lines.append("")
@@ -351,6 +449,8 @@ def _write_report(
     lines.append(f"  roi_cross_px: {ROI_CROSS_PX}")
     lines.append("  use_adaptive_canny: true")
     lines.append("  use_rotated_mask: true")
+    if preprocessing != "none":
+        lines.append(f"  preprocessing: {preprocessing}")
     lines.append("aggregation:")
     lines.append(f"  detection_threshold: {best['threshold']:.3f}")
     lines.append("```")
@@ -397,6 +497,31 @@ def main():
     ap.add_argument("--labels", required=True, help="labels.json from the labeller HTML")
     ap.add_argument("--output-dir", default="output")
     ap.add_argument("--top-n", type=int, default=10)
+    ap.add_argument(
+        "--preprocessing",
+        default="none",
+        choices=["none", "local_contrast", "cross_grad"],
+        help="Spatial preprocessing applied before Canny (default: none). "
+             "'local_contrast' subtracts a large-sigma Gaussian to suppress cloud backgrounds. "
+             "'cross_grad' uses the Sobel gradient perpendicular to the flight path.",
+    )
+    ap.add_argument(
+        "--use-prev-frame",
+        action="store_true",
+        help="Decode the preceding video frame as temporal diff input for each candidate. "
+             "Requires the video file to be accessible (from manifest or --video).",
+    )
+    ap.add_argument(
+        "--video",
+        default=None,
+        help="Override the video path from the manifest (useful when the stored path is stale).",
+    )
+    ap.add_argument(
+        "--upscale-to-calibration",
+        action="store_true",
+        help="Bilinearly upscale decoded frames to 3840×2160 (4K calibration space) before "
+             "cropping. Use for sub-4K videos (e.g. Oct 2025 720p archive).",
+    )
     args = ap.parse_args()
 
     validation_dir = Path(args.output_dir) / "validation" / "detection" / args.date
@@ -434,30 +559,58 @@ def main():
         )
 
     scoring_rois = [(m, r, l) for m, r, l in rois if l in ("positive", "negative")]
+
+    # Optionally decode prev-frame crops for temporal diff preprocessing.
+    prev_crops: dict[int, np.ndarray] | None = None
+    if args.use_prev_frame:
+        video_path = Path(args.video) if args.video else Path(manifest.get("video", ""))
+        if not video_path.exists():
+            raise SystemExit(
+                f"Video not found at {video_path}. "
+                "Pass --video <path> to override the manifest's stored video path."
+            )
+        upscale_to = (3840, 2160) if args.upscale_to_calibration else None
+        print(f"Decoding prev-frame crops from {video_path} ...")
+        scoring_meta = [m for m, _, _ in scoring_rois]
+        prev_crops = _extract_prev_crops(manifest, video_path, scoring_meta, upscale_to=upscale_to)
+        loaded = sum(1 for m in scoring_meta if m["idx"] in prev_crops)
+        print(f"  Loaded {loaded}/{len(scoring_meta)} prev-frame crops.")
+
+    # Build output filename suffix so multiple preprocessing runs don't overwrite each other.
+    suffix = args.preprocessing if args.preprocessing != "none" else "none"
+    if args.use_prev_frame:
+        suffix = f"diff_{suffix}" if suffix != "none" else "diff"
+
     total_combos = (
         len(CANNY_PCT_HIGH) * len(CANNY_LOW_RATIO) * len(HOUGH_THRESHOLD)
         * len(HOUGH_MIN_LINE_LENGTH) * len(HOUGH_MAX_LINE_GAP) * len(ANGLE_TOLERANCE_DEG)
         * len(LONG_LINE_MIN_PX)
     )
-    print(f"Running sweep over {total_combos} parameter combinations...")
-    results = _sweep(scoring_rois)
+    pp_label = args.preprocessing + (" +diff" if args.use_prev_frame else "")
+    print(f"Running sweep over {total_combos} parameter combinations (preprocessing={pp_label})...")
+    results = _sweep(scoring_rois, preprocessing=args.preprocessing, prev_crops=prev_crops)
     print(
         f"Top AUC: {results[0]['auc']:.3f}   threshold: {results[0]['threshold']:.3f}   "
         f"combo: {results[0]['combo']}"
     )
 
-    json_path = validation_dir / "sweep_results.json"
-    json_path.write_text(json.dumps({"date": args.date, "results": results}, indent=2))
-    md_path = validation_dir / "sweep_report.md"
+    json_path = validation_dir / f"sweep_results_{suffix}.json"
+    json_path.write_text(json.dumps({"date": args.date, "preprocessing": suffix, "results": results}, indent=2))
+    md_path = validation_dir / f"sweep_report_{suffix}.md"
     _write_report(
         md_path,
         args.date,
         {"positives": positives, "negatives": negatives, "skipped": skipped},
         results,
         top_n=args.top_n,
+        preprocessing=args.preprocessing,
+        use_prev_frame=args.use_prev_frame,
     )
-    vis_path = validation_dir / "best_combo_visualisation.png"
-    _visualise_best_combo(results[0], scoring_rois, vis_path)
+    vis_path = validation_dir / f"best_combo_visualisation_{suffix}.png"
+    _visualise_best_combo(
+        results[0], scoring_rois, vis_path,
+        preprocessing=args.preprocessing, prev_crops=prev_crops,
+    )
 
     print()
     print(f"  Report        : {md_path}")

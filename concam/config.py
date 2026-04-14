@@ -113,6 +113,18 @@ class DetectionConfig:
     # For the MIT Green Building camera the timestamp occupies the top-right
     # corner; set this in the site YAML to mask it with a safety pad.
     timestamp_exclusion_region: list | None = None
+    # Pre-processing applied to the (possibly temporal-diffed) grayscale frame
+    # before Canny edge detection.  Options:
+    #   "none"            – raw grayscale (default, current behaviour)
+    #   "local_contrast"  – subtract large Gaussian (sigma=local_contrast_sigma)
+    #                       to remove slow cloud background while keeping the
+    #                       narrow contrail streak; re-centres at 128.
+    #   "cross_grad"      – gradient magnitude along the direction perpendicular
+    #                       to the flight-path vector (emphasises cross-track
+    #                       edges = contrail profile; requires path_vec kwarg).
+    preprocessing: str = "none"
+    # Gaussian sigma for the "local_contrast" preprocessing mode.
+    local_contrast_sigma: float = 25.0
 
 
 @dataclass
