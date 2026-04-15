@@ -125,6 +125,12 @@ class DetectionConfig:
     preprocessing: str = "none"
     # Gaussian sigma for the "local_contrast" preprocessing mode.
     local_contrast_sigma: float = 25.0
+    # Adaptive contrail length measurement via iterative ROI growth.
+    # After a detection scores above zero the along-track axis is grown by
+    # growth_step_px (each direction) until the aligned-long-line count stops
+    # increasing or the total along-track dimension reaches roi_max_along_px.
+    growth_step_px: int = 20
+    roi_max_along_px: int = 600
 
 
 @dataclass

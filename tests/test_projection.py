@@ -24,6 +24,7 @@ from concam.projection import (
     load_calibration,
     oriented_roi,
     project_ping,
+    project_pixel_to_meters,
     project_pings,
 )
 
@@ -198,3 +199,48 @@ class TestOrientedROI:
         roi = oriented_roi(center, (0.7071, 0.7071), config)
         assert roi.x <= 500 <= roi.x + roi.w
         assert roi.y <= 500 <= roi.y + roi.h
+
+
+# --- project_pixel_to_meters tests ---
+
+
+@skip_no_calib
+class TestProjectPixelToMeters:
+    """Pinhole-ray length conversion sanity checks."""
+
+    def test_overhead_aircraft_at_10km_200px_approx_2km(self, calib: Calibration):
+        """A 200-px contrail directly overhead at 10 km should be ~2 km.
+
+        The focal length of the MIT Green Building camera is ~1700-2000 px
+        (depending on exact calibration).  At 10 km slant range:
+          length_m ≈ slant_range × length_px / focal_px
+                   ≈ 10 000 × 200 / 1800 ≈ 1 110 m
+
+        We allow a wide range (500 m – 4 000 m) to be robust to calibration
+        uncertainty; the key assertion is order-of-magnitude correctness.
+        """
+        # Aircraft directly above the camera position at 10 km altitude.
+        # Camera is at approx 42.360 N, 71.089 W, 84 m.
+        ping = _make_ping(42.360444, -71.089238, 10_000.0 + 84.23)
+        length_m = project_pixel_to_meters(200.0, ping, calib)
+        assert 500 < length_m < 4_000, (
+            f"Expected 500–4000 m for 200 px at 10 km, got {length_m:.0f} m"
+        )
+
+    def test_zero_pixel_length_returns_zero(self, calib: Calibration):
+        ping = _make_ping(42.360444, -71.089238, 10_000.0)
+        assert project_pixel_to_meters(0.0, ping, calib) == 0.0
+
+    def test_longer_pixel_length_gives_longer_metres(self, calib: Calibration):
+        ping = _make_ping(42.360444, -71.089238, 10_000.0 + 84.23)
+        m100 = project_pixel_to_meters(100.0, ping, calib)
+        m200 = project_pixel_to_meters(200.0, ping, calib)
+        assert m200 > m100, "Twice the pixel length must give more metres"
+
+    def test_higher_altitude_gives_longer_metres(self, calib: Calibration):
+        """Higher aircraft → longer slant range → more metres per pixel."""
+        ping_low = _make_ping(42.360444, -71.089238, 5_000.0)
+        ping_high = _make_ping(42.360444, -71.089238, 12_000.0)
+        m_low = project_pixel_to_meters(100.0, ping_low, calib)
+        m_high = project_pixel_to_meters(100.0, ping_high, calib)
+        assert m_high > m_low, "Higher altitude must produce more metres per pixel"

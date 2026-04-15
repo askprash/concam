@@ -59,14 +59,14 @@ calibration:
   calibration_resolution: [3840, 2160]
 
 # --- Detection (rotated-ROI + angle-constrained Hough) ---
-# Parameters tuned on the April 8, 2026 labeled set (7 positives / 13 negatives
-# extracted via scripts/detection_validation_extract.py + labeller.html). The
-# rotated-ROI rewrite achieves AUC=1.000 on that set — a significant step up
-# from the 0.714 AUC of the original AABB-only Hough+Canny detector (PRD item 7
-# historical, commit 5d2fd82). Caveat: 20 labels is a small calibration set;
-# batch-2 labels (output/validation/detection/2026-04-08-batch2/) and a second
-# date should be added before treating the 1.0 AUC as more than an upper bound.
-# Source: output/validation/detection/2026-04-08/sweep_report.md
+# Parameters tuned on the April 8, 2026 labeled set (7 positives / 13 negatives)
+# via the ROI dimension sub-grid sweep (PRD item 20) + cross_grad preprocessing
+# sweep (PRD item 19). Best combo: roi_along=180, roi_cross=40, cross_grad,
+# AUC=0.973 / Youden-J=0.923 on Apr-8. Cross-date note: Apr-9 labels (12 pos /
+# 13 neg) favor wider cross-track (120×80) for complex backgrounds; the 180×40
+# setting may need per-date retuning once more labeled dates are available.
+# Source: output/validation/detection/2026-04-08/roi_dimension_sweep_report.md
+#         output/validation/detection/2026-04-08/sweep_report_cross_grad.md
 detection:
   score_threshold: 0.3
   # Legacy / fallback Canny thresholds (used when use_adaptive_canny=false)
@@ -74,28 +74,37 @@ detection:
   canny_high: 150
   hough_threshold: 15
   hough_min_line_length: 20
-  hough_max_line_gap: 5
+  # Larger gap allows fragmented contrail segments to connect; best Apr-8 combo.
+  hough_max_line_gap: 10
   # Legacy ROI knob preserved for back-compat; the explicit along/cross below win.
   roi_padding: 20
   # Rotated rectangle dimensions for the detection ROI.
-  roi_along_px: 120
+  # 180×40 won the ROI dimension sub-grid sweep on Apr-8 (AUC 0.912→0.973).
+  # Wider along-track captures more of the contrail streak without adding noise.
+  roi_along_px: 180
   roi_cross_px: 40
   # Adaptive Canny thresholds derived from percentiles of the masked ROI pixels.
   use_adaptive_canny: true
   canny_percentile_low: 96.0
-  canny_percentile_high: 99.0
+  # Higher percentile keeps only the very brightest edges (contrail core).
+  canny_percentile_high: 99.8
   canny_low_ratio: 0.25
   canny_min_high: 60
   # Hough lines must align with the flight-path vector within this tolerance.
   angle_tolerance_deg: 12.0
-  # Minimum length of an aligned Hough line for it to count toward the score.
-  long_line_min_px: 15.0
+  # Longer minimum prevents short noise edges from counting; best Apr-8 combo.
+  long_line_min_px: 25.0
   # Count of aligned long lines that maps to score=1.0.
   score_norm_count: 6
   # When true, Canny / Hough only see pixels inside the rotated polygon.
   use_rotated_mask: true
   # Gaussian blur kernel applied before Canny (set to 0 to disable).
   blur_kernel: 3
+  # Cross-gradient preprocessing: compute Sobel gradient perpendicular to the
+  # flight-path vector before Canny. Suppresses along-track cloud edges while
+  # preserving cross-track contrail edges. Validated on Apr-8 (AUC 1.000→0.912
+  # vs none=1.000; better generalisation) and Apr-9 (cross_grad best: 0.769).
+  preprocessing: cross_grad
   # Burned-in OSD timestamp region to exclude from Canny/Hough.
   # The clock/date overlay occupies the top-right corner of every frame
   # (height=80 px, width=875 px at 3840x2160).  Adding a 15 px safety pad on
@@ -103,6 +112,12 @@ detection:
   # Format: [y0, y1, x0, x1] — numpy-style row/col slice in full-frame pixels.
   # y0=0 (top edge), y1=95 (80+15 pad), x0=2950 (3840-875-15), x1=3840
   timestamp_exclusion_region: [0, 95, 2950, 3840]
+  # Adaptive contrail length measurement: grow the along-track ROI by
+  # growth_step_px (each direction) until the aligned-long-line count stops
+  # increasing or the total along-track dimension hits roi_max_along_px.
+  # At ~10 km altitude and 4K resolution, 600 px ≈ 9 km of contrail extent.
+  growth_step_px: 20
+  roi_max_along_px: 600
 
 # --- Episode aggregation ---
 aggregation:

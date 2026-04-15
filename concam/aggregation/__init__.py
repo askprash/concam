@@ -17,6 +17,8 @@ class FrameResult:
     transponder_id: str
     score: float  # 0-1 detection confidence
     pixel_line: tuple[float, float, float, float] | None  # (x1, y1, x2, y2) or None
+    # Contrail length in metres after adaptive ROI growth (None when unavailable).
+    contrail_length_m: float | None = None
 
 
 @dataclass
@@ -30,6 +32,8 @@ class Episode:
     peak_score: float
     peak_pixel_line: tuple[float, float, float, float] | None
     frame_count: int
+    # Contrail length in metres at the peak-score frame (None when unavailable).
+    peak_contrail_length_m: float | None = None
 
 
 def aggregate_episodes(
@@ -87,4 +91,5 @@ def _build_episode(frames: list[FrameResult]) -> Episode:
         peak_score=frames[peak_idx].score,
         peak_pixel_line=frames[peak_idx].pixel_line,
         frame_count=len(frames),
+        peak_contrail_length_m=frames[peak_idx].contrail_length_m,
     )

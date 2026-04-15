@@ -108,7 +108,8 @@ def _load_episode_rows(
             SELECT episode_id, callsign, transponder_id,
                    onset, end_time, frame_count,
                    peak_score, peak_line_x1, peak_line_y1,
-                   peak_line_x2, peak_line_y2
+                   peak_line_x2, peak_line_y2,
+                   peak_contrail_length_m
             FROM contrail_episodes
             WHERE date = ? AND labeler_id IS NULL
             ORDER BY onset, episode_id
@@ -130,6 +131,7 @@ def _load_episode_rows(
                 "frame_count": int(r[5]),
                 "peak_score": float(r[6]),
                 "peak_pixel_line": line,
+                "peak_contrail_length_m": float(r[11]) if r[11] is not None else None,
             }
         )
     return out

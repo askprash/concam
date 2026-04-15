@@ -235,6 +235,47 @@ def rotated_polygon(
     return np.asarray(corners, dtype=np.float32)
 
 
+def project_pixel_to_meters(
+    contrail_length_px: float,
+    ping: "Ping",
+    calib: Calibration,
+) -> float:
+    """Convert a pixel length along the contrail to physical metres.
+
+    Uses the pinhole-ray approximation:
+
+        length_m ≈ slant_range_m × (length_px / focal_length_px)
+
+    where ``slant_range_m`` is the Euclidean distance from the camera to the
+    aircraft in ENU space, and ``focal_length_px`` is the geometric mean of the
+    camera matrix diagonal (``sqrt(fx × fy)``).
+
+    This first-order approximation ignores lens distortion and assumes the
+    contrail extent is perpendicular to the line of sight, which is a good
+    approximation for aircraft directly overhead or at moderate elevation angles.
+    At typical contrail altitudes (8–12 km) the error is < 10% for elevation
+    angles above ~30°.
+
+    Returns 0.0 when ``contrail_length_px`` is 0 or the aircraft position
+    cannot be projected (malformed ping).
+    """
+    if contrail_length_px <= 0.0:
+        return 0.0
+    enu = _gps_to_enu(
+        np.array([ping.lat], dtype=np.float64),
+        np.array([ping.lon], dtype=np.float64),
+        np.array([ping.alt_m], dtype=np.float64),
+        calib,
+    )
+    slant_range_m = float(np.linalg.norm(enu[0]))
+    if slant_range_m < 1.0:
+        return 0.0
+    fx = float(calib.camera_matrix[0, 0])
+    fy = float(calib.camera_matrix[1, 1])
+    focal_px = math.sqrt(fx * fy)
+    return slant_range_m * contrail_length_px / focal_px
+
+
 def oriented_roi(
     center: PixelPoint,
     path_vector: tuple[float, float],

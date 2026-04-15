@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS contrail_episodes (
     peak_line_x2     DOUBLE,
     peak_line_y2     DOUBLE,
 
+    -- Contrail physical length at peak-score frame (NULL when unavailable).
+    -- Measured via adaptive ROI growth; converted to metres via pinhole-ray geometry.
+    peak_contrail_length_m  DOUBLE,
+
     -- Label fields (nullable — filled by ingest-labels)
     label            VARCHAR,           -- 'contrail' | 'no_contrail' | 'unsure'
     persistence_rating INTEGER,         -- 1-5
@@ -40,14 +44,17 @@ CREATE TABLE IF NOT EXISTS contrail_episodes (
     label_timestamp  TIMESTAMP WITH TIME ZONE,
     label_notes      VARCHAR
 );
+-- Migration: add peak_contrail_length_m to databases created before this column existed.
+ALTER TABLE contrail_episodes ADD COLUMN IF NOT EXISTS peak_contrail_length_m DOUBLE;
 """
 
 _INSERT_EPISODE_SQL = """
 INSERT INTO contrail_episodes (
     episode_id, date, callsign, transponder_id,
     onset, end_time, frame_count,
-    peak_score, peak_line_x1, peak_line_y1, peak_line_x2, peak_line_y2
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    peak_score, peak_line_x1, peak_line_y1, peak_line_x2, peak_line_y2,
+    peak_contrail_length_m
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _UPDATE_LABEL_SQL = """
@@ -128,6 +135,7 @@ class Database:
                     line[1] if line else None,
                     line[2] if line else None,
                     line[3] if line else None,
+                    getattr(ep, "peak_contrail_length_m", None),
                 ],
             )
         return len(episodes)

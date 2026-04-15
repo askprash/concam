@@ -7,7 +7,7 @@ import cv2
 import pytest
 
 from concam.config import DetectionConfig
-from concam.detection import DetectionResult, detect
+from concam.detection import DetectionResult, detect, grow_contrail_length
 from concam.projection import PixelPoint, Rect, rotated_polygon
 
 
@@ -311,3 +311,86 @@ class TestTemporalDiff:
         # prev_frame silently ignored; line still detected.
         assert result.score > 0.0
         assert "diff" not in result.method
+
+
+# --- contrail_length_px and grow_contrail_length --------------------------------
+
+
+class TestContrailLength:
+    """contrail_length_px from detect() and grow_contrail_length() round-trips."""
+
+    def _make_line_frame(self, width=600, height=200, line_len=400):
+        """800×200 frame with a horizontal line of known length."""
+        frame = np.full((height, width), 30, dtype=np.uint8)
+        cx, cy = width // 2, height // 2
+        x1 = cx - line_len // 2
+        x2 = cx + line_len // 2
+        cv2.line(frame, (x1, cy), (x2, cy), 220, 2)
+        return frame, cx, cy
+
+    def test_detect_returns_nonzero_length_for_clear_line(self):
+        config = _make_config(roi_along_px=420, roi_cross_px=40, score_norm_count=1)
+        frame, cx, cy = self._make_line_frame()
+        path_vec = (1.0, 0.0)
+        center = PixelPoint(x=cx, y=cy)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(x=int(xs.min()), y=int(ys.min()),
+                   w=int(xs.max()-xs.min())+1, h=int(ys.max()-ys.min())+1)
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.score > 0.0
+        assert result.contrail_length_px > 0.0
+
+    def test_blank_frame_gives_zero_length(self):
+        config = _make_config()
+        frame = np.full((200, 600), 30, dtype=np.uint8)
+        path_vec = (1.0, 0.0)
+        center = PixelPoint(x=300, y=100)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(x=int(xs.min()), y=int(ys.min()),
+                   w=int(xs.max()-xs.min())+1, h=int(ys.max()-ys.min())+1)
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.score == 0.0
+        assert result.contrail_length_px == 0.0
+
+    def test_grow_finds_longer_extent_than_seed(self):
+        """A 400-px line wider than the seed ROI (180 px) should grow to capture it."""
+        config = _make_config(
+            roi_along_px=120,
+            roi_cross_px=40,
+            roi_max_along_px=600,
+            growth_step_px=20,
+            score_norm_count=1,
+            long_line_min_px=20.0,
+        )
+        frame, cx, cy = self._make_line_frame(width=600, height=200, line_len=400)
+        path_vec = (1.0, 0.0)
+        grown = grow_contrail_length(frame, (cx, cy), path_vec, config)
+        # Seed ROI (120 px) cannot capture the 400-px line; growth should extend.
+        assert grown > 150, f"Expected grown > 150 px, got {grown:.1f}"
+
+    def test_grow_stops_at_contrail_edge_not_sky(self):
+        """grow_contrail_length should not inflate when the line is narrower than max."""
+        config = _make_config(
+            roi_along_px=50,
+            roi_cross_px=40,
+            roi_max_along_px=800,
+            growth_step_px=10,
+            score_norm_count=1,
+            long_line_min_px=20.0,
+        )
+        line_len = 100
+        frame, cx, cy = self._make_line_frame(width=600, height=200, line_len=line_len)
+        path_vec = (1.0, 0.0)
+        grown = grow_contrail_length(frame, (cx, cy), path_vec, config)
+        # Grown length must not exceed total frame width.
+        assert grown < 600, f"Growth drifted into empty sky: {grown:.1f}"
+
+    def test_grow_blank_frame_returns_zero(self):
+        config = _make_config(
+            roi_along_px=120, roi_max_along_px=600, growth_step_px=20
+        )
+        frame = np.full((200, 600), 30, dtype=np.uint8)
+        grown = grow_contrail_length(frame, (300.0, 100.0), (1.0, 0.0), config)
+        assert grown == 0.0

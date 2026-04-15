@@ -22,13 +22,14 @@ import numpy as np
 from concam.adsb import Flight, Ping, load_flights
 from concam.aggregation import Episode, FrameResult, aggregate_episodes
 from concam.config import SiteConfig
-from concam.detection import detect
+from concam.detection import detect, grow_contrail_length
 from concam.ocr import FixedFormatTimestampReader, TrustButVerifyTracker
 from concam.projection import (
     PixelPoint,
     Rect,
     load_calibration,
     oriented_roi,
+    project_pixel_to_meters,
     project_pings,
     rotated_polygon,
 )
@@ -275,8 +276,9 @@ def run_project_stage(
                 if roi.w <= 0 or roi.h <= 0:
                     continue
 
+                ping = flight.pings[i]
                 record = {
-                    "wall_time_utc": flight.pings[i].time.astimezone(
+                    "wall_time_utc": ping.time.astimezone(
                         datetime.timezone.utc
                     ).isoformat(),
                     "callsign": flight.callsign,
@@ -286,6 +288,12 @@ def run_project_stage(
                     "path_dx": path[0],
                     "path_dy": path[1],
                     "roi": {"x": roi.x, "y": roi.y, "w": roi.w, "h": roi.h},
+                    # GPS position included so the detect stage can compute
+                    # physical contrail length without re-reading ADS-B data.
+                    "lat": ping.lat,
+                    "lon": ping.lon,
+                    "alt_m": ping.alt_m,
+                    "alt_baro_m": ping.alt_baro_m,
                 }
                 f.write(json.dumps(record) + "\n")
                 written += 1
@@ -317,9 +325,16 @@ def run_detect_stage(
     projections that match that wall-clock second.  Runs the detector per
     (frame, flight) pair and streams results to jsonl.
 
+    Each detection record carries ``contrail_length_px`` (seed ROI span),
+    ``contrail_length_grown_px`` (after adaptive growth), and
+    ``contrail_length_m`` (physical metres via pinhole-ray geometry).
+
     Returns the number of detection records written.
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load calibration for physical-length conversion.
+    calib = load_calibration(site_config.calibration)
 
     # Build frame_idx -> wall_time_utc map from ocr.jsonl.
     frame_time: dict[int, str] = {}
@@ -366,6 +381,7 @@ def run_detect_stage(
                 # before this schema field existed fall back to AABB-only mode.
                 poly = None
                 path_vec: tuple[float, float] | None = None
+                center: PixelPoint | None = None
                 if "pixel_x" in proj and "path_dx" in proj:
                     center = PixelPoint(x=float(proj["pixel_x"]),
                                         y=float(proj["pixel_y"]))
@@ -376,6 +392,33 @@ def run_detect_stage(
                     polygon=poly, path_vec=path_vec,
                     prev_frame=prev_frame,
                 )
+
+                # Adaptive length measurement: grow the ROI when a signal exists.
+                grown_length_px = 0.0
+                contrail_length_m: float | None = None
+                if result.score > 0.0 and center is not None and path_vec is not None:
+                    grown_length_px = grow_contrail_length(
+                        frame,
+                        (center.x, center.y),
+                        path_vec,
+                        det_config,
+                        prev_frame=prev_frame,
+                    )
+                    # Physical length via pinhole-ray geometry.
+                    # Use barometric altitude when available (more reliable than GNSS).
+                    alt_m = float(proj.get("alt_baro_m") or proj.get("alt_m") or 0.0)
+                    if alt_m > 0.0 and grown_length_px > 0.0:
+                        # Build a minimal Ping for projection (only lat/lon/alt used).
+                        ping_for_length = Ping(
+                            time=ts,
+                            lat=float(proj["lat"]),
+                            lon=float(proj["lon"]),
+                            alt_m=alt_m,
+                        )
+                        contrail_length_m = project_pixel_to_meters(
+                            grown_length_px, ping_for_length, calib
+                        )
+
                 record = {
                     "wall_time_utc": wall,
                     "callsign": proj["callsign"],
@@ -387,6 +430,9 @@ def run_detect_stage(
                     "method": result.method,
                     "num_long_lines": result.num_long_lines,
                     "aligned_lines": result.aligned_lines,
+                    "contrail_length_px": result.contrail_length_px,
+                    "contrail_length_grown_px": grown_length_px,
+                    "contrail_length_m": contrail_length_m,
                 }
                 f.write(json.dumps(record) + "\n")
                 written += 1
@@ -418,6 +464,7 @@ def run_aggregate_stage(
                 transponder_id=rec["transponder_id"],
                 score=rec["score"],
                 pixel_line=tuple(line) if line is not None else None,
+                contrail_length_m=rec.get("contrail_length_m"),
             )
         )
     episodes = aggregate_episodes(frame_results, site_config.aggregation)
@@ -433,6 +480,7 @@ def run_aggregate_stage(
                 if ep.peak_pixel_line is not None
                 else None,
                 "frame_count": ep.frame_count,
+                "peak_contrail_length_m": ep.peak_contrail_length_m,
             }
             f.write(json.dumps(record) + "\n")
     return len(episodes)
@@ -451,6 +499,7 @@ def load_episodes_file(path: Path) -> list[Episode]:
                 peak_score=rec["peak_score"],
                 peak_pixel_line=tuple(line) if line is not None else None,
                 frame_count=rec["frame_count"],
+                peak_contrail_length_m=rec.get("peak_contrail_length_m"),
             )
         )
     return episodes
