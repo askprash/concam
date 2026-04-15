@@ -281,7 +281,10 @@ def main() -> None:
     }
     manifest_path = val_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2))
-    _write_labeller_html(val_dir / "labeller.html", manifest_path.name, len(all_candidates))
+    _write_labeller_html(
+        val_dir / "labeller.html", manifest_path.name, len(all_candidates),
+        manifest_dict=manifest, base_dir=val_dir,
+    )
 
     print(f"\n  Grid     : {grid_path}")
     print(f"  Manifest : {manifest_path}  ({len(all_candidates)} total candidates)")

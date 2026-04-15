@@ -376,9 +376,47 @@ def _compose_grid(tiles: list[np.ndarray], cols: int = 5) -> np.ndarray:
     return grid
 
 
-def _write_labeller_html(path: Path, manifest_name: str, num_candidates: int) -> None:
-    """Tiny self-contained HTML page that loads the manifest, shows each ROI
-    with radio buttons, and lets the labeller download labels.json."""
+def _write_labeller_html(
+    path: Path,
+    manifest_name: str,
+    num_candidates: int,
+    manifest_dict: dict | None = None,
+    base_dir: Path | None = None,
+) -> None:
+    """Self-contained HTML labeller — manifest and images are inlined as data URIs.
+
+    When ``manifest_dict`` and ``base_dir`` are supplied, the manifest JSON and
+    all referenced ROI/context images are embedded directly in the HTML so the
+    file works in JupyterHub, file://, or any context that blocks fetch().
+    Falls back to a fetch()-based approach when manifest data is not available
+    (backward-compatible with old call sites that only pass path + name + count).
+    """
+    import base64
+
+    # Build an inlined manifest with data-URI images when possible.
+    if manifest_dict is not None and base_dir is not None:
+        inlined = dict(manifest_dict)
+        inlined_candidates = []
+        for c in manifest_dict.get("candidates", []):
+            ic = dict(c)
+            for key in ("roi_png", "context_png"):
+                rel = c.get(key, "")
+                img_path = base_dir / rel if rel else None
+                if img_path and img_path.exists():
+                    b64 = base64.b64encode(img_path.read_bytes()).decode()
+                    ic[key] = f"data:image/png;base64,{b64}"
+            inlined_candidates.append(ic)
+        inlined["candidates"] = inlined_candidates
+        manifest_js = "const MANIFEST = " + json.dumps(inlined) + ";"
+        init_js = "function init() { manifest = MANIFEST; render(); }"
+    else:
+        manifest_js = ""
+        init_js = f"""async function init() {{
+  const res = await fetch("{manifest_name}");
+  manifest = await res.json();
+  render();
+}}"""
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><title>Detection validation labeller</title>
 <style>
@@ -408,16 +446,12 @@ button:hover {{ background: #3c6; }}
 </div>
 <div id="grid" class="grid"></div>
 <script>
-const MANIFEST_URL = "{manifest_name}";
+{manifest_js}
 const STORAGE_KEY = "concam-detection-labels";
 let manifest = null;
 let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{{}}");
 
-async function init() {{
-  const res = await fetch(MANIFEST_URL);
-  manifest = await res.json();
-  render();
-}}
+{init_js}
 function updateProgress() {{
   const n = manifest.candidates.filter(c => state[c.idx]?.label).length;
   document.getElementById("progress").textContent = n + " / " + manifest.candidates.length;
@@ -673,7 +707,10 @@ def main():
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
     html_path = validation_dir / "labeller.html"
-    _write_labeller_html(html_path, manifest_path.name, len(all_candidates))
+    _write_labeller_html(
+        html_path, manifest_path.name, len(all_candidates),
+        manifest_dict=manifest, base_dir=validation_dir,
+    )
 
     print()
     print(f"  Grid     : {grid_path}")

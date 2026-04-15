@@ -294,5 +294,17 @@
       "Only run this AFTER the timestamp-mask task lands, since NRBR has the same timestamp-glyph FP as BGR and needs the mask too"
     ],
     "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Episode clip renderer: produce short annotated MP4 clips (±30 s around episode onset) with ADS-B track and detection line burned in. Motivated by the need to review detections outside the browser — JupyterHub file-proxy works for the HTML labeler but pre-rendered clips are portable (email, slide deck, any video player). Full-day annotated videos are too large; per-episode short clips are the right granularity.",
+    "steps": [
+      "Implement `scripts/render_episode_clips.py --date YYYY-MM-DD [--top-n 10] [--output-dir output]` that reads `episodes.jsonl`, `projections.jsonl`, and `detections.jsonl` for the date",
+      "For each selected episode, seek the raw video to onset - 5 s, decode frames for onset - 5 s to end + 5 s (or 60 s max), and render each frame with: (a) ADS-B ping dot at the projected pixel for all flights in the frame, (b) the peak detection line segment drawn in the episode color (green = score > 0.5, yellow = marginal), (c) callsign + score + wall-clock burned in as text",
+      "Write each clip as a 720p H.264 MP4 using PyAV (already a dependency); downscale from 4K to 720p to keep file size under ~50 MB per clip",
+      "Add a `--episodes episode_id,episode_id,...` flag to render arbitrary episodes by ID, not just top-N",
+      "Verify the top-5 April-8 episodes render correctly: ADS-B dot tracks the visible contrail, detection line appears on frames where score > threshold"
+    ],
+    "passes": false
   }
 ]
