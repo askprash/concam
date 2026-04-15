@@ -355,7 +355,10 @@ def run_detect_stage(
 
     written = 0
     prev_frame: np.ndarray | None = None
-    with open(out_path, "w") as f:
+    # buffering=1 selects line-buffered mode: each \n-terminated write is
+    # flushed immediately, which prevents records from being smashed together
+    # on the same line if the process is killed between frame writes.
+    with open(out_path, "w", buffering=1) as f:
         for frame_idx, frame in enumerate(iter_video_frames(video_path)):
             if max_frames is not None and frame_idx >= max_frames:
                 break

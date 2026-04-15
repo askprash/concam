@@ -60,7 +60,14 @@ def _iter_jsonl(path: Path):
                 yield json.loads(line)
 
 
-def _decode_single_frame(video_path: Path, frame_idx: int) -> np.ndarray | None:
+def _decode_frame_pair(
+    video_path: Path, frame_idx: int, want_prev: bool = False
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Decode frame at frame_idx and optionally the preceding frame.
+
+    Returns ``(frame, prev_frame)`` where ``prev_frame`` is None when
+    ``want_prev`` is False or when frame_idx == 0.
+    """
     container = av.open(str(video_path))
     try:
         stream = container.streams.video[0]
@@ -70,20 +77,39 @@ def _decode_single_frame(video_path: Path, frame_idx: int) -> np.ndarray | None:
             round(duration_s * float(stream.average_rate or 30))
         )
         if total == 0:
-            return None
-        target_time_s = (frame_idx / total) * duration_s
+            return None, None
+
+        # Seek to the target frame (or one frame earlier when prev is needed).
+        seek_idx = max(0, frame_idx - 1) if want_prev and frame_idx > 0 else frame_idx
+        target_time_s = (seek_idx / total) * duration_s
         target_pts = int(target_time_s / float(time_base))
         container.seek(target_pts, stream=stream, any_frame=False, backward=True)
-        decoded = None
-        for frame in container.decode(stream):
-            decoded = frame
-            if frame.pts is not None and frame.pts >= target_pts:
+
+        prev_arr: np.ndarray | None = None
+        decoded: np.ndarray | None = None
+
+        for av_frame in container.decode(stream):
+            arr = av_frame.to_ndarray(format="bgr24")
+            if av_frame.pts is not None and av_frame.pts >= target_pts:
+                if want_prev and frame_idx > 0 and decoded is None:
+                    # This is the seek_idx frame (frame_idx - 1).
+                    prev_arr = arr
+                    decoded = arr  # placeholder; will be overwritten below
+                    # Advance one more frame.
+                    for nxt in container.decode(stream):
+                        decoded = nxt.to_ndarray(format="bgr24")
+                        break
+                else:
+                    decoded = arr
                 break
-        if decoded is None:
-            return None
-        return decoded.to_ndarray(format="bgr24")
+        return decoded, prev_arr
     finally:
         container.close()
+
+
+def _decode_single_frame(video_path: Path, frame_idx: int) -> np.ndarray | None:
+    frame, _ = _decode_frame_pair(video_path, frame_idx, want_prev=False)
+    return frame
 
 
 def compute_nrbr(frame_bgr: np.ndarray) -> np.ndarray:
@@ -137,6 +163,8 @@ def _render_panel(
     projection: dict | None,
     det_config,
     out_path: Path,
+    *,
+    prev_frame: np.ndarray | None = None,
 ) -> dict:
     h, w = bgr_frame.shape[:2]
 
@@ -154,13 +182,13 @@ def _render_panel(
     )
 
     # Re-run detect() on BGR (for parity with stored detection) and on NRBR.
-    # prev_frame=None on both sides so the comparison isolates the input
-    # representation rather than the temporal-diff pre-processing.
+    # When prev_frame is provided, both calls use it so the comparison isolates
+    # the input representation rather than the temporal-diff pre-processing.
     bgr_result = detect(bgr_frame, roi, det_config,
-                        polygon=polygon, path_vec=path_vec, prev_frame=None)
+                        polygon=polygon, path_vec=path_vec, prev_frame=prev_frame)
     nrbr_det_input = nrbr_to_detector_input(nrbr)
     nrbr_result = detect(nrbr_det_input, roi, det_config,
-                         polygon=polygon, path_vec=path_vec, prev_frame=None)
+                         polygon=polygon, path_vec=path_vec, prev_frame=prev_frame)
 
     pad = 250
     x0 = max(0, int(cx - pad))
@@ -239,6 +267,13 @@ def main() -> int:
     parser.add_argument("--regression-dir", default="output/validation/regression")
     parser.add_argument("--output-dir", default="output")
     parser.add_argument("--video", default=None)
+    parser.add_argument(
+        "--use-prev-frame", action=argparse.BooleanOptionalAction, default=False,
+        help="Decode the preceding frame and pass it as prev_frame to detect(), "
+             "mirroring the live pipeline's temporal-diff pre-processing. "
+             "Pass --no-use-prev-frame (the default) to isolate input "
+             "representation from temporal-diff effects.",
+    )
     args = parser.parse_args()
 
     date = datetime.date.fromisoformat(args.date)
@@ -269,7 +304,9 @@ def main() -> int:
 
     summary_rows = []
     for rec in panel_records:
-        frame = _decode_single_frame(video_path, rec["frame_idx"])
+        frame, prev_frame = _decode_frame_pair(
+            video_path, rec["frame_idx"], want_prev=args.use_prev_frame
+        )
         if frame is None:
             print(f"[nrbr] decode failed for frame {rec['frame_idx']}")
             continue
@@ -283,11 +320,13 @@ def main() -> int:
             "label": rec["label"],
             "index": rec["index"],
         }
+        suffix = "_prev" if args.use_prev_frame else ""
         out_path = (panels_dir /
                     f"{rec['label']}_{rec['index']:02d}_{rec['callsign']}_"
-                    f"{rec['frame_idx']}.png")
+                    f"{rec['frame_idx']}{suffix}.png")
         result = _render_panel(
-            episode_meta, frame, nrbr, proj, site_config.detection, out_path
+            episode_meta, frame, nrbr, proj, site_config.detection, out_path,
+            prev_frame=prev_frame,
         )
         if result.get("skipped"):
             print(f"[nrbr] {out_path.name}: {result['reason']}")

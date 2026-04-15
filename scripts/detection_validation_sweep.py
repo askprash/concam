@@ -69,6 +69,10 @@ SCORE_NORM_COUNT = 6
 ROI_ALONG_PX = 120
 ROI_CROSS_PX = 40
 
+# ROI dimension sub-grid for --roi-sweep mode (item 20).
+ROI_SWEEP_ALONG = (120, 180, 240, 320)
+ROI_SWEEP_CROSS = (40, 60, 80)
+
 
 @dataclass
 class Combo:
@@ -92,7 +96,12 @@ class Combo:
         }
 
 
-def _combo_to_config(combo: Combo, preprocessing: str = "none") -> DetectionConfig:
+def _combo_to_config(
+    combo: Combo,
+    preprocessing: str = "none",
+    roi_along: int = ROI_ALONG_PX,
+    roi_cross: int = ROI_CROSS_PX,
+) -> DetectionConfig:
     return DetectionConfig(
         score_threshold=0.3,
         canny_low=50, canny_high=150,
@@ -100,8 +109,8 @@ def _combo_to_config(combo: Combo, preprocessing: str = "none") -> DetectionConf
         hough_min_line_length=int(combo.hough_min_line_length),
         hough_max_line_gap=int(combo.hough_max_line_gap),
         roi_padding=20,
-        roi_along_px=ROI_ALONG_PX,
-        roi_cross_px=ROI_CROSS_PX,
+        roi_along_px=roi_along,
+        roi_cross_px=roi_cross,
         use_adaptive_canny=True,
         canny_percentile_low=CANNY_PCT_LOW,
         canny_percentile_high=float(combo.canny_percentile_high),
@@ -117,7 +126,11 @@ def _combo_to_config(combo: Combo, preprocessing: str = "none") -> DetectionConf
 
 
 def _reconstruct_geometry(
-    cand: dict, crop_shape: tuple[int, int], extract_pad: int = 20,
+    cand: dict,
+    crop_shape: tuple[int, int],
+    extract_pad: int = 20,
+    roi_along: int = ROI_ALONG_PX,
+    roi_cross: int = ROI_CROSS_PX,
 ) -> tuple[Rect, np.ndarray, tuple[float, float], PixelPoint]:
     """Given the manifest candidate and its saved crop, return the Rect/polygon/
     path_vec/center needed to drive ``concam.detection.detect`` as if the crop
@@ -142,7 +155,7 @@ def _reconstruct_geometry(
     # Rotated polygon built with the sweep's along/cross — independent of whatever
     # roi_padding value the projection stage used when the crop was extracted.
     dummy_cfg = DetectionConfig(
-        roi_along_px=ROI_ALONG_PX, roi_cross_px=ROI_CROSS_PX, roi_padding=20,
+        roi_along_px=roi_along, roi_cross_px=roi_cross, roi_padding=20,
     )
     poly = rotated_polygon(center_local, path_vec, dummy_cfg)
 
@@ -231,12 +244,14 @@ def _sweep(
     rois: list[tuple[dict, np.ndarray, str]],
     preprocessing: str = "none",
     prev_crops: dict[int, np.ndarray] | None = None,
+    roi_along: int = ROI_ALONG_PX,
+    roi_cross: int = ROI_CROSS_PX,
 ) -> list[dict]:
     """For each parameter combination, score every labeled ROI and summarise."""
     results: list[dict] = []
     # Pre-build per-ROI geometry once since it doesn't depend on the combo.
     roi_geoms = [
-        (meta, crop, label, *_reconstruct_geometry(meta, crop.shape[:2]))
+        (meta, crop, label, *_reconstruct_geometry(meta, crop.shape[:2], roi_along=roi_along, roi_cross=roi_cross))
         for meta, crop, label in rois
     ]
     for pct_hi, lo_ratio, ht, hml, hmg, tol, lmin in itertools.product(
@@ -245,7 +260,7 @@ def _sweep(
         LONG_LINE_MIN_PX,
     ):
         combo = Combo(pct_hi, lo_ratio, ht, hml, hmg, tol, lmin)
-        cfg = _combo_to_config(combo, preprocessing=preprocessing)
+        cfg = _combo_to_config(combo, preprocessing=preprocessing, roi_along=roi_along, roi_cross=roi_cross)
         pos_scores: list[float] = []
         neg_scores: list[float] = []
         for meta, crop, label, rect, poly, path_vec, _center in roi_geoms:
@@ -278,6 +293,180 @@ def _sweep(
         )
     results.sort(key=lambda r: (r["auc"], r["youden_j"], r["separation"]), reverse=True)
     return results
+
+
+def _score_combo_on_rois(
+    rois: list[tuple[dict, np.ndarray, str]],
+    combo: Combo,
+    preprocessing: str,
+    roi_along: int,
+    roi_cross: int,
+    prev_crops: dict[int, np.ndarray] | None = None,
+) -> tuple[float, float, float, list[float], list[float]]:
+    """Score a single parameter combo on the labeled ROIs.
+
+    Returns (auc, youden_j, threshold, pos_scores, neg_scores).
+    Used by the ROI dimension sub-grid sweep where other axes are frozen.
+    """
+    roi_geoms = [
+        (meta, crop, label, *_reconstruct_geometry(meta, crop.shape[:2], roi_along=roi_along, roi_cross=roi_cross))
+        for meta, crop, label in rois
+    ]
+    cfg = _combo_to_config(combo, preprocessing=preprocessing, roi_along=roi_along, roi_cross=roi_cross)
+    pos_scores: list[float] = []
+    neg_scores: list[float] = []
+    for meta, crop, label, rect, poly, path_vec, _center in roi_geoms:
+        prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
+        result = detect(crop, rect, cfg, polygon=poly, path_vec=path_vec, prev_frame=prev_frame)
+        if label == "positive":
+            pos_scores.append(result.score)
+        elif label == "negative":
+            neg_scores.append(result.score)
+    auc = _mann_whitney_auc(pos_scores, neg_scores)
+    threshold, youden_j = _best_threshold(pos_scores, neg_scores)
+    return auc, youden_j, threshold, pos_scores, neg_scores
+
+
+def _roi_dimension_sweep(
+    rois: list[tuple[dict, np.ndarray, str]],
+    frozen_combo: Combo,
+    preprocessing: str,
+    roi_alongs: tuple[int, ...] = ROI_SWEEP_ALONG,
+    roi_crosses: tuple[int, ...] = ROI_SWEEP_CROSS,
+    prev_crops: dict[int, np.ndarray] | None = None,
+) -> list[dict]:
+    """Sweep roi_along_px × roi_cross_px with all other axes frozen at frozen_combo.
+
+    Returns a list of dicts with keys: roi_along, roi_cross, auc, youden_j,
+    threshold, pos_median, neg_median, pos_scores, neg_scores.
+    Sorted by (auc, youden_j) descending.
+    """
+    results: list[dict] = []
+    n_cells = len(roi_alongs) * len(roi_crosses)
+    print(f"  ROI dimension sub-grid: {len(roi_alongs)} along × {len(roi_crosses)} cross = {n_cells} cells")
+    for along in roi_alongs:
+        for cross in roi_crosses:
+            auc, youden_j, threshold, pos_scores, neg_scores = _score_combo_on_rois(
+                rois, frozen_combo, preprocessing, along, cross, prev_crops=prev_crops,
+            )
+            print(
+                f"    roi_along={along:3d}  roi_cross={cross:2d}  "
+                f"AUC={auc:.3f}  J={youden_j:.3f}  t={threshold:.3f}  "
+                f"pos_med={statistics.median(pos_scores) if pos_scores else 0:.3f}  "
+                f"neg_med={statistics.median(neg_scores) if neg_scores else 0:.3f}"
+            )
+            results.append({
+                "roi_along": along,
+                "roi_cross": cross,
+                "auc": auc,
+                "youden_j": youden_j,
+                "threshold": threshold,
+                "pos_median": statistics.median(pos_scores) if pos_scores else 0.0,
+                "pos_min": min(pos_scores) if pos_scores else 0.0,
+                "neg_median": statistics.median(neg_scores) if neg_scores else 0.0,
+                "neg_max": max(neg_scores) if neg_scores else 0.0,
+                "pos_scores": pos_scores,
+                "neg_scores": neg_scores,
+            })
+    results.sort(key=lambda r: (r["auc"], r["youden_j"]), reverse=True)
+    return results
+
+
+def _write_roi_sweep_report(
+    md_path: Path,
+    date: str,
+    labels_summary: dict,
+    results: list[dict],
+    frozen_combo: Combo,
+    preprocessing: str,
+    baseline_auc: float,
+    baseline_j: float,
+) -> None:
+    """Write roi_dimension_sweep_report.md."""
+    best = results[0]
+    lines: list[str] = []
+    lines.append(f"# ROI dimension sweep — {date}")
+    lines.append("")
+    lines.append(
+        f"Positives: {labels_summary['positives']}  "
+        f"Negatives: {labels_summary['negatives']}  "
+        f"Skipped: {labels_summary['skipped']}"
+    )
+    lines.append("")
+    lines.append(
+        f"All other hyperparameters frozen at best cross_grad combo from prior sweep. "
+        f"Preprocessing: **{preprocessing}**."
+    )
+    lines.append("")
+    lines.append("## Frozen hyperparameters")
+    lines.append("")
+    lines.append("```yaml")
+    lines.append(f"  canny_percentile_high: {frozen_combo.canny_percentile_high}")
+    lines.append(f"  canny_low_ratio: {frozen_combo.canny_low_ratio}")
+    lines.append(f"  hough_threshold: {frozen_combo.hough_threshold}")
+    lines.append(f"  hough_min_line_length: {frozen_combo.hough_min_line_length}")
+    lines.append(f"  hough_max_line_gap: {frozen_combo.hough_max_line_gap}")
+    lines.append(f"  angle_tolerance_deg: {frozen_combo.angle_tolerance_deg}")
+    lines.append(f"  long_line_min_px: {frozen_combo.long_line_min_px}")
+    lines.append("```")
+    lines.append("")
+    lines.append("## Results grid (AUC / Youden-J)")
+    lines.append("")
+
+    # Build unique sorted lists for the table header.
+    alongs = sorted(set(r["roi_along"] for r in results))
+    crosses = sorted(set(r["roi_cross"] for r in results))
+    lookup = {(r["roi_along"], r["roi_cross"]): r for r in results}
+
+    # Header row
+    header = "| roi_along \\ roi_cross |" + "".join(f" {c:2d} |" for c in crosses)
+    sep = "|----------------------|" + "".join("------|" for _ in crosses)
+    lines.append(header)
+    lines.append(sep)
+    for along in alongs:
+        cells = []
+        for cross in crosses:
+            r = lookup.get((along, cross))
+            if r:
+                marker = " ★" if r["roi_along"] == best["roi_along"] and r["roi_cross"] == best["roi_cross"] else ""
+                cells.append(f" {r['auc']:.3f}/{r['youden_j']:.3f}{marker} |")
+            else:
+                cells.append(" — |")
+        lines.append(f"| {along:3d}px                |" + "".join(cells))
+    lines.append("")
+    lines.append(f"*(★ = best cell)*")
+    lines.append("")
+
+    lines.append("## Best (along, cross) pair")
+    lines.append("")
+    lines.append(f"- **roi_along_px = {best['roi_along']}**  roi_cross_px = {best['roi_cross']}")
+    lines.append(f"- AUC: **{best['auc']:.3f}** (baseline 120×40: {baseline_auc:.3f})")
+    lines.append(f"- Youden's J: **{best['youden_j']:.3f}** (baseline: {baseline_j:.3f})")
+    lines.append(f"- Recommended threshold: {best['threshold']:.3f}")
+    lines.append(f"- Positive scores: median {best['pos_median']:.3f}, min {best['pos_min']:.3f}")
+    lines.append(f"- Negative scores: median {best['neg_median']:.3f}, max {best['neg_max']:.3f}")
+    lines.append("")
+    lines.append("```yaml")
+    lines.append("detection:")
+    lines.append(f"  roi_along_px: {best['roi_along']}")
+    lines.append(f"  roi_cross_px: {best['roi_cross']}")
+    lines.append(f"  preprocessing: {preprocessing}")
+    lines.append(f"  canny_percentile_high: {frozen_combo.canny_percentile_high}")
+    lines.append(f"  canny_percentile_low: {CANNY_PCT_LOW}")
+    lines.append(f"  canny_low_ratio: {frozen_combo.canny_low_ratio}")
+    lines.append(f"  canny_min_high: {CANNY_MIN_HIGH}")
+    lines.append(f"  hough_threshold: {frozen_combo.hough_threshold}")
+    lines.append(f"  hough_min_line_length: {frozen_combo.hough_min_line_length}")
+    lines.append(f"  hough_max_line_gap: {frozen_combo.hough_max_line_gap}")
+    lines.append(f"  angle_tolerance_deg: {frozen_combo.angle_tolerance_deg}")
+    lines.append(f"  long_line_min_px: {frozen_combo.long_line_min_px}")
+    lines.append(f"  score_norm_count: {SCORE_NORM_COUNT}")
+    lines.append("  use_adaptive_canny: true")
+    lines.append("  use_rotated_mask: true")
+    lines.append("aggregation:")
+    lines.append(f"  detection_threshold: {best['threshold']:.3f}")
+    lines.append("```")
+    md_path.write_text("\n".join(lines))
 
 
 def _mann_whitney_auc(pos: list[float], neg: list[float]) -> float:
@@ -346,13 +535,15 @@ def _visualise_best_combo(
     out_path: Path,
     preprocessing: str = "none",
     prev_crops: dict[int, np.ndarray] | None = None,
+    roi_along: int = ROI_ALONG_PX,
+    roi_cross: int = ROI_CROSS_PX,
 ) -> None:
     combo = Combo(**best["combo"])
-    cfg = _combo_to_config(combo, preprocessing=preprocessing)
+    cfg = _combo_to_config(combo, preprocessing=preprocessing, roi_along=roi_along, roi_cross=roi_cross)
     threshold = float(best["threshold"])
     tiles: list[np.ndarray] = []
     for meta, crop, label in rois:
-        rect, poly, path_vec, _center = _reconstruct_geometry(meta, crop.shape[:2])
+        rect, poly, path_vec, _center = _reconstruct_geometry(meta, crop.shape[:2], roi_along=roi_along, roi_cross=roi_cross)
         prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
         result = detect(crop, rect, cfg, polygon=poly, path_vec=path_vec, prev_frame=prev_frame)
 
@@ -408,6 +599,8 @@ def _write_report(
     top_n: int = 10,
     preprocessing: str = "none",
     use_prev_frame: bool = False,
+    roi_along: int = ROI_ALONG_PX,
+    roi_cross: int = ROI_CROSS_PX,
 ) -> None:
     best = results[0]
     c = best["combo"]
@@ -445,8 +638,8 @@ def _write_report(
     lines.append(f"  angle_tolerance_deg: {c['angle_tolerance_deg']}")
     lines.append(f"  long_line_min_px: {c['long_line_min_px']}")
     lines.append(f"  score_norm_count: {SCORE_NORM_COUNT}")
-    lines.append(f"  roi_along_px: {ROI_ALONG_PX}")
-    lines.append(f"  roi_cross_px: {ROI_CROSS_PX}")
+    lines.append(f"  roi_along_px: {roi_along}")
+    lines.append(f"  roi_cross_px: {roi_cross}")
     lines.append("  use_adaptive_canny: true")
     lines.append("  use_rotated_mask: true")
     if preprocessing != "none":
@@ -522,6 +715,25 @@ def main():
         help="Bilinearly upscale decoded frames to 3840×2160 (4K calibration space) before "
              "cropping. Use for sub-4K videos (e.g. Oct 2025 720p archive).",
     )
+    # ROI dimension overrides (single values; use --roi-sweep for the full sub-grid).
+    ap.add_argument("--roi-along", type=int, default=ROI_ALONG_PX,
+                    help=f"roi_along_px override (default {ROI_ALONG_PX})")
+    ap.add_argument("--roi-cross", type=int, default=ROI_CROSS_PX,
+                    help=f"roi_cross_px override (default {ROI_CROSS_PX})")
+    # ROI dimension sub-grid sweep (item 20). Freezes other axes at best combo from a prior run.
+    ap.add_argument(
+        "--roi-sweep",
+        action="store_true",
+        help="Run a roi_along × roi_cross sub-grid sweep with all other axes frozen at the "
+             "best combo loaded from --best-combo-from. Outputs roi_dimension_sweep_report.md.",
+    )
+    ap.add_argument(
+        "--best-combo-from",
+        default=None,
+        help="Path to a sweep_results_*.json whose top combo will be frozen for --roi-sweep. "
+             "If omitted and --roi-sweep is set, defaults to sweep_results_cross_grad.json for "
+             "the same date.",
+    )
     args = ap.parse_args()
 
     validation_dir = Path(args.output_dir) / "validation" / "detection" / args.date
@@ -576,10 +788,86 @@ def main():
         loaded = sum(1 for m in scoring_meta if m["idx"] in prev_crops)
         print(f"  Loaded {loaded}/{len(scoring_meta)} prev-frame crops.")
 
+    # --- ROI dimension sub-grid sweep mode (--roi-sweep) ---
+    if args.roi_sweep:
+        best_combo_path = args.best_combo_from
+        if best_combo_path is None:
+            best_combo_path = str(validation_dir / "sweep_results_cross_grad.json")
+        best_combo_path = Path(best_combo_path)
+        if not best_combo_path.exists():
+            raise SystemExit(
+                f"Missing best-combo file: {best_combo_path}. "
+                "Run the standard sweep first (--preprocessing cross_grad) or pass "
+                "--best-combo-from <path>."
+            )
+        prior = json.loads(best_combo_path.read_text())
+        frozen_dict = prior["results"][0]["combo"]
+        frozen_combo = Combo(**frozen_dict)
+        baseline_auc = prior["results"][0]["auc"]
+        baseline_j = prior["results"][0]["youden_j"]
+        print(
+            f"Frozen combo (from {best_combo_path.name}): AUC={baseline_auc:.3f}  J={baseline_j:.3f}"
+        )
+        print(f"  {frozen_dict}")
+        print()
+        print(f"Running ROI dimension sub-grid: {ROI_SWEEP_ALONG} × {ROI_SWEEP_CROSS} ...")
+        roi_results = _roi_dimension_sweep(
+            scoring_rois, frozen_combo, args.preprocessing,
+            roi_alongs=ROI_SWEEP_ALONG, roi_crosses=ROI_SWEEP_CROSS,
+            prev_crops=prev_crops,
+        )
+        best_roi = roi_results[0]
+        print()
+        print(
+            f"Best ROI: along={best_roi['roi_along']}  cross={best_roi['roi_cross']}  "
+            f"AUC={best_roi['auc']:.3f}  J={best_roi['youden_j']:.3f}  "
+            f"(baseline 120×40: AUC={baseline_auc:.3f}  J={baseline_j:.3f})"
+        )
+        roi_json_path = validation_dir / "roi_dimension_sweep_results.json"
+        roi_json_path.write_text(
+            json.dumps(
+                {
+                    "date": args.date,
+                    "preprocessing": args.preprocessing,
+                    "frozen_combo": frozen_dict,
+                    "baseline_auc": baseline_auc,
+                    "baseline_j": baseline_j,
+                    "results": roi_results,
+                },
+                indent=2,
+            )
+        )
+        roi_md_path = validation_dir / "roi_dimension_sweep_report.md"
+        _write_roi_sweep_report(
+            roi_md_path, args.date,
+            {"positives": positives, "negatives": negatives, "skipped": skipped},
+            roi_results, frozen_combo, args.preprocessing,
+            baseline_auc, baseline_j,
+        )
+        # Visualise the best ROI combo using the frozen hyperparams.
+        roi_vis_path = validation_dir / "best_roi_combo_visualisation.png"
+        best_roi_as_sweep_result = {"combo": frozen_dict, "threshold": best_roi["threshold"]}
+        _visualise_best_combo(
+            best_roi_as_sweep_result, scoring_rois, roi_vis_path,
+            preprocessing=args.preprocessing, prev_crops=prev_crops,
+            roi_along=best_roi["roi_along"], roi_cross=best_roi["roi_cross"],
+        )
+        print()
+        print(f"  Report        : {roi_md_path}")
+        print(f"  Full results  : {roi_json_path}")
+        print(f"  Visualisation : {roi_vis_path}")
+        return
+
+    # --- Standard full-combo sweep mode ---
+    roi_along = args.roi_along
+    roi_cross = args.roi_cross
+
     # Build output filename suffix so multiple preprocessing runs don't overwrite each other.
     suffix = args.preprocessing if args.preprocessing != "none" else "none"
     if args.use_prev_frame:
         suffix = f"diff_{suffix}" if suffix != "none" else "diff"
+    if roi_along != ROI_ALONG_PX or roi_cross != ROI_CROSS_PX:
+        suffix = f"{suffix}_along{roi_along}_cross{roi_cross}"
 
     total_combos = (
         len(CANNY_PCT_HIGH) * len(CANNY_LOW_RATIO) * len(HOUGH_THRESHOLD)
@@ -587,8 +875,14 @@ def main():
         * len(LONG_LINE_MIN_PX)
     )
     pp_label = args.preprocessing + (" +diff" if args.use_prev_frame else "")
-    print(f"Running sweep over {total_combos} parameter combinations (preprocessing={pp_label})...")
-    results = _sweep(scoring_rois, preprocessing=args.preprocessing, prev_crops=prev_crops)
+    print(
+        f"Running sweep over {total_combos} parameter combinations "
+        f"(preprocessing={pp_label}, roi={roi_along}×{roi_cross})..."
+    )
+    results = _sweep(
+        scoring_rois, preprocessing=args.preprocessing, prev_crops=prev_crops,
+        roi_along=roi_along, roi_cross=roi_cross,
+    )
     print(
         f"Top AUC: {results[0]['auc']:.3f}   threshold: {results[0]['threshold']:.3f}   "
         f"combo: {results[0]['combo']}"
@@ -605,11 +899,14 @@ def main():
         top_n=args.top_n,
         preprocessing=args.preprocessing,
         use_prev_frame=args.use_prev_frame,
+        roi_along=roi_along,
+        roi_cross=roi_cross,
     )
     vis_path = validation_dir / f"best_combo_visualisation_{suffix}.png"
     _visualise_best_combo(
         results[0], scoring_rois, vis_path,
         preprocessing=args.preprocessing, prev_crops=prev_crops,
+        roi_along=roi_along, roi_cross=roi_cross,
     )
 
     print()

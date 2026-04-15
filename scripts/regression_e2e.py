@@ -187,14 +187,34 @@ def _summarise_duckdb(db_path: Path) -> dict:
         peak_stats = con.execute(
             "SELECT MIN(peak_score), MAX(peak_score), AVG(peak_score) FROM contrail_episodes"
         ).fetchone()
+        # peak_contrail_length_m was added in PRD item 21; column may be absent on old DBs.
+        try:
+            len_stats = con.execute(
+                "SELECT COUNT(peak_contrail_length_m), "
+                "       MIN(peak_contrail_length_m), "
+                "       MAX(peak_contrail_length_m), "
+                "       AVG(peak_contrail_length_m) "
+                "FROM contrail_episodes WHERE peak_contrail_length_m IS NOT NULL"
+            ).fetchone()
+            length_summary = {
+                "episodes_with_length": len_stats[0],
+                "length_m_min": round(len_stats[1], 1) if len_stats[1] is not None else None,
+                "length_m_max": round(len_stats[2], 1) if len_stats[2] is not None else None,
+                "length_m_mean": round(len_stats[3], 1) if len_stats[3] is not None else None,
+            }
+        except Exception:
+            length_summary = None
     finally:
         con.close()
-    return {
+    result = {
         "row_count": row_count,
         "peak_score_min": peak_stats[0],
         "peak_score_max": peak_stats[1],
         "peak_score_mean": peak_stats[2],
     }
+    if length_summary is not None:
+        result["peak_contrail_length_m"] = length_summary
+    return result
 
 
 def _collect_metrics(
@@ -216,13 +236,32 @@ def _collect_metrics(
     scores = [d["score"] for d in detections if d["score"] > 0]
     score_hist = _score_histogram(detections)
 
+    # Contrail length stats from detections (PRD item 21).
+    lengths_m = [
+        d["contrail_length_m"]
+        for d in detections
+        if d.get("contrail_length_m") is not None and d["contrail_length_m"] > 0
+    ]
+    length_hist_bins = [
+        (0, 500), (500, 1000), (1000, 2000), (2000, 5000), (5000, float("inf"))
+    ]
+    length_hist: list[dict] | None = None
+    if lengths_m:
+        bins = [{"lo": lo, "hi": hi, "count": 0} for (lo, hi) in length_hist_bins]
+        for lm in lengths_m:
+            for b in bins:
+                if b["lo"] <= lm < b["hi"]:
+                    b["count"] += 1
+                    break
+        length_hist = bins
+
     episodes = list(_iter_jsonl(source_dir / "episodes.jsonl"))
     ep_count = len(episodes)
     ep_above = sum(1 for e in episodes if e["peak_score"] >= aggregation_threshold)
 
     db_summary = _summarise_duckdb(source_dir / "pipeline.duckdb")
 
-    return {
+    out: dict = {
         "flights": flight_count,
         "pings": ping_count,
         "frames": frame_count,
@@ -239,6 +278,13 @@ def _collect_metrics(
         "aggregation_threshold": aggregation_threshold,
         "duckdb": db_summary,
     }
+    if length_hist is not None:
+        import statistics as _stats
+        out["contrail_length_m_count"] = len(lengths_m)
+        out["contrail_length_m_mean"] = round(_stats.mean(lengths_m), 1)
+        out["contrail_length_m_max"] = round(max(lengths_m), 1)
+        out["contrail_length_m_histogram"] = length_hist
+    return out
 
 
 # --- Episode selection for spot-check -----------------------------------
@@ -639,12 +685,30 @@ def _write_report(path: Path, out: dict) -> None:
     for b in m["detection_score_histogram"]:
         lines.append(f"| {b['lo']:.3f} | {b['hi']:.3f} | {b['count']} |")
     lines.append("")
+    if "contrail_length_m_histogram" in m:
+        lines.append("### Contrail length histogram (detection-level, length_m > 0)")
+        lines.append("| lo (m) | hi (m) | count |")
+        lines.append("|--------|--------|-------|")
+        for b in m["contrail_length_m_histogram"]:
+            hi_str = f"{b['hi']:.0f}" if b["hi"] != float("inf") else "∞"
+            lines.append(f"| {b['lo']:.0f} | {hi_str} | {b['count']} |")
+        lines.append(f"- Detections with length: **{m['contrail_length_m_count']}**  "
+                     f"mean {m['contrail_length_m_mean']:.0f} m  "
+                     f"max {m['contrail_length_m_max']:.0f} m")
+        lines.append("")
     lines.append("### DuckDB")
     d = m["duckdb"]
     lines.append(f"- rows: {d['row_count']}")
     lines.append(f"- peak_score min/mean/max: "
                  f"{d['peak_score_min']:.3f} / {d['peak_score_mean']:.3f} / "
                  f"{d['peak_score_max']:.3f}")
+    if "peak_contrail_length_m" in d and d["peak_contrail_length_m"]:
+        pl = d["peak_contrail_length_m"]
+        lines.append(f"- peak_contrail_length_m (episodes with value): "
+                     f"{pl['episodes_with_length']} episodes  "
+                     f"min {pl['length_m_min']:.0f} m  "
+                     f"mean {pl['length_m_mean']:.0f} m  "
+                     f"max {pl['length_m_max']:.0f} m")
     lines.append("")
     lines.append("## Spot-check episodes")
     lines.append("")
