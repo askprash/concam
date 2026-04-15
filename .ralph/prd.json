@@ -258,7 +258,8 @@
       "If the top combo shifts, retune `DetectionConfig` defaults in `configs/mit_green_building.yaml` accordingly and re-run the April-8 regression to confirm episode count and score histogram move in the expected direction",
       "Update `detection_review_panels.py` and `scripts/nrbr_spotcheck.py` to accept the same flag so panels reflect the live-pipeline input"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "a1091b3"
   },
   {
     "category": "functional",
