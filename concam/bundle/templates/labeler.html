@@ -4,22 +4,26 @@
 <meta charset="utf-8">
 <title>ConCam Labeler</title>
 <style>
-  body { font-family: system-ui, sans-serif; margin: 1rem; color: #222; }
-  header { display: flex; gap: 2rem; align-items: baseline; margin-bottom: 0.5rem; flex-wrap: wrap; }
-  header h1 { font-size: 1.2rem; margin: 0; }
-  #toolbar { display: flex; gap: 1rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
-  #toolbar label { user-select: none; cursor: pointer; }
-  #video-wrap { position: relative; display: inline-block; line-height: 0; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 0; color: #222; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; gap: 1.5rem; align-items: baseline; padding: 0.4rem 0.75rem; background: #f8f8f8; border-bottom: 1px solid #ddd; flex-shrink: 0; flex-wrap: wrap; }
+  header h1 { font-size: 1.1rem; margin: 0; }
+  #toolbar { display: flex; gap: 0.75rem; padding: 0.3rem 0.75rem; align-items: center; flex-wrap: wrap; background: #f0f0f0; border-bottom: 1px solid #ddd; flex-shrink: 0; }
+  #toolbar label { user-select: none; cursor: pointer; font-size: 0.9em; }
+  #main { display: flex; flex: 1; min-height: 0; }
+  #video-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; padding: 0.5rem; }
+  #video-wrap { position: relative; line-height: 0; }
   #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
-  video { max-width: 100%; background: #000; display: block; }
-  #progress { font-size: 0.9em; color: #555; margin-left: auto; }
-  #export-btn { padding: 0.35rem 0.75rem; font-size: 0.9em; cursor: pointer; }
-  #episodes { margin-top: 1rem; max-height: 55vh; overflow-y: auto; border: 1px solid #ccc; padding: 0.25rem; }
-  .episode { padding: 0.5rem; border-bottom: 1px solid #eee; }
+  video { width: 100%; background: #000; display: block; }
+  #sidebar { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid #ccc; }
+  #sidebar-header { padding: 0.4rem 0.5rem; background: #f8f8f8; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  #sidebar-header span { font-size: 0.85em; color: #555; }
+  #episodes { flex: 1; overflow-y: auto; padding: 0.25rem; }
+  .episode { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; }
   .episode.labeled { background: #f0fdf4; }
-  .episode-header { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; cursor: pointer; }
+  .episode-header { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; cursor: pointer; font-size: 0.88em; }
   .episode-header:hover { background: #f5f5f5; }
-  .episode .badge { display: inline-block; padding: 0 0.4em; border-radius: 3px; font-size: 0.8em; }
+  .episode .badge { display: inline-block; padding: 0 0.35em; border-radius: 3px; font-size: 0.78em; }
   .episode .badge.overlap { background: #fffa8a; }
   .episode .badge.score { background: #cce5ff; }
   .episode .badge.detected { background: #c8f7c5; }
@@ -27,14 +31,16 @@
   .episode .badge.label-status.contrail { background: #86efac; }
   .episode .badge.label-status.no_contrail { background: #fca5a5; }
   .episode .badge.label-status.unsure { background: #fde68a; }
-  .label-controls { display: flex; gap: 1rem; margin-top: 0.4rem; align-items: center; flex-wrap: wrap; font-size: 0.9em; }
-  .label-controls .group { display: flex; gap: 0.25rem; align-items: center; }
-  .label-controls input[type="radio"] { margin: 0 0.15rem 0 0.5rem; }
-  .label-controls input[type="range"] { vertical-align: middle; }
-  .label-controls textarea { flex: 1 1 20rem; min-height: 1.8em; font-family: inherit; font-size: 0.9em; padding: 0.2rem; }
-  .error { color: #b00; background: #fee; padding: 0.75rem; border: 1px solid #f99; border-radius: 4px; }
-  .legend { font-size: 0.85em; color: #555; }
-  .swatch { display: inline-block; width: 12px; height: 12px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  .label-controls { display: flex; gap: 0.5rem; margin-top: 0.3rem; align-items: center; flex-wrap: wrap; font-size: 0.85em; }
+  .label-controls .group { display: flex; gap: 0.2rem; align-items: center; }
+  .label-controls input[type="radio"] { margin: 0 0.1rem 0 0.3rem; }
+  .label-controls input[type="range"] { vertical-align: middle; width: 70px; }
+  .label-controls textarea { flex: 1 1 100%; min-height: 1.6em; font-family: inherit; font-size: 0.85em; padding: 0.15rem; }
+  .error { color: #b00; background: #fee; padding: 0.5rem 0.75rem; border: 1px solid #f99; border-radius: 4px; margin: 0.5rem; }
+  .legend { font-size: 0.8em; color: #555; }
+  .swatch { display: inline-block; width: 10px; height: 10px; vertical-align: middle; margin-right: 3px; border-radius: 2px; }
+  #progress { font-size: 0.85em; color: #555; }
+  #export-btn { padding: 0.25rem 0.6rem; font-size: 0.85em; cursor: pointer; }
   .seek-btn { padding: 0 0.4em; font-size: 0.85em; cursor: pointer; }
 </style>
 </head>
@@ -57,20 +63,27 @@
     <span class="swatch" style="background:#5aa0ff; margin-left:0.5rem"></span>other flight
     <span class="swatch" style="background:#ff3b3b; margin-left:0.5rem"></span>detection line
   </span>
-  <span id="progress"></span>
-  <button id="export-btn" type="button">Export labels</button>
 </div>
 
 <div id="error-panel" class="error" hidden></div>
 
-<div id="video-wrap">
-  <video id="video" controls muted></video>
-  <canvas id="overlay"></canvas>
+<div id="main">
+  <div id="video-col">
+    <div id="video-wrap">
+      <video id="video" controls muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+  </div>
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span id="progress">loading…</span>
+      <button id="export-btn" type="button">Export labels</button>
+    </div>
+    <section id="episodes">
+      <em>Loading manifest…</em>
+    </section>
+  </div>
 </div>
-
-<section id="episodes">
-  <em>Loading manifest…</em>
-</section>
 
 <script>
 // Browser-based labeler — video playback + canvas overlays.
@@ -221,7 +234,7 @@
     const active = findActiveEpisode(track.tid, wallMs);
     const highlighted = active && active.peak_score >= detectionThreshold;
     const color = highlighted ? "#f5c542" : "#5aa0ff";
-    const dotR = highlighted ? 18 : 12;
+    const dotR = highlighted ? 9 : 6;
 
     // Current position: nearest ping to wallMs.
     let nearest = inWindow[0];
@@ -255,7 +268,7 @@
 
     // Callsign label with drop-shadow for readability.
     ctx.globalAlpha = 1.0;
-    ctx.font = "bold 32px system-ui, sans-serif";
+    ctx.font = "bold 22px system-ui, sans-serif";
     ctx.fillStyle = "#000";
     ctx.fillText(track.callsign, nearest.x + dotR + 4, nearest.y + 10);
     ctx.fillStyle = color;
