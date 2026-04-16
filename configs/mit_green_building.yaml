@@ -34,8 +34,15 @@ adsb:
   data_dir: /home/mcast/data/feder
   # Only include flights above this altitude (cruising altitude filter)
   min_altitude_m: 8000.0
-  # Horizontal radius around the camera site; pings outside this are discarded
-  max_radius_km: 50.0
+  # Stratospheric-cruise ceiling (FL420 = 12,800 m). Matches the satellite-side
+  # regions_demo_local pipeline and excludes non-commercial outliers. Null/omit
+  # to disable the upper bound.
+  max_altitude_m: 12800.0
+  # Horizontal radius around the camera site. Widened from 50 km so contrails
+  # laid by aircraft along the NAT tracks (~80 km N of MIT) are not silently
+  # dropped. Spot-check 2026-04-09 14:13:52 UTC: BAW17R crossed ~78 km N at
+  # FL360 and its contrail was visible in the camera FOV.
+  max_radius_km: 150.0
   site_lat: 42.360444
   site_lon: -71.089238
   # Altitude source policy for projection:

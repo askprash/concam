@@ -31,6 +31,10 @@ class AdsbConfig:
     data_dir: str = "/home/mcast/data/feder"
     # Filter parameters
     min_altitude_m: float = 8000.0
+    # Optional upper altitude bound. None disables the ceiling. Set to 12800 m
+    # (FL420, tropopause-ish stratospheric cruise cap) to match the satellite-side
+    # regions_demo_local pipeline and exclude ballistic / sounding-rocket outliers.
+    max_altitude_m: float | None = None
     max_radius_km: float = 50.0
     # Camera site center (lat, lon) used for radius filter
     site_lat: float = 42.360444

@@ -258,6 +258,8 @@ def load_flights(date: datetime.date, config: AdsbConfig) -> list[Flight]:
                 continue
             if alt_m < config.min_altitude_m:
                 continue
+            if config.max_altitude_m is not None and alt_m > config.max_altitude_m:
+                continue
             dist_km = _haversine_km(config.site_lat, config.site_lon, pt.lat, pt.lon)
             if dist_km > config.max_radius_km:
                 continue
