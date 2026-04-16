@@ -220,17 +220,20 @@ def _frames_within(
     return [d for d in detections if onset_iso <= d["wall_time_utc"] <= end_iso]
 
 
-def _relative_video_path(video_path: Path, bundle_dir: Path) -> str:
-    """Compute a video path suitable for embedding in the manifest.
+def _symlink_video(video_path: Path, bundle_dir: Path) -> str:
+    """Symlink the video into the bundle directory and return the link name.
 
-    We prefer a filesystem-relative path so ``file://`` loads work from the
-    bundle directory.  If the two paths share no common root (e.g. different
-    mount points), fall back to an absolute path.
+    Serving a bundle over HTTP requires all assets to be under the server
+    root.  A filesystem-relative path that traverses above the server root
+    (e.g. ``../../../../net/…``) is blocked by browsers.  Symlinking the
+    video into the bundle dir makes it accessible as a simple filename.
     """
-    try:
-        return os.path.relpath(video_path.resolve(), bundle_dir.resolve())
-    except ValueError:
-        return str(video_path.resolve())
+    link = bundle_dir / ("video" + video_path.suffix)
+    target = video_path.resolve()
+    if link.exists() or link.is_symlink():
+        link.unlink()
+    link.symlink_to(target)
+    return link.name
 
 
 def build_manifest(
@@ -279,7 +282,7 @@ def build_manifest(
     episodes_out.sort(key=lambda e: (e["onset"], e["episode_id"]))
 
     video_block: dict = {
-        "path": _relative_video_path(video_path, bundle_dir),
+        "path": _symlink_video(video_path, bundle_dir),
         "seconds_per_frame": seconds_per_frame,
     }
     if video_start_utc is not None:
