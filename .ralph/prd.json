@@ -308,7 +308,8 @@
       "Add a `--episodes episode_id,episode_id,...` flag to render arbitrary episodes by ID, not just top-N",
       "Verify the top-5 April-8 episodes render correctly: ADS-B dot tracks the visible contrail, detection line appears on frames where score > threshold"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "f5ed254"
   },
   {
     "category": "tuning-ux",
@@ -319,6 +320,18 @@
       "Show the rotated polygon outline update live in panel \u2461 as the along-track or cross-track dimension changes",
       "Add a small read-only HTML cell below the sliders showing the YAML snippet: 'roi_along_px: N  roi_cross_px: M' so the user can copy the winner back to configs/mit_green_building.yaml",
       "Verify that resetting sliders to defaults reproduces the same panels as the pre-slider notebook"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Detection score saturation: 63-69% of episodes score exactly 1.000 on April 8/9, making the score useless as a confidence signal. Root cause: score = min(1, aligned_long_lines / score_norm_count) with score_norm_count=6, so any frame with ≥6 aligned Hough lines hits the ceiling. Fix the score to be a better-calibrated continuous confidence measure that discriminates between borderline and strong detections.",
+    "steps": [
+      "Diagnose saturation: for the April 8 run, plot the distribution of raw aligned_long_lines counts across all above-threshold detections to understand what score_norm_count would push the 90th percentile below 1.0. Check whether saturation is worse with the wider roi_along=180 ROI (more pixels → more Hough line candidates).",
+      "Evaluate alternative score functions on the April 8 labeled set (7 positives / 13 negatives): (a) increase score_norm_count so the ceiling is harder to reach; (b) replace raw line count with total aligned-line pixel length / ROI diagonal; (c) use the fraction of the ROI diagonal covered by the longest single aligned line. Run the AUC sweep for each candidate and compare against the current score_norm_count=6 baseline.",
+      "Pick the score function with the best AUC / Youden-J that also has a well-spread score distribution (90th-percentile score < 0.9 on the April 8 positive set). Update concam/detection/__init__.py and concam/config.py accordingly.",
+      "Re-run the April 8 and April 9 regression baselines to confirm the episode count is stable and the score histogram is no longer dominated by the 1.0 bin. Update metrics.json and report.md.",
+      "Update the aggregation detection_threshold in configs/mit_green_building.yaml if the new score scale shifts the natural operating point. Re-validate that the top-5 visually-confirmed contrails (EIN108, THY12, etc.) still score above threshold after the rescaling."
     ],
     "passes": false
   }

@@ -36,6 +36,8 @@ import sys
 from pathlib import Path
 from typing import Iterator
 
+import dataclasses
+
 import av
 import cv2
 import numpy as np
@@ -53,19 +55,17 @@ logger = logging.getLogger("render_episode_clips")
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "mit_green_building.yaml"
 
 # Clip parameters
-PRE_ROLL_S = 5   # seconds before episode onset
-POST_ROLL_S = 5  # seconds after episode end
-MAX_CLIP_S = 60  # hard cap on clip duration
+PRE_ROLL_S = 10  # seconds before episode onset
+POST_ROLL_S = 10 # seconds after episode end
+MAX_CLIP_S = 90  # hard cap on clip duration (longer pre/post needs more headroom)
 
 # Output resolution
 OUT_WIDTH = 1920
 OUT_HEIGHT = 1080
 
-# Drawing constants
-DOT_RADIUS_OTHER = 6    # ADS-B dot for background flights (downscaled coords)
-DOT_RADIUS_SELF = 12    # ADS-B dot for the episode flight
-DOT_RADIUS_OTHER_4K = DOT_RADIUS_OTHER * 4
-DOT_RADIUS_SELF_4K = DOT_RADIUS_SELF * 4
+# Drawing constants  (all in full 4K pixel space; downscaled to 1080p at the end)
+DOT_RADIUS_OTHER_4K = 8    # ADS-B dot for background flights — small cross-hair size
+DOT_RADIUS_SELF_4K = 12    # ADS-B dot for the episode flight — slightly larger
 
 COLOR_DOT_OTHER = (200, 200, 200)  # BGR grey for background flights
 COLOR_DOT_SELF = (0, 165, 255)     # BGR amber for the episode flight
@@ -76,6 +76,11 @@ COLOR_TEXT = (255, 255, 255)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE_4K = 2.4
 FONT_THICKNESS_4K = 5
+LABEL_FONT_SCALE_4K = 1.0   # smaller font for per-flight callsign/alt labels
+LABEL_FONT_THICKNESS_4K = 3
+
+# When a contrail is detected, extend the ROI box this many times along the flight path
+BOX_EXTEND_FACTOR = 3
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +254,12 @@ def _downscale_coord(x: float, y: float, src_w: int, src_h: int) -> tuple[int, i
     return int(round(sx)), int(round(sy))
 
 
+def _put_text_shadowed(img, text, pos, font_scale, thickness, color=COLOR_TEXT):
+    """Draw text with a dark shadow for readability over any background."""
+    cv2.putText(img, text, pos, FONT, font_scale, (0, 0, 0), thickness + 4, cv2.LINE_AA)
+    cv2.putText(img, text, pos, FONT, font_scale, color, thickness, cv2.LINE_AA)
+
+
 def _annotate_frame(
     frame: np.ndarray,
     wall_time: str,
@@ -262,59 +273,87 @@ def _annotate_frame(
     """Annotate a single frame and downscale to OUT_WIDTH × OUT_HEIGHT."""
     h, w = frame.shape[:2]
 
-    # --- Draw on full-resolution frame first ---
     annotated = frame.copy()
+    score = det_rec["score"] if det_rec is not None else 0.0
+    detected = score >= threshold
 
-    # 1. ADS-B dots for all flights at this timestamp (background, grey).
+    # 1. ADS-B dots + callsign/altitude labels for all flights at this timestamp.
     for proj in all_projs:
         px, py = int(round(proj["pixel_x"])), int(round(proj["pixel_y"]))
-        if 0 <= px < w and 0 <= py < h:
-            cv2.circle(annotated, (px, py), DOT_RADIUS_OTHER_4K, COLOR_DOT_OTHER, -1)
+        if not (0 <= px < w and 0 <= py < h):
+            continue
+        is_self = proj["transponder_id"] == episode.get("transponder_id")
+        dot_r   = DOT_RADIUS_SELF_4K if is_self else DOT_RADIUS_OTHER_4K
+        dot_col = COLOR_DOT_SELF if is_self else COLOR_DOT_OTHER
+        cv2.circle(annotated, (px, py), dot_r, dot_col, -1)
 
-    # 2. ADS-B dot for this episode's flight (amber, larger).
-    if self_proj is not None:
-        px, py = int(round(self_proj["pixel_x"])), int(round(self_proj["pixel_y"]))
-        if 0 <= px < w and 0 <= py < h:
-            cv2.circle(annotated, (px, py), DOT_RADIUS_SELF_4K, COLOR_DOT_SELF, -1)
+        # Callsign + altitude label offset slightly up-right of the dot.
+        alt_ft = int(round(proj.get("alt_m", 0) * 3.28084 / 100)) * 100  # nearest 100 ft
+        label = f"{proj['callsign']}  {alt_ft:,} ft"
+        lx = px + dot_r + 12
+        ly = py - dot_r - 8
+        # Keep label inside frame bounds
+        lx = min(lx, w - 600)
+        ly = max(ly, 60)
+        _put_text_shadowed(annotated, label, (lx, ly),
+                           LABEL_FONT_SCALE_4K, LABEL_FONT_THICKNESS_4K,
+                           color=dot_col)
 
-    # 3. Rotated ROI box (coloured by detection status — NOT a line on the contrail).
+    # 2. Rotated ROI box — starts at the ADS-B ping and extends BEHIND the aircraft.
+    #    rotated_polygon() builds a centered rectangle (along extends ±along/2).
+    #    To place the leading edge at the aircraft we shift the center backward by
+    #    half the total along length, so the box covers [aircraft … aircraft - along].
+    #    When a contrail is detected the box is BOX_EXTEND_FACTOR× longer.
     if self_proj is not None and "path_dx" in self_proj:
-        score = det_rec["score"] if det_rec is not None else 0.0
-        box_color = COLOR_BOX_DETECTED if score >= threshold else COLOR_BOX_UNDETECTED
+        path_dx = float(self_proj["path_dx"])
+        path_dy = float(self_proj["path_dy"])
+
+        if detected:
+            box_config = dataclasses.replace(
+                det_config, roi_along_px=det_config.roi_along_px * BOX_EXTEND_FACTOR
+            )
+            box_color = COLOR_BOX_DETECTED
+        else:
+            box_config = det_config
+            box_color = COLOR_BOX_UNDETECTED
+
+        # Half the total along length — this is what rotated_polygon uses internally.
+        along_half = box_config.roi_along_px / 2.0
+        # Shift center backward (opposite to flight direction) by that half-length
+        # so the rectangle's leading edge aligns with the aircraft position.
+        cx = self_proj["pixel_x"] - path_dx * along_half
+        cy = self_proj["pixel_y"] - path_dy * along_half
+
         poly = rotated_polygon(
-            PixelPoint(x=self_proj["pixel_x"], y=self_proj["pixel_y"]),
-            (float(self_proj["path_dx"]), float(self_proj["path_dy"])),
-            det_config,
+            PixelPoint(x=cx, y=cy),
+            (path_dx, path_dy),
+            box_config,
         ).astype(np.int32)
         cv2.polylines(annotated, [poly.reshape(-1, 1, 2)], isClosed=True, color=box_color, thickness=6)
 
-    # 4. Text overlay: callsign, score, wall time (top-left, with shadow).
-    score_str = f"{det_rec['score']:.3f}" if det_rec is not None else "—"
+    # 3. Corner text overlay: episode callsign, score, wall time.
+    score_str = f"{score:.3f}" if det_rec is not None else "—"
     onset_dt = datetime.datetime.fromisoformat(episode["onset"])
     end_dt = datetime.datetime.fromisoformat(episode["end"])
     try:
         cur_dt = datetime.datetime.fromisoformat(wall_time)
         in_episode = onset_dt <= cur_dt <= end_dt
-        ep_marker = " [EPISODE]" if in_episode else ""
+        ep_marker = "  ◆ EPISODE" if in_episode else ""
     except Exception:
         ep_marker = ""
 
     lines = [
         f"{episode['callsign']}  score={score_str}{ep_marker}",
-        f"onset {onset_dt.strftime('%H:%M:%S')} UTC  dur={episode['frame_count']}s",
-        f"t={wall_time}",
+        f"onset {onset_dt.strftime('%H:%M:%S')} UTC  dur={episode['frame_count']} s",
+        f"t = {wall_time}",
     ]
     y_pos = 100
     for line in lines:
-        cv2.putText(annotated, line, (60, y_pos), FONT, FONT_SCALE_4K,
-                    (0, 0, 0), FONT_THICKNESS_4K + 4, cv2.LINE_AA)
-        cv2.putText(annotated, line, (60, y_pos), FONT, FONT_SCALE_4K,
-                    COLOR_TEXT, FONT_THICKNESS_4K, cv2.LINE_AA)
+        _put_text_shadowed(annotated, line, (60, y_pos), FONT_SCALE_4K, FONT_THICKNESS_4K)
         y_pos += 90
 
-    # 5. Downscale to 720p (1920×1080).
-    out_frame = cv2.resize(annotated, (OUT_WIDTH, OUT_HEIGHT), interpolation=cv2.INTER_AREA)
-    return out_frame
+    # 4. Downscale to 1920×1080.
+    return cv2.resize(annotated, (OUT_WIDTH, OUT_HEIGHT), interpolation=cv2.INTER_AREA)
 
 
 # ---------------------------------------------------------------------------
@@ -359,35 +398,30 @@ def _render_episode(
     out_path: Path,
     threshold: float,
     det_config,
+    pre_roll: int = PRE_ROLL_S,
+    post_roll: int = POST_ROLL_S,
+    max_clip: int = MAX_CLIP_S,
 ) -> bool:
     """Render and write a clip for a single episode. Returns True on success."""
     onset_dt = datetime.datetime.fromisoformat(episode["onset"]).replace(microsecond=0)
     end_dt = datetime.datetime.fromisoformat(episode["end"]).replace(microsecond=0)
     tid = episode["transponder_id"]
 
-    # Clip window in wall-time.
-    clip_start_dt = onset_dt - datetime.timedelta(seconds=PRE_ROLL_S)
-    clip_end_dt = min(
-        end_dt + datetime.timedelta(seconds=POST_ROLL_S),
-        onset_dt + datetime.timedelta(seconds=MAX_CLIP_S - PRE_ROLL_S),
-    )
-
     # Map to frame indices.
     total_frames = max(wt_to_idx.values()) + 1 if wt_to_idx else 86402
     # Find start frame: walk backward from onset until we hit a recorded index.
     start_fi = None
-    for delta in range(PRE_ROLL_S + 5):
+    for delta in range(pre_roll + 5):
         t = (onset_dt - datetime.timedelta(seconds=delta)).isoformat()
         if t in wt_to_idx:
-            # Start PRE_ROLL_S before onset if possible.
-            start_fi = max(0, wt_to_idx[t] - (PRE_ROLL_S - delta))
+            start_fi = max(0, wt_to_idx[t] - (pre_roll - delta))
             break
 
     end_fi = None
-    for delta in range(POST_ROLL_S + 5):
+    for delta in range(post_roll + 5):
         t = (end_dt + datetime.timedelta(seconds=delta)).isoformat()
         if t in wt_to_idx:
-            end_fi = wt_to_idx[t] + (POST_ROLL_S - delta)
+            end_fi = wt_to_idx[t] + (post_roll - delta)
             break
 
     if start_fi is None or end_fi is None:
@@ -397,7 +431,7 @@ def _render_episode(
         )
         return False
 
-    end_fi = min(end_fi, start_fi + MAX_CLIP_S - 1, total_frames - 1)
+    end_fi = min(end_fi, start_fi + max_clip - 1, total_frames - 1)
     if end_fi <= start_fi:
         logger.warning("Empty clip window for %s; skipping.", episode["callsign"])
         return False
@@ -474,6 +508,19 @@ def main(argv=None):
         "--config", default=str(DEFAULT_CONFIG), help="Site config YAML"
     )
     parser.add_argument(
+        "--pre-roll", type=int, default=PRE_ROLL_S, metavar="S",
+        help=f"Seconds of video before episode onset (default: {PRE_ROLL_S})",
+    )
+    parser.add_argument(
+        "--post-roll", type=int, default=POST_ROLL_S, metavar="S",
+        help=f"Seconds of video after episode end (default: {POST_ROLL_S})",
+    )
+    parser.add_argument(
+        "--max-clip", type=int, default=MAX_CLIP_S, metavar="S",
+        help=f"Hard cap on clip duration in seconds (default: {MAX_CLIP_S}). "
+             "Set high to capture full long episodes.",
+    )
+    parser.add_argument(
         "--fps", type=int, default=30, help="Output MP4 frame rate (default: 30)"
     )
     parser.add_argument("-v", "--verbose", action="store_true")
@@ -542,6 +589,9 @@ def main(argv=None):
             out_path=out_path,
             threshold=threshold,
             det_config=det_config,
+            pre_roll=args.pre_roll,
+            post_roll=args.post_roll,
+            max_clip=args.max_clip,
         )
         if ok:
             n_ok += 1
