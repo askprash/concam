@@ -99,8 +99,19 @@ class DetectionConfig:
     angle_tolerance_deg: float = 8.0
     # Minimum Hough-line length (pixels) to count toward the score.
     long_line_min_px: float = 40.0
-    # Score normalisation: count of aligned long lines that maps to score=1.0.
+    # Score function.  "length" uses ``contrail_length_px / score_length_norm_px``
+    # (preferred: continuous, does not saturate on strong contrails).  "count"
+    # reproduces the legacy discrete score ``num_long_lines / score_norm_count``.
+    score_fn: str = "length"
+    # Legacy count-based score normalisation (used when score_fn == "count").
+    # Count of aligned long lines that maps to score=1.0.
     score_norm_count: int = 6
+    # Length-based score normalisation (used when score_fn == "length").  The
+    # along-track contrail pixel span at which the score reaches 1.0.  Default
+    # 130 px ≈ 0.7 × sqrt(roi_along_px² + roi_cross_px²) for the default
+    # 180×40 rotated ROI, chosen so the April-8 full-run score histogram stops
+    # piling up at 1.0 while preserving AUC.  Tune alongside roi_along_px.
+    score_length_norm_px: float = 130.0
     # When True, the detector masks the rotated polygon before Canny/Hough.
     # False falls back to the AABB-only legacy path.
     use_rotated_mask: bool = True

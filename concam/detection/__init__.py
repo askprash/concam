@@ -379,10 +379,6 @@ def detect(
     if not aligned:
         return DetectionResult(score=0.0, pixel_line=None, method=method)
 
-    # Scoring contract: count of aligned long lines -> [0, 1] via score_norm_count.
-    norm = max(1, int(config.score_norm_count))
-    score = min(1.0, len(long_aligned) / float(norm))
-
     best_bucket = long_aligned if long_aligned else aligned
     best = max(best_bucket, key=lambda t: t[4])
     bx1, by1, bx2, by2, _ = best
@@ -404,6 +400,20 @@ def detect(
         length_px = max(la[4] for la in long_aligned)
     else:
         length_px = 0.0
+
+    # Scoring contract.  "length" (default) uses the along-track contrail pixel
+    # span normalised by ``score_length_norm_px`` — continuous, does not
+    # saturate on strong contrails.  "count" reproduces the legacy discrete
+    # score that caused ~63% of April-8 episode peaks to hit 1.0.
+    score_fn = getattr(config, "score_fn", "length")
+    if score_fn == "count":
+        norm = max(1, int(config.score_norm_count))
+        score = min(1.0, len(long_aligned) / float(norm))
+    else:
+        norm_px = float(getattr(config, "score_length_norm_px", 130.0))
+        if norm_px <= 0.0:
+            norm_px = 130.0
+        score = min(1.0, length_px / norm_px)
 
     return DetectionResult(
         score=score,

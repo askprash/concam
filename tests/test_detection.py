@@ -111,8 +111,8 @@ class TestRotatedROIDetector:
         assert result.pixel_line is None
 
     def test_discrete_gate_recoverable(self):
-        """With score_norm_count=2, score>=1.0 iff num_long_lines>=2."""
-        config = _make_config(score_norm_count=2)
+        """With score_fn='count' and score_norm_count=2, score>=1.0 iff num_long_lines>=2."""
+        config = _make_config(score_fn="count", score_norm_count=2)
         # Two parallel horizontal lines inside the rotated rect.
         frame = np.full((200, 400), 30, dtype=np.uint8)
         cv2.line(frame, (50, 95), (350, 95), 220, 2)
@@ -128,6 +128,48 @@ class TestRotatedROIDetector:
         # Two parallel long lines → discrete gate should fire.
         assert result.num_long_lines >= 2
         assert result.score >= 1.0 - 1e-6
+
+    def test_length_score_default_does_not_saturate(self):
+        """Default score_fn='length' produces a continuous non-saturating score.
+
+        Two parallel lines that would saturate the count-based score at 1.0
+        (nll=4 vs norm=2) should instead score below 1.0 because the along-track
+        span is less than ``score_length_norm_px``.
+        """
+        config = _make_config(score_length_norm_px=300.0)
+        assert config.score_fn == "length"
+        frame = np.full((200, 400), 30, dtype=np.uint8)
+        cv2.line(frame, (50, 95), (350, 95), 220, 2)
+        cv2.line(frame, (50, 105), (350, 105), 220, 2)
+        center = PixelPoint(x=200, y=100)
+        path_vec = (1.0, 0.0)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(x=int(xs.min()), y=int(ys.min()),
+                   w=int(xs.max() - xs.min()) + 1,
+                   h=int(ys.max() - ys.min()) + 1)
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.num_long_lines >= 2
+        # contrail_length_px is the 120 px span; / 300 ≈ 0.4 → non-saturating.
+        assert 0.0 < result.score < 1.0
+        assert result.contrail_length_px > 0
+        assert abs(result.score - result.contrail_length_px / 300.0) < 1e-6
+
+    def test_length_score_saturates_when_contrail_spans_norm(self):
+        """Score caps at 1.0 when contrail_length_px >= score_length_norm_px."""
+        config = _make_config(score_length_norm_px=50.0)
+        frame = np.full((200, 400), 30, dtype=np.uint8)
+        # 300 px long aligned line — exceeds norm_px=50.
+        cv2.line(frame, (50, 100), (350, 100), 220, 2)
+        center = PixelPoint(x=200, y=100)
+        path_vec = (1.0, 0.0)
+        poly = rotated_polygon(center, path_vec, config)
+        xs, ys = poly[:, 0], poly[:, 1]
+        roi = Rect(x=int(xs.min()), y=int(ys.min()),
+                   w=int(xs.max() - xs.min()) + 1,
+                   h=int(ys.max() - ys.min()) + 1)
+        result = detect(frame, roi, config, polygon=poly, path_vec=path_vec)
+        assert result.score == 1.0
 
 
 # --- Legacy AABB-only tests kept as a safety net -----------------------------

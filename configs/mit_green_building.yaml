@@ -94,7 +94,15 @@ detection:
   angle_tolerance_deg: 12.0
   # Longer minimum prevents short noise edges from counting; best Apr-8 combo.
   long_line_min_px: 25.0
-  # Count of aligned long lines that maps to score=1.0.
+  # Score function.  "length" (default) normalises the along-track contrail
+  # pixel span by score_length_norm_px so strong contrails don't pile up at 1.0
+  # (PRD item 25).  "count" keeps the legacy nll/score_norm_count behaviour.
+  score_fn: length
+  # Along-track pixel span that maps to score=1.0.  ~0.7 × sqrt(180² + 40²)
+  # keeps full-run saturation under 1% while preserving AUC (0.978 vs 0.973
+  # baseline on Apr-8 labels).
+  score_length_norm_px: 130.0
+  # Count of aligned long lines that maps to score=1.0 when score_fn="count".
   score_norm_count: 6
   # When true, Canny / Hough only see pixels inside the rotated polygon.
   use_rotated_mask: true
