@@ -270,7 +270,8 @@
       "Update defaults in `configs/mit_green_building.yaml` and re-run the April-8 regression baseline. Expected outcome: higher score_mean / more top-bin detections, stable episode count",
       "Visually re-render the spot-check panels at the new dimensions and confirm the rotated polygon contains the visible contrail streak end-to-end for top-5"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "b86e9a6"
   },
   {
     "category": "functional",
@@ -282,7 +283,8 @@
       "Unit tests: a synthetic 200-px streak at alt=10 km projects to the expected metres (~2 km ballpark); adaptive growth stops at the contrail's edge and does not drift into blue sky",
       "Re-run the April-8 regression and add `peak_contrail_length_m` histogram to `metrics.json`. Spot-check: the top-5 peak_score=1.000 episodes should have non-trivial lengths, and very short lengths (<500 m) should cluster with the near-threshold marginal calls"
     ],
-    "passes": false
+    "passes": true,
+    "commit": "b86e9a6"
   },
   {
     "category": "validation-visual",
