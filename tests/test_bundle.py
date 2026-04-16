@@ -12,7 +12,7 @@ from click.testing import CliRunner
 from concam.aggregation import Episode
 from concam.bundle import (
     Assignment,
-    _relative_video_path,
+    _symlink_video,
     assign_episodes,
     generate_bundles,
 )
@@ -86,18 +86,22 @@ def test_assign_episodes_rejects_bad_fraction() -> None:
         assign_episodes([1, 2], [], overlap_fraction=0.2)
 
 
-# ---------- Relative video path ----------
+# ---------- Symlink video ----------
 
 
-def test_relative_video_path(tmp_path: Path) -> None:
+def test_symlink_video(tmp_path: Path) -> None:
     bundle_dir = tmp_path / "bundles" / "alice"
     bundle_dir.mkdir(parents=True)
     video = tmp_path / "videos" / "day.mp4"
     video.parent.mkdir()
     video.write_bytes(b"")
-    rel = _relative_video_path(video, bundle_dir)
-    # Expected two levels up then into videos/
-    assert rel == str(Path("..") / ".." / "videos" / "day.mp4")
+    link_name = _symlink_video(video, bundle_dir)
+    # Returned name is just the filename (no directory component).
+    assert link_name == "video.mp4"
+    # A symlink with that name exists in the bundle dir.
+    link = bundle_dir / link_name
+    assert link.is_symlink()
+    assert link.resolve() == video.resolve()
 
 
 # ---------- End-to-end bundle generation ----------
@@ -309,12 +313,11 @@ def test_manifest_video_path_is_relative(
     )
     with open(out / "alice" / "manifest.json") as f:
         m = json.load(f)
-    # Video is at tmp_path/day.mp4; bundle is at tmp_path/bundles/alice/
-    # So the relative path should climb two levels and land on day.mp4.
-    assert m["video"]["path"].endswith("day.mp4")
-    assert m["video"]["path"].startswith("..")
-    # Not an absolute path.
-    assert not Path(m["video"]["path"]).is_absolute()
+    # Video is symlinked into the bundle dir as "video.mp4" (no path traversal
+    # needed — the symlink sits alongside manifest.json and labeler.html).
+    assert m["video"]["path"] == "video.mp4"
+    # The symlink must exist in the bundle dir.
+    assert (out / "alice" / "video.mp4").is_symlink()
 
 
 def test_generate_bundles_is_deterministic(
