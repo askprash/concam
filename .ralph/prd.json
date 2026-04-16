@@ -334,5 +334,18 @@
       "Update the aggregation detection_threshold in configs/mit_green_building.yaml if the new score scale shifts the natural operating point. Re-validate that the top-5 visually-confirmed contrails (EIN108, THY12, etc.) still score above threshold after the rescaling."
     ],
     "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Clip renderer: contrail-length-driven bounding box. The current visualization box is a fixed 3× multiple of roi_along_px, which bears no relationship to the actual detected contrail length. Instead: (1) while the flight is being tracked, grow the visualization box along the flight path to match the cumulative track length seen so far; (2) once the detect step fires and contrail_length_grown_px is known, truncate the rectangle to that detected length. Width should also be 2× roi_cross_px (double the current detection width) so the visualization box clearly encloses the full contrail cross-section. This makes the rendered box a direct visual read-out of what the detector actually found, rather than an arbitrary scale factor.",
+    "steps": [
+      "In _annotate_frame (render_episode_clips.py), replace the fixed BOX_EXTEND_FACTOR=3 with a contrail-length-driven length. When the frame has a detection record with contrail_length_grown_px > 0, set along_px = contrail_length_grown_px. When there is no detection for this frame but the episode has started, use the cumulative flight-track pixel length up to this frame (sum of per-frame path_vec * ping_interval distances from onset to now).",
+      "Double the visualization cross-track width: use roi_cross_px * 2 for the box drawn in the clip renderer (this is display-only — do not change the detection config, which stays at roi_cross_px=40 for the Canny/Hough step).",
+      "The box should still start at the ADS-B ping and extend backward (the leading-edge-at-aircraft convention established in the previous session). When using contrail_length_grown_px, the rear edge of the box is at aircraft_pos - path_vec * contrail_length_grown_px.",
+      "Add a small scale bar or text annotation showing the contrail length in metres next to the box when a detection is active, so the reviewer can read off the estimated length without opening metrics.json.",
+      "Re-render the April 8 and April 9 top-10 episodes and confirm: (a) the box length visually matches the visible contrail extent, (b) the box does not overshoot into sky ahead of the aircraft, (c) the width comfortably contains the contrail cross-section.",
+      "HUMAN REVIEW REQUIRED: user must inspect the re-rendered clips and confirm the box geometry looks physically correct before this item passes."
+    ],
+    "passes": false
   }
 ]
