@@ -48,8 +48,10 @@
 </header>
 
 <div id="toolbar">
-  <label><input type="checkbox" id="toggle-tracks" checked> ADS-B tracks</label>
-  <label><input type="checkbox" id="toggle-detections" checked> Detection lines</label>
+  <label><input type="checkbox" id="toggle-tracks" checked> ADS-B</label>
+  <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-dot" value="dot"> dot only</label>
+  <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-track" value="track" checked> + track</label>
+  <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections" checked> Detection lines</label>
   <span class="legend">
     <span class="swatch" style="background:#f5c542"></span>auto-detected flight
     <span class="swatch" style="background:#5aa0ff; margin-left:0.5rem"></span>other flight
@@ -74,11 +76,14 @@
 // Browser-based labeler — video playback + canvas overlays.
 //
 // Time mapping:
-//   wall_time_ms = video_start_ms + currentTime_s * 1000 * seconds_per_frame
-// where video_start_ms is the UTC wall time of frame 0 (from manifest.video.start_utc,
-// falling back to midnight UTC of manifest.date if absent). The frame-interval is
-// baked into seconds_per_frame; playback runs at 1 video-frame per video-second
-// (the timelapse encoder writes one frame per compressed second of playback).
+//   frame_index   = Math.round(currentTime_s * video_fps)
+//   wall_time_ms  = video_start_ms + frame_index * seconds_per_frame * 1000
+//
+// video_fps is the *encoded* playback frame-rate (e.g. 30 for the MIT timelapse).
+// seconds_per_frame is real-world seconds between consecutive frames (1.0 for
+// 1fps capture, 0.25 for 4fps raw segments).
+// Together they map video playhead time → real wall time correctly regardless
+// of how the video was compressed.
 (async function () {
   const errPanel = document.getElementById("error-panel");
   const showError = (msg) => {
@@ -106,15 +111,17 @@
     ? Date.parse(manifest.video.start_utc)
     : Date.parse(manifest.date + "T00:00:00Z");
   const secondsPerFrame = manifest.video.seconds_per_frame || 1.0;
+  const videoFps = manifest.video.fps || 30.0;
   const detectionThreshold =
     typeof manifest.detection_threshold === "number"
       ? manifest.detection_threshold
       : 0.3;
 
+  // currentTime_s × videoFps → frame index; frame index × secondsPerFrame → real elapsed seconds.
   const currentWallMs = (videoTime) =>
-    videoStartMs + videoTime * 1000 * secondsPerFrame;
+    videoStartMs + Math.round(videoTime * videoFps) * secondsPerFrame * 1000;
   const wallMsToVideoTime = (wallMs) =>
-    (wallMs - videoStartMs) / 1000 / secondsPerFrame;
+    ((wallMs - videoStartMs) / 1000 / secondsPerFrame) / videoFps;
 
   // --- Flight track indexing ---------------------------------------------
   // Each track.pings is already time-sorted. We pre-parse wall_time_utc once.
@@ -173,8 +180,12 @@
   // --- Drawing -----------------------------------------------------------
   const toggleTracks = document.getElementById("toggle-tracks");
   const toggleDetections = document.getElementById("toggle-detections");
+  const trackModeDot = document.getElementById("track-mode-dot");
+  const trackModeTrack = document.getElementById("track-mode-track");
   toggleTracks.addEventListener("change", draw);
   toggleDetections.addEventListener("change", draw);
+  trackModeDot.addEventListener("change", draw);
+  trackModeTrack.addEventListener("change", draw);
 
   function findActiveEpisode(tid, wallMs) {
     const eps = episodesByTid.get(tid);
@@ -202,7 +213,6 @@
   }
 
   function drawTrack(track, wallMs) {
-    // Draw the pings that fall within the sliding window, plus a current-position dot.
     const inWindow = track.pings.filter(
       (p) => Math.abs(p.t - wallMs) <= TRACK_WINDOW_MS
     );
@@ -210,38 +220,46 @@
 
     const active = findActiveEpisode(track.tid, wallMs);
     const highlighted = active && active.peak_score >= detectionThreshold;
-    const strokeColor = highlighted ? "#f5c542" : "#5aa0ff";
-
-    ctx.lineWidth = highlighted ? 4 : 2;
-    ctx.strokeStyle = strokeColor;
-    ctx.globalAlpha = 0.85;
-    ctx.beginPath();
-    ctx.moveTo(inWindow[0].x, inWindow[0].y);
-    for (let i = 1; i < inWindow.length; i++) {
-      ctx.lineTo(inWindow[i].x, inWindow[i].y);
-    }
-    ctx.stroke();
+    const color = highlighted ? "#f5c542" : "#5aa0ff";
+    const dotR = highlighted ? 18 : 12;
 
     // Current position: nearest ping to wallMs.
     let nearest = inWindow[0];
     let nearestDt = Math.abs(inWindow[0].t - wallMs);
     for (let i = 1; i < inWindow.length; i++) {
       const dt = Math.abs(inWindow[i].t - wallMs);
-      if (dt < nearestDt) {
-        nearest = inWindow[i];
-        nearestDt = dt;
-      }
+      if (dt < nearestDt) { nearest = inWindow[i]; nearestDt = dt; }
     }
-    ctx.fillStyle = strokeColor;
+
+    // Track line (hidden in dot-only mode).
+    if (trackModeTrack.checked) {
+      ctx.lineWidth = highlighted ? 4 : 2;
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(inWindow[0].x, inWindow[0].y);
+      for (let i = 1; i < inWindow.length; i++) ctx.lineTo(inWindow[i].x, inWindow[i].y);
+      ctx.stroke();
+    }
+
+    // Dot with white outline for visibility.
+    ctx.globalAlpha = 0.95;
     ctx.beginPath();
-    ctx.arc(nearest.x, nearest.y, highlighted ? 14 : 9, 0, Math.PI * 2);
+    ctx.arc(nearest.x, nearest.y, dotR + 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(nearest.x, nearest.y, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = color;
     ctx.fill();
 
-    // Callsign label next to the dot.
+    // Callsign label with drop-shadow for readability.
     ctx.globalAlpha = 1.0;
+    ctx.font = "bold 32px system-ui, sans-serif";
     ctx.fillStyle = "#000";
-    ctx.font = "28px system-ui, sans-serif";
-    ctx.fillText(track.callsign, nearest.x + 18, nearest.y - 10);
+    ctx.fillText(track.callsign, nearest.x + dotR + 4, nearest.y + 10);
+    ctx.fillStyle = color;
+    ctx.fillText(track.callsign, nearest.x + dotR + 3, nearest.y + 9);
   }
 
   function drawDetections(wallMs) {

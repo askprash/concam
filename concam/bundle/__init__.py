@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import av
+
 from concam.storage import Database
 
 logger = logging.getLogger(__name__)
@@ -220,6 +222,20 @@ def _frames_within(
     return [d for d in detections if onset_iso <= d["wall_time_utc"] <= end_iso]
 
 
+def _probe_video_fps(video_path: Path) -> float:
+    """Return the encoded frame-rate of the video (e.g. 30.0 for 30fps)."""
+    try:
+        with av.open(str(video_path)) as c:
+            vs = next((s for s in c.streams if s.type == "video"), None)
+            if vs is not None:
+                fps = float(vs.average_rate)
+                if fps > 0:
+                    return fps
+    except Exception:
+        pass
+    return 30.0  # safe fallback for the MIT timelapse
+
+
 def _symlink_video(video_path: Path, bundle_dir: Path) -> str:
     """Symlink the video into the bundle directory and return the link name.
 
@@ -283,6 +299,7 @@ def build_manifest(
 
     video_block: dict = {
         "path": _symlink_video(video_path, bundle_dir),
+        "fps": _probe_video_fps(video_path),
         "seconds_per_frame": seconds_per_frame,
     }
     if video_start_utc is not None:
