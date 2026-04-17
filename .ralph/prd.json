@@ -377,7 +377,7 @@
     "labels_path": "labels/2026-04-09_prash.json",
     "labels_path_operational_copy": "output/validation/detection/2026-04-09/label_batch/labels.json",
     "label_mix": "34 labels (episode 29 skipped): 15 contrail, 19 no_contrail; detector caught only 1/15 true positives -> motivates item 29",
-    "commit": "pending"
+    "commit": "1337678"
   },
   {
     "category": "redesign-detection",
