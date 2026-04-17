@@ -357,6 +357,7 @@ dependencies = [
     { name = "pyproj" },
     { name = "pytz" },
     { name = "pyyaml" },
+    { name = "scikit-image" },
     { name = "scipy" },
 ]
 
@@ -397,6 +398,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytz", specifier = ">=2026.1.post1" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "scikit-image", specifier = ">=0.26.0" },
     { name = "scipy", specifier = ">=1.10" },
 ]
 provides-extras = ["ocr", "dev", "review"]
