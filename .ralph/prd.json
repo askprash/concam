@@ -333,7 +333,8 @@
       "Re-run the April 8 and April 9 regression baselines to confirm the episode count is stable and the score histogram is no longer dominated by the 1.0 bin. Update metrics.json and report.md.",
       "Update the aggregation detection_threshold in configs/mit_green_building.yaml if the new score scale shifts the natural operating point. Re-validate that the top-5 visually-confirmed contrails (EIN108, THY12, etc.) still score above threshold after the rescaling."
     ],
-    "passes": false
+    "passes": true,
+    "commit": "30ab84d"
   },
   {
     "category": "functional",
@@ -345,6 +346,79 @@
       "Add a small scale bar or text annotation showing the contrail length in metres next to the box when a detection is active, so the reviewer can read off the estimated length without opening metrics.json.",
       "Re-render the April 8 and April 9 top-10 episodes and confirm: (a) the box length visually matches the visible contrail extent, (b) the box does not overshoot into sky ahead of the aircraft, (c) the width comfortably contains the contrail cross-section.",
       "HUMAN REVIEW REQUIRED: user must inspect the re-rendered clips and confirm the box geometry looks physically correct before this item passes."
+    ],
+    "passes": false
+  },
+  {
+    "category": "redesign-detection",
+    "description": "Widen ADS-B reach so contrails laid by aircraft outside the current 50 km radius (e.g. transatlantic NAT-track traffic) are not silently filtered out. Spot-check 2026-04-09 10:13:52 ET: BAW17R was ~78 km north of the site at the moment its contrail was visible from the camera but the 50 km filter dropped it entirely; multiple other unmatched contrails appeared in the same region within minutes. Triple the radius and add a stratospheric-cruise upper bound (FL420 / 12.8 km) consistent with the satellite-side regions_demo_local pipeline.",
+    "steps": [
+      "configs/mit_green_building.yaml: change adsb.max_radius_km 50 -> 150 and add adsb.max_altitude_m: 12800",
+      "concam/config.py: add max_altitude_m: float | None field to AdsbConfig (default None means no upper bound)",
+      "concam/adsb/__init__.py: in load_flights, apply max_altitude_m alongside the existing min-altitude check in the per-ping filter (~line 258). Bbox pre-filter widens automatically with max_radius_km",
+      "Re-run uv run concam run --date 2026-04-09 --from-stage adsb (then projection + detect with current detector). Use sbatch per memory rule for full-day runs",
+      "Verify: output/2026-04-09/adsb.json contains a BAW17R flight with at least one ping near 14:13:52 UTC at radius ~78 km from the site",
+      "Verify: output/2026-04-09/projections.jsonl contains BAW17R pings with valid pixel_x/pixel_y near the camera FOV right edge"
+    ],
+    "passes": true,
+    "commit": "97f10ae"
+  },
+  {
+    "category": "redesign-detection",
+    "description": "Build a stratified 35-candidate label batch on 2026-04-09 so the detector redesign has a representative ground truth (the existing April-8 set is too small and too clear-blue-sky). Reuse the existing browser labeler — generate a synthetic concam-bundle-shaped manifest and open it in labeler.html. Stratification ensures the eval covers the conditions the detector will actually face in production. HUMAN REVIEW REQUIRED: user labels the 35 clips through the browser labeler and exports labels.json.",
+    "steps": [
+      "scripts/build_april9_label_batch.py: read output/2026-04-09/projections.jsonl, select 35 candidates: 10 high-cirrus FL340-FL400, 10 mid-cruise FL280-FL340, 10 wide-radius (60-150 km from site, the BAW17R-style cases newly reachable after the radius widening), 5 marginal (sun_alt < 15 deg OR partly cloudy)",
+      "For each candidate, build one bundle entry (callsign, transponder_id, peak_wall_time, peak_frame_idx, peak_pixel_x/y, ping path) using the same schema concam.bundle.generate_bundle produces",
+      "Reuse concam.bundle to write labeler.html + manifest.json into output/validation/detection/2026-04-09/label_batch/. The video reference is the existing April 9 raw video (relative path).",
+      "User opens labeler.html in a browser, labels each candidate as contrail / no_contrail / unsure, exports labels.json (concam ingest-labels schema)",
+      "HUMAN REVIEW REQUIRED: user must label >=30 of the 35 candidates and the exported labels.json must validate against the ingest-labels schema before this item passes"
+    ],
+    "passes": true,
+    "labels_path": "labels/2026-04-09_prash.json",
+    "labels_path_operational_copy": "output/validation/detection/2026-04-09/label_batch/labels.json",
+    "label_mix": "34 labels (episode 29 skipped): 15 contrail, 19 no_contrail; detector caught only 1/15 true positives -> motivates item 29",
+    "commit": "pending"
+  },
+  {
+    "category": "redesign-detection",
+    "description": "Build the interactive filter-playground notebook to explore which preprocessing transforms (color-space, structural, cross-track-gradient) make contrails most discriminable to Canny+Hough on the new April-9 label set. This is the research deliverable of this iteration; threshold tuning and production wiring of the chosen transform_chain are explicit follow-up items, not part of this one. Inline knob explanations are required (the user has flagged not understanding prev_frame / pct_high / pct_low / low_ratio / min_high / score_norm_count).",
+    "steps": [
+      "concam/detection/transforms.py (new): lift the 13-transform TRANSFORMS registry from scripts/channel_matrix_spotcheck.py into a shared module. Add Frangi (#14) lifted verbatim from groundcam_contrail_observatory/utils/detection_utils.py:apply_frangi_to_rectangles",
+      "scripts/channel_matrix_spotcheck.py: refactor to import TRANSFORMS from concam.detection.transforms (no behaviour change)",
+      "notebooks/filter_playground.ipynb (new): candidate dropdown (April-9 label batch + 7 April-8 positives as regression sentinels), 3 transform-chain dropdowns (A -> B -> C, 'none' optional), per-transform parameter sliders (auto-shown when transform active), Canny + Hough knob sliders (adaptive percentile + manual fallback + angle tolerance + long-line min)",
+      "notebooks/filter_playground.ipynb: 4-panel display per candidate: chained output / post-floor masked crop / Canny edges / Hough overlay (aligned green / off-axis red / picked line thick green)",
+      "notebooks/filter_playground.ipynb: bulk-AUC button that re-runs the chosen chain across all April-9 labels and prints AUC + Youden-J threshold + positive/negative score histogram, plus per-stratum breakdown (high_cirrus / mid_cruise / wide_radius / marginal) and explicit recall@Youden-J and FP-count@Youden-J. Refactor scripts/detection_validation_sweep.py:run_sweep_combo into a callable that the notebook imports",
+      "GO/NO-GO success criterion: on the April-9 label set (15 positives / 19 negatives), the winning chain + Youden-J threshold must achieve recall >= 10/15 (>=66%) AND false-positive count <= 2/19 (<=10%). Baseline for context: current production (gray + Canny + Hough + length-score) catches only 1/15 on this set. Per-stratum recall must be non-zero for at least 3 of the 4 strata (marginal stratum may legitimately fail if sun_alt<0). If no chain meets the criterion, escalate by adding more transforms to TRANSFORMS rather than lowering the bar.",
+      "notebooks/filter_playground.ipynb: YAML export cell that dumps the current chain + parameters as a drop-in transform_chain: block for configs/mit_green_building.yaml",
+      "notebooks/filter_playground.ipynb: markdown cells next to each control explaining what prev_frame, pct_high, pct_low, low_ratio, min_high, score_norm_count actually do (one short paragraph each). Carry-over from the 2026-04-16 grill-me Q9 answer.",
+      "Verify: uv run jupyter lab notebooks/filter_playground.ipynb opens; user can stack cross_path_grad -> local_contrast -> canny -> hough, hit Bulk AUC, see a number printed; sliders re-render panels live",
+      "EXPLICIT FOLLOW-UP (not part of this item): once the user picks a winning chain in the playground, a separate PRD item will (a) add transform_chain to DetectionConfig with backward-compat against legacy params, (b) wire it into concam.detection.detect(), (c) re-run April-9 regression with the new chain, (d) re-tune detection_threshold using the policy decided in that follow-up session"
+    ],
+    "passes": false
+  },
+  {
+    "category": "validation-visual",
+    "description": "Investigate ADS-B ping-vs-contrail-tip misalignment. During the 2026-04-09 35-label review, episodes 6 and 18 (prash's labels.json notes: 'ADS-B ping was not perfectly aligned with the head of the contrail... wonder if this is because of some altitude issues') had visible offsets between the ADS-B dot and the physical contrail head, while the other 33 looked good. Goal: determine whether this is (a) GNSS altitude drift vs barometric disagreement that the current altitude_source='prefer_baro' policy is mishandling, (b) a timing issue (wall_time misalignment between OCR and ADS-B), or (c) a projection math issue that only shows up at certain pixel locations / azimuths. This is a targeted extension of item 13 (landmark alignment) which only covers stationary ground POIs.",
+    "steps": [
+      "Extract the transponder_ids for episodes 6 and 18 from output/validation/detection/2026-04-09/label_batch/candidates.json and the corresponding peak_frame_idx / peak_wall_time.",
+      "Query output/2026-04-09/adsb.json for those TIDs; for each ping in a 30-second window around peak_wall_time, dump a row: (t, alt_m, alt_baro_m, alt_gnss_m, altitude_source_used, abs(alt_baro - alt_gnss), pixel_x, pixel_y, ground_distance_km). Flag any ping where altitude_source_used is 'gnss' or where |alt_baro - alt_gnss| > AdsbConfig.altitude_discrepancy_threshold_m.",
+      "For each episode, render 3 side-by-side panels on the peak frame: (1) projection using alt_m (current policy), (2) projection forced to alt_baro_m, (3) projection forced to alt_gnss_m. Overlay each as a differently-colored dot on top of the contrail tip. The human reads off which one lines up best.",
+      "For the same two episodes, check OCR-vs-ADS-B timing: episode 6 and 18's peak_wall_time must be within 0.5 s of the nearest ADS-B ping; if it's further, the ping sequence may have been interpolated across a longer gap and the interpolated position is artificially off.",
+      "Write output/validation/projection/2026-04-09/adsb_alignment_report.md summarizing: per-episode root cause (altitude-source / interp-gap / projection math / inconclusive), whether the discrepancy is systematic (repeats on other wide-radius flights) or idiosyncratic, and whether a config change (e.g. force altitude_source='barometric' always, or lower altitude_discrepancy_threshold_m) would fix it without regressing the 33 episodes that already look good.",
+      "HUMAN REVIEW REQUIRED: user inspects the per-episode 3-panel overlays and confirms the diagnosed root cause matches what they saw live in the labeler. Only mark passes=true once the report has a concrete recommendation (even if the recommendation is 'no action needed, the two outliers are acceptable noise')."
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Labeler UX: make the flight-callsign labels more legible and add flight-level (FLxxx) next to the callsign. During the 2026-04-09 labeling session the callsigns were hard to read against bright-sky and low-contrast cloud backgrounds, and the lack of altitude info made it hard to reason about whether a contrail was plausible (persistent contrails need cruise altitudes, whereas low-flying regional traffic never produces them). Both gripes are UI-only and live in concam/bundle/templates/labeler.html around line 270.",
+    "steps": [
+      "concam/bundle/templates/labeler.html (drawLabel, ~line 270): bump font from 'bold 22px' to 'bold 28px', keep the drop-shadow, and add a semi-transparent dark pill (rounded rect, ~rgba(0,0,0,0.55)) as a backdrop behind the text. Padding ~6px horizontal, ~3px vertical. The callsign text itself stays white for max contrast against the dark pill; this gives consistent legibility regardless of day / night / cloud background without needing day/night logic.",
+      "Add flight-level display next to the callsign: 'CALLSIGN FL340'. Compute FL from the nearest ping's alt_baro_m (preferred, since FL is by definition a barometric construct) falling back to alt_m if alt_baro_m is null. Formula: FL = round(alt_baro_m / 30.48 / 10). Show as 'FL{nnn}' with a 3-digit zero-padded number (e.g. FL034 for a low-altitude commuter). If no altitude is available at all, show the callsign alone.",
+      "concam/bundle/__init__.py _build_flight_tracks: extend the per-track payload with a per-ping alt_baro_m (or alt_m fallback) array so the JS can read the nearest-ping altitude without re-decoding the adsb.json. Manifest schema gets one extra array per flight; keep it keyed 'alt_m' (single field) populated from the alt_baro_m-preferred fallback above, so the HTML side is dumb.",
+      "Update tests/test_bundle.py (if it asserts the manifest shape) to include the new alt_m array. Add a smoke test that generates a bundle and checks the labeler.html text output contains 'FL' near a known callsign for a flight at a known altitude.",
+      "Regenerate bundles/labeler.html in the April-9 label_batch directory (re-run scripts/build_april9_label_batch.py) and spot-check visually that the labels are larger, have the dark pill backdrop, and show FLxxx next to each callsign.",
+      "HUMAN REVIEW REQUIRED: user opens the regenerated labeler.html and confirms (a) callsigns are easier to read, (b) FL values match their expectations for the top few flights they recognize."
     ],
     "passes": false
   }

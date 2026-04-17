@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "date": "2026-04-09",
+  "labeler_id": "prash",
+  "exported_at": "2026-04-17T17:05:30.961Z",
+  "labels": [
+    {
+      "episode_id": 1,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:50:25.128Z"
+    },
+    {
+      "episode_id": 2,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:50:47.132Z",
+      "label_notes": "faint contrail"
+    },
+    {
+      "episode_id": 3,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:51:10.286Z"
+    },
+    {
+      "episode_id": 4,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:51:36.922Z"
+    },
+    {
+      "episode_id": 5,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:51:54.644Z"
+    },
+    {
+      "episode_id": 6,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:52:46.186Z",
+      "label_notes": "Def contrail and no other airplane in vicinity seen but ads-b ping was not perfectly aligned with the head of the contrail."
+    },
+    {
+      "episode_id": 7,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:53:03.237Z"
+    },
+    {
+      "episode_id": 8,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:53:30.190Z",
+      "label_notes": "faint contrail"
+    },
+    {
+      "episode_id": 9,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:54:02.867Z"
+    },
+    {
+      "episode_id": 10,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:54:10.649Z"
+    },
+    {
+      "episode_id": 11,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:54:38.216Z",
+      "label_notes": "It was forming contrails even after the indicator stopped showing it."
+    },
+    {
+      "episode_id": 12,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:54:57.087Z"
+    },
+    {
+      "episode_id": 13,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:55:13.310Z"
+    },
+    {
+      "episode_id": 14,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:55:23.872Z"
+    },
+    {
+      "episode_id": 15,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:55:37.414Z"
+    },
+    {
+      "episode_id": 16,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-04-17T16:56:26.113Z",
+      "label_notes": "Began forming contrails just as it was about to leave the frame."
+    },
+    {
+      "episode_id": 17,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:56:41.576Z"
+    },
+    {
+      "episode_id": 18,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:57:25.757Z",
+      "label_notes": "The ADS-B ping was again a little bit off the tip of the contrail. I wonder if this is because of some altitude issues."
+    },
+    {
+      "episode_id": 19,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:57:42.907Z"
+    },
+    {
+      "episode_id": 20,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:58:00.150Z"
+    },
+    {
+      "episode_id": 21,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:58:17.813Z"
+    },
+    {
+      "episode_id": 22,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:58:42.467Z"
+    },
+    {
+      "episode_id": 23,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:58:59.071Z"
+    },
+    {
+      "episode_id": 24,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-04-17T16:59:42.658Z"
+    },
+    {
+      "episode_id": 25,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T16:59:58.387Z"
+    },
+    {
+      "episode_id": 26,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-04-17T17:00:53.443Z"
+    },
+    {
+      "episode_id": 27,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:01:01.289Z"
+    },
+    {
+      "episode_id": 28,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:01:25.013Z"
+    },
+    {
+      "episode_id": 30,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-04-17T17:02:22.656Z",
+      "label_notes": "Pretty thin one."
+    },
+    {
+      "episode_id": 31,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:02:41.611Z"
+    },
+    {
+      "episode_id": 32,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:02:59.724Z"
+    },
+    {
+      "episode_id": 33,
+      "label": "contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:03:04.784Z"
+    },
+    {
+      "episode_id": 34,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:03:25.228Z"
+    },
+    {
+      "episode_id": 35,
+      "label": "no_contrail",
+      "labeler_id": "prash",
+      "label_timestamp": "2026-04-17T17:03:44.471Z"
+    }
+  ]
+}
