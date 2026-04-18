@@ -226,8 +226,11 @@
   }
 
   function drawTrack(track, wallMs) {
+    // Backward-only: show the path the flight has already traced, not the
+    // forecast. Pings at t > wallMs are suppressed so the rendered trail
+    // matches what the human sees in the video at this moment.
     const inWindow = track.pings.filter(
-      (p) => Math.abs(p.t - wallMs) <= TRACK_WINDOW_MS
+      (p) => p.t <= wallMs && (wallMs - p.t) <= TRACK_WINDOW_MS
     );
     if (inWindow.length === 0) return;
 

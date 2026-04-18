@@ -423,4 +423,7 @@ def apply_chain(
             kwargs["prev_bgr"] = prev_bgr
         kwargs.update(params.get(name, {}))
         out = fn(out, **kwargs)
-    return out
+    # Always return gray so downstream code (detect, matplotlib imshow with
+    # cmap='gray') can treat apply_chain's output uniformly regardless of
+    # whether any transforms actually ran.
+    return _ensure_gray(out)

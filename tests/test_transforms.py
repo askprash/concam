@@ -139,10 +139,12 @@ def test_apply_chain_skips_none_and_unknown(bright_line_bgr: np.ndarray) -> None
     assert out.dtype == np.uint8 and out.ndim == 2
 
 
-def test_apply_chain_empty_returns_bgr_unchanged(bright_line_bgr: np.ndarray) -> None:
+def test_apply_chain_empty_returns_gray(bright_line_bgr: np.ndarray) -> None:
+    """Empty chain should still return gray so callers can rely on a uniform
+    shape contract regardless of whether any transforms fire."""
     out = apply_chain(bright_line_bgr, [])
-    # Empty chain = no transforms applied; returns whatever was passed in.
-    assert out is bright_line_bgr
+    assert out.dtype == np.uint8 and out.ndim == 2
+    assert out.shape == bright_line_bgr.shape[:2]
 
 
 def test_apply_chain_color_transform_after_gray_does_not_crash(
