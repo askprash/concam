@@ -8,13 +8,16 @@
   body { font-family: system-ui, sans-serif; margin: 0; color: #222; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
   header { display: flex; gap: 1.5rem; align-items: baseline; padding: 0.4rem 0.75rem; background: #f8f8f8; border-bottom: 1px solid #ddd; flex-shrink: 0; flex-wrap: wrap; }
   header h1 { font-size: 1.1rem; margin: 0; }
+  .hdr-pill { font-size: 0.85em; padding: 0.1em 0.5em; border-radius: 999px; background: #eee; color: #333; }
+  .hdr-user { background: #1f2937; color: #fff; font-weight: 600; }
+  .hdr-score { background: #dcfce7; color: #166534; font-weight: 600; }
   #toolbar { display: flex; gap: 0.75rem; padding: 0.3rem 0.75rem; align-items: center; flex-wrap: wrap; background: #f0f0f0; border-bottom: 1px solid #ddd; flex-shrink: 0; }
   #toolbar label { user-select: none; cursor: pointer; font-size: 0.9em; }
   #main { display: flex; flex: 1; min-height: 0; }
-  #video-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; padding: 0.5rem; }
-  #video-wrap { position: relative; line-height: 0; }
-  #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
-  video { width: 100%; background: #000; display: block; }
+  #video-col { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0.5rem; }
+  #video-wrap { position: relative; line-height: 0; max-width: 100%; max-height: 100%; aspect-ratio: var(--video-aspect, 16/9); }
+  #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  video { width: 100%; height: 100%; background: #000; display: block; }
   #sidebar { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid #ccc; }
   #sidebar-header { padding: 0.4rem 0.5rem; background: #f8f8f8; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
   #sidebar-header span { font-size: 0.85em; color: #555; }
@@ -48,16 +51,28 @@
 
 <header>
   <h1>ConCam Labeler</h1>
+  <label id="hdr-date-switcher" hidden>date:
+    <select id="hdr-date-select"></select>
+  </label>
   <span id="hdr-date"></span>
-  <span id="hdr-labeler"></span>
   <span id="hdr-episode-count"></span>
+  <span id="hdr-spacer" style="flex:1"></span>
+  <span id="hdr-score" class="hdr-pill hdr-score" title="Contrails you've confirmed in this session"></span>
+  <span id="hdr-user" class="hdr-pill hdr-user"></span>
 </header>
 
 <div id="toolbar">
   <label><input type="checkbox" id="toggle-tracks" checked> ADS-B</label>
-  <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-dot" value="dot"> dot only</label>
-  <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-track" value="track" checked> + track</label>
-  <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections" checked> Detection lines</label>
+  <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-dot" value="dot" checked> dot only</label>
+  <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-track" value="track"> + track</label>
+  <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
+  <label style="margin-left:1rem">Sort:
+    <select id="sort-mode">
+      <option value="time">time</option>
+      <option value="score">score (desc)</option>
+    </select>
+  </label>
+  <label style="margin-left:0.5rem"><input type="checkbox" id="filter-detected"> detected only</label>
   <span class="legend">
     <span class="swatch" style="background:#f5c542"></span>auto-detected flight
     <span class="swatch" style="background:#5aa0ff; margin-left:0.5rem"></span>other flight
@@ -115,9 +130,65 @@
   }
 
   document.getElementById("hdr-date").textContent = "date: " + manifest.date;
-  document.getElementById("hdr-labeler").textContent = "labeler: " + manifest.labeler_id;
   document.getElementById("hdr-episode-count").textContent =
     "episodes: " + manifest.episodes.length;
+
+  // --- Reviewer identity -------------------------------------------------
+  // Preference order: ?user= query (set by Prash when distributing links),
+  // then localStorage, then a prompt. We can't read BasicAuth's username
+  // from JS, so identity is declared client-side; the server endpoint
+  // (if enabled) authoritatively verifies against REMOTE_USER.
+  function resolveReviewer() {
+    const urlUser = new URL(location.href).searchParams.get("user");
+    if (urlUser) {
+      localStorage.setItem("concam-reviewer", urlUser);
+      return urlUser;
+    }
+    const stored = localStorage.getItem("concam-reviewer");
+    if (stored) return stored;
+    const entered = (prompt("Reviewer username (same as your login):") || "").trim();
+    if (entered) localStorage.setItem("concam-reviewer", entered);
+    return entered || "anonymous";
+  }
+  const reviewerId = resolveReviewer();
+  manifest.labeler_id = reviewerId;
+  document.getElementById("hdr-user").textContent = reviewerId;
+
+  // --- Date switcher ------------------------------------------------------
+  // If the parent directory has dates.json (written by the publish script),
+  // show a dropdown so reviewers can hop between dates without going back
+  // to the landing page. The query string (notably ?user=) is preserved so
+  // the reviewer's identity carries over.
+  (async function setupDateSwitcher() {
+    try {
+      const res = await fetch("../dates.json", { cache: "no-cache" });
+      if (!res.ok) return;
+      const payload = await res.json();
+      const entries = Array.isArray(payload.dates) ? payload.dates : [];
+      if (entries.length <= 1) return;
+      const switcher = document.getElementById("hdr-date-switcher");
+      const select = document.getElementById("hdr-date-select");
+      for (const entry of entries) {
+        const opt = document.createElement("option");
+        opt.value = entry.date;
+        opt.textContent = entry.date +
+          " (" + entry.episodes + " passes, " + entry.detected + " detected)";
+        if (entry.date === manifest.date) opt.selected = true;
+        select.appendChild(opt);
+      }
+      switcher.hidden = false;
+      // Hide the static date span — the dropdown already shows the current date.
+      document.getElementById("hdr-date").hidden = true;
+      select.addEventListener("change", () => {
+        const target = select.value;
+        if (!target || target === manifest.date) return;
+        const query = new URL(location.href).search;
+        location.href = "../" + target + "/labeler.html" + query;
+      });
+    } catch (_) {
+      // No dates.json — single-date deployment. Silent no-op.
+    }
+  })();
 
   // --- Time mapping -------------------------------------------------------
   const videoStartMs = manifest.video.start_utc
@@ -146,9 +217,18 @@
         t: Date.parse(p.wall_time_utc),
         x: p.pixel_x,
         y: p.pixel_y,
+        // Barometric (pressure) altitude in metres — canonical source for
+        // flight level display. Falls back to effective alt_m if missing.
+        alt_baro_m: p.alt_baro_m != null ? p.alt_baro_m : (p.alt_m != null ? p.alt_m : null),
       })),
     })
   );
+
+  function flightLevel(altMetres) {
+    if (altMetres == null || !isFinite(altMetres)) return null;
+    const fl = Math.round((altMetres * 3.28084) / 100);
+    return "FL" + String(fl).padStart(3, "0");
+  }
 
   // Episodes grouped by transponder_id for fast "is this flight auto-detected now?" lookup.
   const episodesByTid = new Map();
@@ -175,6 +255,7 @@
   const canvas = document.getElementById("overlay");
   const ctx = canvas.getContext("2d");
   const [imgW, imgH] = manifest.image_size;
+  document.documentElement.style.setProperty("--video-aspect", imgW + "/" + imgH);
 
   function fitCanvas() {
     // Back the canvas with the full image pixel resolution so drawing ops
@@ -269,13 +350,15 @@
     ctx.fillStyle = color;
     ctx.fill();
 
-    // Callsign label with drop-shadow for readability.
+    // Callsign + flight level label with drop-shadow for readability.
+    const fl = flightLevel(nearest.alt_baro_m);
+    const label = fl ? (track.callsign + " " + fl) : track.callsign;
     ctx.globalAlpha = 1.0;
     ctx.font = "bold 22px system-ui, sans-serif";
     ctx.fillStyle = "#000";
-    ctx.fillText(track.callsign, nearest.x + dotR + 4, nearest.y + 10);
+    ctx.fillText(label, nearest.x + dotR + 4, nearest.y + 10);
     ctx.fillStyle = color;
-    ctx.fillText(track.callsign, nearest.x + dotR + 3, nearest.y + 9);
+    ctx.fillText(label, nearest.x + dotR + 3, nearest.y + 9);
   }
 
   function drawDetections(wallMs) {
@@ -443,12 +526,18 @@
 
   function updateProgress() {
     const total = manifest.episodes.length;
-    const done = manifest.episodes.filter((ep) => {
+    let done = 0;
+    let contrails = 0;
+    for (const ep of manifest.episodes) {
       const entry = labelState[String(ep.episode_id)];
-      return entry && VALID_LABELS.includes(entry.label);
-    }).length;
+      if (!entry || !VALID_LABELS.includes(entry.label)) continue;
+      done += 1;
+      if (entry.label === "contrail") contrails += 1;
+    }
     document.getElementById("progress").textContent =
       "labeled " + done + "/" + total;
+    const scoreEl = document.getElementById("hdr-score");
+    scoreEl.textContent = contrails + " contrail" + (contrails === 1 ? "" : "s") + " found";
   }
 
   function buildEpisodeRow(ep) {
@@ -559,8 +648,31 @@
     return wrapper;
   }
 
-  manifest.episodes.forEach((ep) => panel.appendChild(buildEpisodeRow(ep)));
-  manifest.episodes.forEach((ep) => refreshEpisodeDom(ep.episode_id));
+  const sortModeEl = document.getElementById("sort-mode");
+  const filterDetectedEl = document.getElementById("filter-detected");
+
+  function renderEpisodeList() {
+    panel.innerHTML = "";
+    episodeDom.clear();
+    const mode = sortModeEl.value;
+    const onlyDetected = filterDetectedEl.checked;
+    let list = manifest.episodes.slice();
+    if (onlyDetected) {
+      list = list.filter((ep) => ep.peak_score >= detectionThreshold);
+    }
+    if (mode === "score") {
+      list.sort((a, b) => b.peak_score - a.peak_score ||
+                         (a.onset < b.onset ? -1 : 1));
+    } else {
+      list.sort((a, b) => (a.onset < b.onset ? -1 : a.onset > b.onset ? 1 : 0));
+    }
+    for (const ep of list) panel.appendChild(buildEpisodeRow(ep));
+    for (const ep of list) refreshEpisodeDom(ep.episode_id);
+  }
+
+  sortModeEl.addEventListener("change", renderEpisodeList);
+  filterDetectedEl.addEventListener("change", renderEpisodeList);
+  renderEpisodeList();
   updateProgress();
 })();
 </script>
