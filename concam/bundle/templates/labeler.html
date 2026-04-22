@@ -45,6 +45,8 @@
   #progress { font-size: 0.85em; color: #555; }
   #export-btn { padding: 0.25rem 0.6rem; font-size: 0.85em; cursor: pointer; }
   .seek-btn { padding: 0 0.4em; font-size: 0.85em; cursor: pointer; }
+  .ep-times { white-space: nowrap; }
+  .ep-time-local { color: #666; font-size: 0.92em; }
 </style>
 </head>
 <body>
@@ -206,6 +208,31 @@
     videoStartMs + Math.round(videoTime * videoFps) * secondsPerFrame * 1000;
   const wallMsToVideoTime = (wallMs) =>
     ((wallMs - videoStartMs) / 1000 / secondsPerFrame) / videoFps;
+
+  // --- Time formatting ---------------------------------------------------
+  // The header already shows the bundle date, so per-episode rows only need
+  // time-of-day. We render both UTC (authoritative, matches manifest) and
+  // the reviewer's browser-local time (useful for students who think in
+  // wall-clock terms, e.g. "8am over Boston"). Full ISO onset/end stay
+  // accessible via the row's `title` tooltip.
+  const localTzAbbr = (() => {
+    try {
+      const parts = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+        .formatToParts(new Date());
+      const tz = parts.find((p) => p.type === "timeZoneName");
+      return tz ? tz.value : "local";
+    } catch (_) {
+      return "local";
+    }
+  })();
+  function fmtTimeUTC(iso) {
+    return new Date(iso).toISOString().substring(11, 19);
+  }
+  function fmtTimeLocal(iso) {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    });
+  }
 
   // --- Flight track indexing ---------------------------------------------
   // Each track.pings is already time-sorted. We pre-parse wall_time_utc once.
@@ -554,13 +581,22 @@
       ep.peak_score >= detectionThreshold
         ? '<span class="badge detected">auto</span> '
         : "";
+    const timeTooltip = ep.onset + " → " + ep.end + " (UTC)";
+    const timesHtml =
+      '<span class="ep-times" title="' + timeTooltip + '">' +
+        fmtTimeUTC(ep.onset) + '–' + fmtTimeUTC(ep.end) + 'Z' +
+        ' <span class="ep-time-local">(' +
+          fmtTimeLocal(ep.onset) + '–' + fmtTimeLocal(ep.end) +
+          ' ' + localTzAbbr +
+        ')</span>' +
+      '</span>';
     header.innerHTML =
       overlapBadge +
       detectedBadge +
       '<strong>#' + ep.episode_id + '</strong> ' +
       ep.callsign + ' ' +
       '<span class="badge score">score ' + ep.peak_score.toFixed(2) + '</span> ' +
-      '<span>' + ep.onset + ' &rarr; ' + ep.end + '</span> ' +
+      timesHtml + ' ' +
       '<span class="badge label-status">unlabeled</span>';
     const statusBadge = header.querySelector(".badge.label-status");
 
