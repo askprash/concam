@@ -151,3 +151,10 @@ aggregation:
   detection_threshold: 0.083
   # Consecutive frames within this gap are merged into a single episode
   max_gap_seconds: 30.0
+  # Rolling-median window (frames) applied to each flight's score timeline
+  # before thresholding. 3 at 1 Hz capture = any single-frame score spike
+  # (bright cloud edge briefly aligned with the flight vector) gets pulled
+  # down by its two below-threshold neighbours, while a sustained contrail
+  # (≥2 adjacent frames above threshold) rides through unchanged. Raise to
+  # 5 for stricter FP suppression; set to 1 to disable smoothing entirely.
+  smoothing_window_frames: 3

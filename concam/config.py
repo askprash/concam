@@ -160,6 +160,13 @@ class AggregationConfig:
     detection_threshold: float = 0.3
     # Maximum gap (seconds) between detections to merge into one episode
     max_gap_seconds: float = 30.0
+    # Rolling-median window (odd integer, in frames) applied to each flight's
+    # per-frame score timeline *before* thresholding. A single-frame score
+    # spike — typically a bright cloud edge that briefly aligns with the
+    # flight vector — is killed by the median when it's surrounded by
+    # below-threshold neighbours, while a sustained contrail (score high for
+    # many consecutive frames) survives untouched. Set to 1 to disable.
+    smoothing_window_frames: int = 1
 
 
 @dataclass

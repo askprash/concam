@@ -159,3 +159,45 @@ def test_gap_just_over_max_splits():
     results = [_fr(0, 0.5), _fr(31, 0.6)]  # 31s > 30s
     episodes = aggregate_episodes(results, DEFAULT_CONFIG)
     assert len(episodes) == 2
+
+
+# ---------------------------------------------------------------------------
+# Temporal smoothing (rolling-median gate)
+# ---------------------------------------------------------------------------
+
+
+def test_single_frame_spike_suppressed_by_smoothing():
+    """One above-threshold frame surrounded by below-threshold neighbours
+    should NOT open an episode when smoothing_window_frames=3. This is the
+    "bright cloud edge briefly aligning with the flight vector" FP case."""
+    results = [_fr(0, 0.0), _fr(1, 0.9), _fr(2, 0.0), _fr(3, 0.0)]
+    cfg = AggregationConfig(
+        detection_threshold=0.3, max_gap_seconds=30.0, smoothing_window_frames=3,
+    )
+    episodes = aggregate_episodes(results, cfg)
+    assert episodes == []
+
+
+def test_sustained_run_survives_smoothing():
+    """Three consecutive above-threshold frames still merge when smoothed —
+    the median of three high scores is still high."""
+    results = [_fr(0, 0.5), _fr(1, 0.7), _fr(2, 0.6), _fr(3, 0.0)]
+    cfg = AggregationConfig(
+        detection_threshold=0.3, max_gap_seconds=30.0, smoothing_window_frames=3,
+    )
+    episodes = aggregate_episodes(results, cfg)
+    assert len(episodes) == 1
+    # peak_score is the raw (unsmoothed) detector value, not the median.
+    assert episodes[0].peak_score == 0.7
+
+
+def test_smoothing_window_1_is_identity():
+    """Window=1 (default today) should exactly match legacy behaviour —
+    single-frame spikes still open episodes."""
+    results = [_fr(0, 0.0), _fr(1, 0.9), _fr(2, 0.0)]
+    cfg = AggregationConfig(
+        detection_threshold=0.3, max_gap_seconds=30.0, smoothing_window_frames=1,
+    )
+    episodes = aggregate_episodes(results, cfg)
+    assert len(episodes) == 1
+    assert episodes[0].peak_score == 0.9
