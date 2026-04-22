@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "date": "2026-04-09",
+  "labeler_id": "reviewer-1",
+  "exported_at": "2026-04-22T16:02:20.508Z",
+  "labels": [
+    {
+      "episode_id": 94,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-21T22:21:55.744Z"
+    },
+    {
+      "episode_id": 144,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:55:25.555Z",
+      "label_notes": "Very brief. Only between 6:02:00 and 6:02:50 EDT"
+    },
+    {
+      "episode_id": 183,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:55:36.184Z"
+    },
+    {
+      "episode_id": 260,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:55:40.256Z"
+    },
+    {
+      "episode_id": 227,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:55:58.427Z"
+    },
+    {
+      "episode_id": 184,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:56:15.895Z"
+    },
+    {
+      "episode_id": 194,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:56:10.928Z"
+    },
+    {
+      "episode_id": 187,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:56:32.893Z"
+    },
+    {
+      "episode_id": 245,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:56:29.823Z"
+    },
+    {
+      "episode_id": 267,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:56:56.983Z"
+    },
+    {
+      "episode_id": 261,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:56:45.498Z"
+    },
+    {
+      "episode_id": 40,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:57:20.707Z"
+    },
+    {
+      "episode_id": 273,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:57:30.314Z"
+    },
+    {
+      "episode_id": 239,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:57:50.445Z"
+    },
+    {
+      "episode_id": 174,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:15:14.769Z"
+    },
+    {
+      "episode_id": 308,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:58:06.429Z"
+    },
+    {
+      "episode_id": 101,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:58:48.001Z",
+      "label_notes": "Only after the first few seconds starts around 9:13:30, Edt."
+    },
+    {
+      "episode_id": 270,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:58:58.793Z"
+    },
+    {
+      "episode_id": 225,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:58:53.541Z"
+    },
+    {
+      "episode_id": 210,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:59:25.416Z"
+    },
+    {
+      "episode_id": 238,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:59:12.755Z"
+    },
+    {
+      "episode_id": 396,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:59:45.044Z"
+    },
+    {
+      "episode_id": 211,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:59:38.369Z"
+    },
+    {
+      "episode_id": 220,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T16:00:00.594Z"
+    },
+    {
+      "episode_id": 130,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T16:00:18.539Z",
+      "label_notes": "Not in the first few seconds."
+    },
+    {
+      "episode_id": 103,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T16:00:30.420Z",
+      "label_notes": "Not in the first few seconds."
+    },
+    {
+      "episode_id": 100,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T16:01:15.605Z",
+      "label_notes": "Only starts around 10:16:07 EDT. FP before that"
+    },
+    {
+      "episode_id": 258,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T16:01:42.190Z"
+    },
+    {
+      "episode_id": 201,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T16:02:10.898Z",
+      "label_notes": "No contrails for the first minute."
+    }
+  ]
+}

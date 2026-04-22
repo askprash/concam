@@ -94,7 +94,9 @@ detection:
   use_adaptive_canny: true
   canny_percentile_low: 96.0
   # Higher percentile keeps only the very brightest edges (contrail core).
-  canny_percentile_high: 99.8
+  # 99.5 beat 99.8 on the 2026-04-09 reviewer-1 label set (14 pos / 15 neg):
+  # FP dropped 12/15 → 1/15 with zero missed contrails, AUC 0.36 → 0.94.
+  canny_percentile_high: 99.5
   canny_low_ratio: 0.25
   canny_min_high: 60
   # Hough lines must align with the flight-path vector within this tolerance.
@@ -107,8 +109,10 @@ detection:
   score_fn: length
   # Along-track pixel span that maps to score=1.0.  ~0.7 × sqrt(180² + 40²)
   # keeps full-run saturation under 1% while preserving AUC (0.978 vs 0.973
-  # baseline on Apr-8 labels).
-  score_length_norm_px: 130.0
+  # baseline on Apr-8 labels). Bumped 130→200 on 2026-04-22 after the 04-09
+  # reviewer-1 sweep showed it spreads the score distribution so the last
+  # bright-cloud FP drops under the 0.3 gate without sacrificing recall.
+  score_length_norm_px: 200.0
   # Count of aligned long lines that maps to score=1.0 when score_fn="count".
   score_norm_count: 6
   # When true, Canny / Hough only see pixels inside the rotated polygon.
@@ -120,6 +124,12 @@ detection:
   # preserving cross-track contrail edges. Validated on Apr-8 (AUC 1.000→0.912
   # vs none=1.000; better generalisation) and Apr-9 (cross_grad best: 0.769).
   preprocessing: cross_grad
+  # Multiplier on perpendicular-gradient magnitude before clipping to uint8.
+  # Dropped 2.0 → 1.0 on 2026-04-22 after the 04-09 reviewer-1 sweep: at gain 2.0
+  # bright cloud edges saturate, manufacturing long Hough lines (FP 12/15).
+  # 1.0 preserves gradient shape (FP 1/15). Lower values (0.5) suppressed FPs
+  # further but started losing faint true contrails on 04-15-style cloudy days.
+  cross_grad_gain: 1.0
   # Burned-in OSD timestamp region to exclude from Canny/Hough.
   # The clock/date overlay occupies the top-right corner of every frame
   # (height=80 px, width=875 px at 3840x2160).  Adding a 15 px safety pad on

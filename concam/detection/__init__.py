@@ -106,7 +106,8 @@ def _prepare_base(
         sx = cv2.Sobel(base.astype(np.float32), cv2.CV_32F, 1, 0, ksize=3)
         sy = cv2.Sobel(base.astype(np.float32), cv2.CV_32F, 0, 1, ksize=3)
         cross = np.abs(sx * perp_x + sy * perp_y)
-        base = np.clip(cross * 2.0, 0, 255).astype(np.uint8)
+        gain = float(getattr(config, "cross_grad_gain", 2.0))
+        base = np.clip(cross * gain, 0, 255).astype(np.uint8)
         method_suffix += "_cg"
 
     # Light Gaussian blur to tame high-frequency noise.

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "date": "2026-04-15",
+  "labeler_id": "reviewer-1",
+  "exported_at": "2026-04-22T15:39:40.694Z",
+  "labels": [
+    {
+      "episode_id": 52,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:36:01.444Z"
+    },
+    {
+      "episode_id": 214,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:36:08.705Z"
+    },
+    {
+      "episode_id": 209,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:36:20.323Z"
+    },
+    {
+      "episode_id": 248,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:35:48.094Z"
+    },
+    {
+      "episode_id": 163,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:35:36.849Z"
+    },
+    {
+      "episode_id": 244,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:36:42.757Z"
+    },
+    {
+      "episode_id": 36,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:37:02.977Z",
+      "label_notes": "Only in the latter half."
+    },
+    {
+      "episode_id": 210,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:35:11.671Z"
+    },
+    {
+      "episode_id": 211,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:35:03.256Z"
+    },
+    {
+      "episode_id": 186,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:35:21.015Z"
+    },
+    {
+      "episode_id": 229,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:37:14.956Z"
+    },
+    {
+      "episode_id": 184,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:37:20.741Z"
+    },
+    {
+      "episode_id": 38,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:37:32.479Z"
+    },
+    {
+      "episode_id": 40,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:37:49.325Z",
+      "label_notes": "Not in the first few seconds."
+    },
+    {
+      "episode_id": 241,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:37:58.400Z"
+    },
+    {
+      "episode_id": 28,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:38:05.129Z"
+    },
+    {
+      "episode_id": 48,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:38:37.327Z",
+      "label_notes": "Only at the very end as it leaves the frame."
+    },
+    {
+      "episode_id": 49,
+      "label": "contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:39:02.508Z",
+      "label_notes": "not in the first few seconds."
+    },
+    {
+      "episode_id": 116,
+      "label": "no_contrail",
+      "labeler_id": "reviewer-1",
+      "label_timestamp": "2026-04-22T15:39:31.197Z"
+    }
+  ]
+}
