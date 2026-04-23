@@ -75,45 +75,94 @@ def _prepare_base(
     *,
     path_vec: tuple[float, float] | None = None,
     prev_frame: np.ndarray | None = None,
+    crop: tuple[int, int, int, int] | None = None,
 ) -> tuple[np.ndarray, str]:
     """Apply temporal diff and spatial preprocessing to produce a detection base.
 
     Returns ``(base_gray, method_suffix)`` where ``method_suffix`` is appended
     to the detector method name to record which preprocessing was applied.
+
+    When ``crop=(x1, y1, x2, y2)`` (full-frame pixel coords) is supplied, the
+    spatial ops are applied on a halo-padded slice of the frame and the result
+    is trimmed back, so ``base.shape == (y2-y1, x2-x1)``. The halo equals the
+    widest stencil footprint across the enabled ops, so the interior pixels
+    match a full-frame computation.
     """
-    gray = _to_gray(frame)
-    base = gray
-    method_suffix = ""
-
-    # Optional temporal diff at full-frame scale.
-    if prev_frame is not None:
-        prev_gray = _to_gray(prev_frame)
-        if prev_gray.shape == gray.shape:
-            base = cv2.absdiff(gray, prev_gray)
-            method_suffix += "_diff"
-
-    # Optional spatial pre-processing.
     preprocessing = getattr(config, "preprocessing", "none")
+    has_diff = (
+        prev_frame is not None
+        and prev_frame.shape[:2] == frame.shape[:2]
+    )
+
+    method_suffix = ""
+    if has_diff:
+        method_suffix += "_diff"
+    if preprocessing == "local_contrast":
+        method_suffix += "_lc"
+    elif preprocessing == "cross_grad" and path_vec is not None:
+        method_suffix += "_cg"
+
+    pad = 0
+    if preprocessing == "cross_grad" and path_vec is not None:
+        pad = max(pad, 1)  # Sobel ksize=3
     if preprocessing == "local_contrast":
         sigma = float(getattr(config, "local_contrast_sigma", 25.0))
-        bg = cv2.GaussianBlur(base.astype(np.float32), (0, 0), sigma)
-        lc = base.astype(np.float32) - bg + 128.0
-        base = np.clip(lc, 0, 255).astype(np.uint8)
-        method_suffix += "_lc"
+        pad = max(pad, int(math.ceil(3.0 * sigma)))
+    if config.blur_kernel and config.blur_kernel > 1:
+        k = int(config.blur_kernel) | 1
+        pad = max(pad, k // 2)
+
+    h_fr, w_fr = frame.shape[:2]
+    if crop is not None:
+        x1 = max(0, min(w_fr, int(crop[0])))
+        y1 = max(0, min(h_fr, int(crop[1])))
+        x2 = max(x1, min(w_fr, int(crop[2])))
+        y2 = max(y1, min(h_fr, int(crop[3])))
+        if x2 <= x1 or y2 <= y1:
+            return np.zeros((y2 - y1, x2 - x1), dtype=np.uint8), method_suffix
+        px1 = max(0, x1 - pad)
+        py1 = max(0, y1 - pad)
+        px2 = min(w_fr, x2 + pad)
+        py2 = min(h_fr, y2 + pad)
+        gray = _to_gray(frame[py1:py2, px1:px2])
+        base = gray
+        if has_diff:
+            prev_gray = _to_gray(prev_frame[py1:py2, px1:px2])
+            base = cv2.absdiff(gray, prev_gray)
+        trim_y = y1 - py1
+        trim_x = x1 - px1
+        trim_h = y2 - y1
+        trim_w = x2 - x1
+    else:
+        gray = _to_gray(frame)
+        base = gray
+        if has_diff:
+            prev_gray = _to_gray(prev_frame)
+            base = cv2.absdiff(gray, prev_gray)
+        trim_y = trim_x = 0
+        trim_h, trim_w = base.shape[:2]
+
+    if preprocessing == "local_contrast":
+        sigma = float(getattr(config, "local_contrast_sigma", 25.0))
+        base_f = base.astype(np.float32)
+        bg = cv2.GaussianBlur(base_f, (0, 0), sigma)
+        base = np.clip(base_f - bg + 128.0, 0, 255).astype(np.uint8)
     elif preprocessing == "cross_grad" and path_vec is not None:
         px_v, py_v = float(path_vec[0]), float(path_vec[1])
         perp_x, perp_y = -py_v, px_v   # 90° rotation, unit length
-        sx = cv2.Sobel(base.astype(np.float32), cv2.CV_32F, 1, 0, ksize=3)
-        sy = cv2.Sobel(base.astype(np.float32), cv2.CV_32F, 0, 1, ksize=3)
+        base_f = base.astype(np.float32)
+        sx = cv2.Sobel(base_f, cv2.CV_32F, 1, 0, ksize=3)
+        sy = cv2.Sobel(base_f, cv2.CV_32F, 0, 1, ksize=3)
         cross = np.abs(sx * perp_x + sy * perp_y)
         gain = float(getattr(config, "cross_grad_gain", 2.0))
         base = np.clip(cross * gain, 0, 255).astype(np.uint8)
-        method_suffix += "_cg"
 
-    # Light Gaussian blur to tame high-frequency noise.
     if config.blur_kernel and config.blur_kernel > 1:
         k = int(config.blur_kernel) | 1
         base = cv2.GaussianBlur(base, (k, k), 0)
+
+    if crop is not None:
+        base = base[trim_y : trim_y + trim_h, trim_x : trim_x + trim_w]
 
     return base, method_suffix
 
@@ -268,21 +317,26 @@ def detect(
         polygon is not None and config.use_rotated_mask
     ) else "aabb_hough"
 
-    base, method_suffix = _prepare_base(
-        frame, config, path_vec=path_vec, prev_frame=prev_frame
-    )
-    method = method + method_suffix
-    h_fr, w_fr = base.shape[:2]
-
-    # Clip AABB to frame bounds.
+    h_fr, w_fr = frame.shape[:2]
+    # Clip AABB to frame bounds before preprocessing so Sobel/blur run on the
+    # cropped ROI (~180×200 px) instead of the full 3840×2160 frame.
     x1 = max(0, int(roi.x))
     y1 = max(0, int(roi.y))
     x2 = min(w_fr, int(roi.x + roi.w))
     y2 = min(h_fr, int(roi.y + roi.h))
+
+    base, method_suffix = _prepare_base(
+        frame, config,
+        path_vec=path_vec,
+        prev_frame=prev_frame,
+        crop=(x1, y1, x2, y2),
+    )
+    method = method + method_suffix
+
     if x2 <= x1 or y2 <= y1:
         return DetectionResult(score=0.0, pixel_line=None, method=method)
 
-    crop = base[y1:y2, x1:x2]
+    crop = base
     if crop.size == 0:
         return DetectionResult(score=0.0, pixel_line=None, method=method)
 
@@ -445,8 +499,7 @@ def grow_contrail_length(
     endpoints at convergence, in full-frame pixel units.  Returns 0.0 when no
     aligned lines are found in the seed polygon.
     """
-    base, _ = _prepare_base(frame, config, path_vec=path_vec, prev_frame=prev_frame)
-    h_fr, w_fr = base.shape[:2]
+    h_fr, w_fr = frame.shape[:2]
 
     cx, cy = float(center_xy[0]), float(center_xy[1])
     vx, vy = float(path_vec[0]), float(path_vec[1])
@@ -457,6 +510,23 @@ def grow_contrail_length(
     growth_step = int(getattr(config, "growth_step_px", 20))
     max_along = int(getattr(config, "roi_max_along_px", 600))
     start_along = int(getattr(config, "roi_along_px", 180))
+
+    # Max-case AABB bound (axis-aligned sum of along + cross half-extents)
+    # so the preprocessing crop covers every growth iteration we'll see.
+    max_radius = max_along / 2.0 + cross_half
+    max_x1 = max(0, int(math.floor(cx - max_radius)))
+    max_y1 = max(0, int(math.floor(cy - max_radius)))
+    max_x2 = min(w_fr, int(math.ceil(cx + max_radius)))
+    max_y2 = min(h_fr, int(math.ceil(cy + max_radius)))
+    if max_x2 <= max_x1 or max_y2 <= max_y1:
+        return 0.0
+
+    base, _ = _prepare_base(
+        frame, config,
+        path_vec=path_vec,
+        prev_frame=prev_frame,
+        crop=(max_x1, max_y1, max_x2, max_y2),
+    )
 
     best_length_px = 0.0
     prev_span = -1.0  # sentinel so first iteration never breaks early
@@ -486,7 +556,7 @@ def grow_contrail_length(
         if bx2 <= bx1 or by2 <= by1:
             break
 
-        crop = base[by1:by2, bx1:bx2]
+        crop = base[by1 - max_y1 : by2 - max_y1, bx1 - max_x1 : bx2 - max_x1]
         ch, cw = crop.shape[:2]
 
         # Rotated mask in crop-local coords.
