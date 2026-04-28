@@ -47,6 +47,12 @@
   .seek-btn { padding: 0 0.4em; font-size: 0.85em; cursor: pointer; }
   .ep-times { white-space: nowrap; }
   .ep-time-local { color: #666; font-size: 0.92em; }
+  .episode.flash { animation: ep-flash 1.2s ease-out; }
+  @keyframes ep-flash {
+    0%   { background: #fde68a; }
+    100% { background: transparent; }
+  }
+  #video-wrap.clickable { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -67,7 +73,11 @@
   <label><input type="checkbox" id="toggle-tracks" checked> ADS-B</label>
   <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-dot" value="dot" checked> dot only</label>
   <label style="margin-left:0.25rem"><input type="radio" name="track-mode" id="track-mode-track" value="track"> + track</label>
+  <label style="margin-left:1rem">shape:</label>
+  <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-filled" value="filled" checked> filled</label>
+  <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-ring" value="ring"> ring</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
+  <label style="margin-left:1rem"><input type="checkbox" id="toggle-zoom"> Zoom box</label>
   <label style="margin-left:1rem">Sort:
     <select id="sort-mode">
       <option value="time">time</option>
@@ -76,7 +86,8 @@
   </label>
   <label style="margin-left:0.5rem"><input type="checkbox" id="filter-detected"> detected only</label>
   <span class="legend">
-    <span class="swatch" style="background:#f5c542"></span>auto-detected flight
+    <span class="swatch" style="background:#a855f7"></span>contrail coming
+    <span class="swatch" style="background:#f5c542; margin-left:0.5rem"></span>contrail forming now
     <span class="swatch" style="background:#5aa0ff; margin-left:0.5rem"></span>other flight
     <span class="swatch" style="background:#ff3b3b; margin-left:0.5rem"></span>detection line
   </span>
@@ -262,6 +273,7 @@
   manifest.episodes.forEach((ep) => {
     const list = episodesByTid.get(ep.transponder_id) || [];
     list.push({
+      episode_id: ep.episode_id,
       onset: Date.parse(ep.onset),
       end: Date.parse(ep.end),
       peak_score: ep.peak_score,
@@ -303,10 +315,22 @@
   const toggleDetections = document.getElementById("toggle-detections");
   const trackModeDot = document.getElementById("track-mode-dot");
   const trackModeTrack = document.getElementById("track-mode-track");
+  const dotStyleFilled = document.getElementById("dot-style-filled");
+  const dotStyleRing = document.getElementById("dot-style-ring");
+  const toggleZoom = document.getElementById("toggle-zoom");
   toggleTracks.addEventListener("change", draw);
   toggleDetections.addEventListener("change", draw);
   trackModeDot.addEventListener("change", draw);
   trackModeTrack.addEventListener("change", draw);
+  dotStyleFilled.addEventListener("change", draw);
+  dotStyleRing.addEventListener("change", draw);
+  toggleZoom.addEventListener("change", draw);
+
+  // Hit-zones registered during draw() so canvas clicks can map back to the
+  // right episode and scroll the sidebar to it. Cleared at the start of every
+  // draw. Each entry is a (axis-aligned) bounding rect in image-pixel coords
+  // that covers both the dot and the callsign label.
+  let hitZones = [];
 
   function findActiveEpisode(tid, wallMs) {
     const eps = episodesByTid.get(tid);
@@ -343,8 +367,31 @@
     if (inWindow.length === 0) return;
 
     const active = findActiveEpisode(track.tid, wallMs);
-    const highlighted = active && active.peak_score >= detectionThreshold;
-    const color = highlighted ? "#f5c542" : "#5aa0ff";
+    // Three-way dot state so the reviewer can see the exact frame the contrail
+    // starts forming:
+    //   - blue   : flight pass whose peak score never crosses threshold
+    //   - violet : flight pass that WILL cross threshold later in this episode,
+    //              but the current frame is still below threshold
+    //   - yellow : current frame's raw detector score >= threshold (forming now)
+    let willBeDetected = false;
+    let formingNow = false;
+    if (active && active.peak_score >= detectionThreshold) {
+      willBeDetected = true;
+      let closest = null;
+      let closestDt = FRAME_MATCH_MS;
+      for (const f of active.frames) {
+        const dt = Math.abs(f.t - wallMs);
+        if (dt < closestDt) {
+          closest = f;
+          closestDt = dt;
+        }
+      }
+      if (closest && closest.score != null && closest.score >= detectionThreshold) {
+        formingNow = true;
+      }
+    }
+    const highlighted = willBeDetected;
+    const color = formingNow ? "#f5c542" : (willBeDetected ? "#a855f7" : "#5aa0ff");
     const dotR = highlighted ? 9 : 6;
 
     // Current position: nearest ping to wallMs.
@@ -366,26 +413,146 @@
       ctx.stroke();
     }
 
-    // Dot with white outline for visibility.
+    // Dot: filled (default) or ring (hollow, larger — so reviewers can see
+    // what's inside the dot at contrail initiation).
     ctx.globalAlpha = 0.95;
-    ctx.beginPath();
-    ctx.arc(nearest.x, nearest.y, dotR + 2, 0, Math.PI * 2);
-    ctx.fillStyle = "#fff";
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(nearest.x, nearest.y, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
+    let hitR;  // radius used for click hit-testing
+    if (dotStyleRing.checked) {
+      const ringR = dotR + 6;
+      // Thin white underlay for contrast against both dark sky and clouds.
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(nearest.x, nearest.y, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.arc(nearest.x, nearest.y, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+      hitR = ringR + 3;
+    } else {
+      ctx.beginPath();
+      ctx.arc(nearest.x, nearest.y, dotR + 2, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(nearest.x, nearest.y, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      hitR = dotR + 4;
+    }
 
     // Callsign + flight level label with drop-shadow for readability.
     const fl = flightLevel(nearest.alt_baro_m);
     const label = fl ? (track.callsign + " " + fl) : track.callsign;
     ctx.globalAlpha = 1.0;
     ctx.font = "bold 22px system-ui, sans-serif";
+    const labelX = nearest.x + hitR + 2;
+    const labelY = nearest.y + 9;
     ctx.fillStyle = "#000";
-    ctx.fillText(label, nearest.x + dotR + 4, nearest.y + 10);
+    ctx.fillText(label, labelX + 1, labelY + 1);
     ctx.fillStyle = color;
-    ctx.fillText(label, nearest.x + dotR + 3, nearest.y + 9);
+    ctx.fillText(label, labelX, labelY);
+
+    // Register a click zone covering dot+label so canvas clicks can scroll
+    // the sidebar to this flight's episode row.
+    const labelW = ctx.measureText(label).width;
+    hitZones.push({
+      episodeId: active ? active.episode_id : null,
+      tid: track.tid,
+      x1: nearest.x - hitR,
+      y1: Math.min(nearest.y - hitR, labelY - 20),
+      x2: labelX + labelW + 2,
+      y2: Math.max(nearest.y + hitR, labelY + 4),
+    });
+
+    // Zoom box: floating 2.5x-zoomed magnifier of a ROI-sized region around
+    // the ping, for violet/yellow flights only. One GPU blit per flight — so
+    // essentially free. Placed AHEAD of the plane along its flight vector so
+    // the zoom never covers the contrail trailing behind; clamps to frame
+    // bounds if that would overflow.
+    if (toggleZoom.checked && (formingNow || willBeDetected)) {
+      const srcSize = 180;  // matches roi_along_px — same crop the detector sees
+      const zoom = 2.5;
+      const dstSize = srcSize * zoom;
+      const sx = Math.max(0, Math.min(imgW - srcSize, nearest.x - srcSize / 2));
+      const sy = Math.max(0, Math.min(imgH - srcSize, nearest.y - srcSize / 2));
+
+      // Flight direction from the ±60s track window (oldest → nearest). Falls
+      // back to +x if the track has fewer than 2 points or is stationary.
+      let dirX = 1, dirY = 0;
+      if (inWindow.length >= 2) {
+        const back = inWindow[0];
+        const vx = nearest.x - back.x;
+        const vy = nearest.y - back.y;
+        const norm = Math.hypot(vx, vy);
+        if (norm > 1e-3) {
+          dirX = vx / norm;
+          dirY = vy / norm;
+        }
+      }
+      // Pick the perpendicular offset that keeps the box away from the label
+      // (which always extends to the right of the ping) — prefer negative x,
+      // then positive y. Score = -perp.x + 0.5 * perp.y; higher is better.
+      const perpA = { x: -dirY, y: dirX };
+      const perpB = { x: dirY, y: -dirX };
+      const perp = (-perpA.x + 0.5 * perpA.y >= -perpB.x + 0.5 * perpB.y)
+        ? perpA : perpB;
+
+      // Place box diagonally offset: forward along the flight vector AND
+      // sideways along the chosen perpendicular. The near corner of the box
+      // is a small gap diagonally off the ping, so the leader line lands on
+      // a corner (not an edge) and the box never sits on the flight path.
+      const gap = 26;
+      const centerX = nearest.x + dirX * (dstSize / 2 + gap) + perp.x * (dstSize / 2 + gap);
+      const centerY = nearest.y + dirY * (dstSize / 2 + gap) + perp.y * (dstSize / 2 + gap);
+      let dx = Math.max(0, Math.min(imgW - dstSize, centerX - dstSize / 2));
+      let dy = Math.max(0, Math.min(imgH - dstSize, centerY - dstSize / 2));
+
+      ctx.globalAlpha = 1.0;
+      try {
+        ctx.drawImage(video, sx, sy, srcSize, srcSize, dx, dy, dstSize, dstSize);
+      } catch (_) {
+        // First frame may not be decoded yet — skip silently.
+      }
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = color;
+      ctx.strokeRect(dx, dy, dstSize, dstSize);
+
+      // Dot inside the zoom box marking the plane's exact position. The crop
+      // src origin is (sx, sy); the ping maps to (dx + (nearest.x-sx)*zoom, ...).
+      const zPingX = dx + (nearest.x - sx) * zoom;
+      const zPingY = dy + (nearest.y - sy) * zoom;
+      ctx.globalAlpha = 1.0;
+      ctx.beginPath();
+      ctx.arc(zPingX, zPingY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(zPingX, zPingY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Leader line: ping → nearest corner of the zoom box. Always a corner
+      // (not a clamped edge) so the box is visibly offset from the flight path.
+      const cornerX = (nearest.x < dx + dstSize / 2) ? dx : dx + dstSize;
+      const cornerY = (nearest.y < dy + dstSize / 2) ? dy : dy + dstSize;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(nearest.x, nearest.y);
+      ctx.lineTo(cornerX, cornerY);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      // Clicking the zoom box also jumps to the episode.
+      hitZones.push({
+        episodeId: active ? active.episode_id : null,
+        tid: track.tid,
+        x1: dx, y1: dy, x2: dx + dstSize, y2: dy + dstSize,
+      });
+    }
   }
 
   function drawDetections(wallMs) {
@@ -410,6 +577,7 @@
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hitZones = [];
     const wallMs = currentWallMs(video.currentTime);
     if (toggleTracks.checked) {
       ctx.globalAlpha = 0.85;
@@ -421,8 +589,79 @@
     ctx.globalAlpha = 1.0;
   }
 
-  video.addEventListener("timeupdate", draw);
+  // Click-to-scroll: clicking on a ping or callsign label in the video jumps
+  // the sidebar to the matching episode row and flashes it. If the row is
+  // hidden by the "detected only" filter, uncheck the filter so the click
+  // still surfaces something.
+  function scrollToEpisode(episodeId) {
+    if (episodeId == null) return;
+    let dom = episodeDom.get(String(episodeId));
+    if (!dom && filterDetectedEl.checked) {
+      filterDetectedEl.checked = false;
+      renderEpisodeList();
+      dom = episodeDom.get(String(episodeId));
+    }
+    if (!dom) return;
+    dom.wrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+    dom.wrapper.classList.remove("flash");
+    // Re-add on next frame so the animation replays on repeated clicks.
+    requestAnimationFrame(() => dom.wrapper.classList.add("flash"));
+  }
+
+  const videoWrap = document.getElementById("video-wrap");
+  videoWrap.addEventListener("click", (e) => {
+    const rect = video.getBoundingClientRect();
+    const sx = imgW / rect.width;
+    const sy = imgH / rect.height;
+    const ix = (e.clientX - rect.left) * sx;
+    const iy = (e.clientY - rect.top) * sy;
+    for (let i = hitZones.length - 1; i >= 0; i--) {
+      const z = hitZones[i];
+      if (ix >= z.x1 && ix <= z.x2 && iy >= z.y1 && iy <= z.y2) {
+        scrollToEpisode(z.episodeId);
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      }
+    }
+  });
+  // Show pointer cursor when hovering over a registered hit zone so reviewers
+  // discover the affordance.
+  videoWrap.addEventListener("mousemove", (e) => {
+    const rect = video.getBoundingClientRect();
+    const sx = imgW / rect.width;
+    const sy = imgH / rect.height;
+    const ix = (e.clientX - rect.left) * sx;
+    const iy = (e.clientY - rect.top) * sy;
+    let over = false;
+    for (const z of hitZones) {
+      if (ix >= z.x1 && ix <= z.x2 && iy >= z.y1 && iy <= z.y2) {
+        over = true;
+        break;
+      }
+    }
+    videoWrap.classList.toggle("clickable", over);
+  });
+
+  // Sync overlay to every presented video frame. "timeupdate" only fires at
+  // ~4 Hz regardless of playback fps, so at 30 fps playback the ping would
+  // otherwise drift 5-7 frames behind the video. requestVideoFrameCallback
+  // fires exactly once per painted video frame (Chrome/Edge/Safari/FF); we
+  // fall back to rAF when unavailable.
+  const hasRVFC = typeof video.requestVideoFrameCallback === "function";
+  function tick() {
+    draw();
+    if (video.paused || video.ended) return;
+    if (hasRVFC) video.requestVideoFrameCallback(tick);
+    else requestAnimationFrame(tick);
+  }
+  video.addEventListener("play", () => {
+    if (hasRVFC) video.requestVideoFrameCallback(tick);
+    else requestAnimationFrame(tick);
+  });
+  // Still redraw on scrub/pause/seek when no frames are being presented.
   video.addEventListener("seeked", draw);
+  video.addEventListener("pause", draw);
   video.addEventListener("loadeddata", () => {
     fitCanvas();
     draw();
