@@ -19,6 +19,58 @@ _FT_TO_M = 0.3048
 _VALID_ALTITUDE_SOURCES = ("auto", "gnss", "barometric")
 
 
+# Temporary workaround for a feder 1.0.0 bug: ``DB.__init__`` opens each per-day
+# SQLite file with ``mode=ro`` only. SQLite still attempts journal cleanup on
+# first access, which fails with "attempt to write a readonly database" for any
+# reader who is not ``mcast`` (i.e. all of us) on the Hex data files. Adding
+# ``immutable=1`` to the URI tells SQLite the file cannot change so it skips the
+# write attempt. Reaches into ``feder.common.db`` (private), so the version
+# assertion below makes us fail loudly the moment we drift off the version we
+# tested against. Awaiting upstream fix from collaborator (a one-line
+# `&immutable=1` addition in ``DB.__init__``).
+#
+# Removal: when feder 1.0.1+ ships with the fix, delete ``_patch_feder_readonly_open``
+# and the call site in ``load_flights``, then bump the pin in pyproject.toml.
+_FEDER_PATCHED_VERSION = "1.0.0"
+
+
+def _patch_feder_readonly_open() -> None:
+    import sqlite3 as _real
+
+    import feder
+
+    if feder.__version__ != _FEDER_PATCHED_VERSION:
+        raise RuntimeError(
+            f"feder {feder.__version__} differs from the version this monkey-patch "
+            f"was tested against ({_FEDER_PATCHED_VERSION}). Confirm the bug is "
+            f"fixed upstream and remove _patch_feder_readonly_open, or update "
+            f"_FEDER_PATCHED_VERSION after re-verifying."
+        )
+
+    import feder.common.db as feder_db
+
+    if getattr(feder_db, "_concam_immutable_patched", False):
+        return
+
+    class _SqliteCompat:
+        def __getattr__(self, name: str):
+            return getattr(_real, name)
+
+        @staticmethod
+        def connect(database, *args, **kwargs):
+            if (
+                isinstance(database, str)
+                and database.startswith("file:")
+                and "mode=ro" in database
+                and "immutable=" not in database
+            ):
+                database = database + "&immutable=1"
+            return _real.connect(database, *args, **kwargs)
+
+    feder_db.sqlite3 = _SqliteCompat()
+    feder_db._concam_immutable_patched = True
+
+
 @dataclass
 class Ping:
     """One position fix for a flight, after filtering and upsampling.
@@ -199,6 +251,8 @@ def load_flights(date: datetime.date, config: AdsbConfig) -> list[Flight]:
     and GNSS altitudes disagreed by more than the configured threshold.
     """
     import feder
+
+    _patch_feder_readonly_open()
 
     os.environ["FEDER_DATA_DIR"] = config.data_dir
 

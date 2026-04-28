@@ -116,3 +116,29 @@ model-tuning session that depends on it.
 
 None of these are copied into the repo. If a path moves, update
 `configs/mit_green_building.yaml` rather than hard-coding the new path.
+
+### TEMPORARY: feder 1.0.0 workarounds
+
+`feder` is pinned exactly to `1.0.0`. The release has two known issues we
+work around locally; **both must be removed once the maintainer ships a
+fix** — do not extend or normalize them as the canonical integration
+pattern:
+
+1. The wheel ships an empty `Requires-Dist`, so `lz4` and `pandas` are
+   declared directly in `pyproject.toml` to plug feder's transitive
+   imports. Drop these declarations once feder fixes its packaging
+   metadata.
+2. `feder.common.db.DB.__init__` opens each per-day SQLite file with
+   `?mode=ro` only, which fails with "attempt to write a readonly
+   database" for any reader who is not `mcast` on the Hex data files.
+   `concam.adsb._patch_feder_readonly_open` shadows
+   `feder.common.db.sqlite3` with a wrapper that appends `&immutable=1`
+   to the URI before connect. The helper hard-asserts
+   `feder.__version__ == "1.0.0"` so a future `uv lock` that picks up a
+   different feder fails loudly instead of silently de-aligning.
+   Delete the helper, its call site in `load_flights`, and bump the pin
+   once feder ships a release with `&immutable=1` applied upstream.
+
+If you hit feder integration friction, file an issue with the
+maintainer; do not paper over it with another reach into private
+internals here.
