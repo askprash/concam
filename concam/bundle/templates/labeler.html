@@ -57,12 +57,13 @@
   #heatmap-panel { position: relative; padding: 0.4rem 0.5rem; border-bottom: 1px solid #ddd; background: #fafafa; flex-shrink: 0; overflow-x: auto; }
   #heatmap-panel h2 { font-size: 0.85em; margin: 0 0 0.25rem; font-weight: 600; color: #333; display: flex; align-items: baseline; gap: 0.5rem; }
   #heatmap-panel h2 .subtitle { font-weight: 400; color: #777; font-size: 0.95em; }
-  #heatmap-svg { display: block; user-select: none; }
-  #heatmap-svg .hm-cell { cursor: default; }
-  #heatmap-svg .hm-cell:hover { stroke: #000; stroke-width: 0.5; }
-  #heatmap-svg .hm-axis { font: 9px system-ui, sans-serif; fill: #666; }
-  #heatmap-svg .hm-frame { fill: none; stroke: #bbb; stroke-width: 0.5; }
-  #heatmap-tooltip { position: absolute; pointer-events: none; background: rgba(20,20,20,0.92); color: #fff; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.78em; line-height: 1.35; white-space: nowrap; max-width: 280px; z-index: 100; display: none; }
+  .hm-svg { display: block; user-select: none; }
+  .hm-svg .hm-cell { cursor: pointer; }
+  .hm-svg .hm-cell:hover { stroke: #000; stroke-width: 0.6; }
+  .hm-svg .hm-axis { font: 9px system-ui, sans-serif; fill: #666; }
+  .hm-svg .hm-frame { fill: none; stroke: #bbb; stroke-width: 0.5; }
+  #heatmap-modal-svg.hm-svg .hm-axis { font-size: 13px; }
+  #heatmap-tooltip { position: fixed; pointer-events: none; background: rgba(20,20,20,0.92); color: #fff; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.78em; line-height: 1.35; white-space: nowrap; max-width: 320px; z-index: 1100; display: none; }
   #heatmap-tooltip strong { color: #fde68a; }
   #heatmap-tooltip .hm-flight { white-space: nowrap; }
   #heatmap-tooltip .hm-flight.contrail::before { content: "■ "; color: #ef4444; }
@@ -71,6 +72,15 @@
   #heatmap-controls button { padding: 0.1rem 0.5rem; font-size: 0.85em; cursor: pointer; }
   #heatmap-legend { display: inline-flex; gap: 0.4rem; align-items: center; }
   #heatmap-legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 1px; vertical-align: -1px; }
+  /* Pop-out modal showing the heatmap nice and big. */
+  #heatmap-modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 1000; align-items: center; justify-content: center; padding: 1.5rem; }
+  #heatmap-modal.open { display: flex; }
+  #heatmap-modal-inner { background: #fafafa; border-radius: 6px; padding: 0.9rem 1.1rem 0.6rem; max-width: 96vw; max-height: 96vh; overflow: auto; position: relative; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); }
+  #heatmap-modal-inner h2 { font-size: 1rem; margin: 0 0 0.5rem; font-weight: 600; color: #222; }
+  #heatmap-modal-inner h2 .subtitle { font-weight: 400; color: #777; font-size: 0.9em; margin-left: 0.4em; }
+  #heatmap-modal-close { position: absolute; top: 0.3rem; right: 0.6rem; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: #666; line-height: 1; padding: 0.1rem 0.4rem; }
+  #heatmap-modal-close:hover { color: #000; }
+  #heatmap-modal-hint { margin-top: 0.4rem; font-size: 0.8em; color: #666; }
 </style>
 </head>
 <body>
@@ -127,8 +137,7 @@
     </div>
     <section id="heatmap-panel" hidden>
       <h2>Flight levels &times; time <span class="subtitle">(UTC)</span></h2>
-      <svg id="heatmap-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-      <div id="heatmap-tooltip"></div>
+      <svg id="heatmap-svg" class="hm-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       <div id="heatmap-controls">
         <span id="heatmap-legend">
           <span class="swatch" style="background:#ef4444"></span>contrail
@@ -136,6 +145,7 @@
           <span class="swatch" style="background:#888; margin-left:0.3rem"></span>mixed
         </span>
         <span style="flex:1"></span>
+        <button id="heatmap-expand-btn" type="button" title="Pop out larger view">&#x2922;</button>
         <button id="heatmap-svg-btn" type="button" title="Download as SVG">SVG</button>
         <button id="heatmap-png-btn" type="button" title="Download as PNG">PNG</button>
       </div>
@@ -145,6 +155,16 @@
     </section>
   </div>
 </div>
+
+<div id="heatmap-modal" role="dialog" aria-modal="true" aria-labelledby="heatmap-modal-title">
+  <div id="heatmap-modal-inner">
+    <button id="heatmap-modal-close" type="button" aria-label="Close">&times;</button>
+    <h2 id="heatmap-modal-title">Flight levels &times; time <span class="subtitle">(UTC)</span></h2>
+    <svg id="heatmap-modal-svg" class="hm-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="heatmap-modal-hint">Click any cell to seek the video; hover to see contributing flights. Press Esc or click outside to close.</div>
+  </div>
+</div>
+<div id="heatmap-tooltip"></div>
 
 <script>
 // Browser-based labeler — video playback + canvas overlays.
@@ -925,6 +945,8 @@
 
   const heatmapPanel = document.getElementById("heatmap-panel");
   const heatmapSvg = document.getElementById("heatmap-svg");
+  const heatmapModal = document.getElementById("heatmap-modal");
+  const heatmapModalSvg = document.getElementById("heatmap-modal-svg");
   const heatmapTooltip = document.getElementById("heatmap-tooltip");
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -964,17 +986,18 @@
   }
 
   function moveTooltip(evt) {
-    const panelRect = heatmapPanel.getBoundingClientRect();
+    // Tooltip is position:fixed, so coordinates are viewport-relative. Clamp
+    // against the window edges, not against the panel — the tooltip is shared
+    // by the inline panel and the pop-out modal.
     const tipRect = heatmapTooltip.getBoundingClientRect();
-    let x = evt.clientX - panelRect.left + 12;
-    let y = evt.clientY - panelRect.top + 12;
-    // Clamp inside the panel so the tooltip never escapes the sidebar.
-    if (x + tipRect.width > panelRect.width - 4) {
-      x = evt.clientX - panelRect.left - tipRect.width - 12;
-    }
-    if (y + tipRect.height > panelRect.height - 4) {
-      y = panelRect.height - tipRect.height - 4;
-    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = evt.clientX + 14;
+    let y = evt.clientY + 14;
+    if (x + tipRect.width > vw - 6) x = evt.clientX - tipRect.width - 14;
+    if (y + tipRect.height > vh - 6) y = evt.clientY - tipRect.height - 14;
+    if (x < 6) x = 6;
+    if (y < 6) y = 6;
     heatmapTooltip.style.left = x + "px";
     heatmapTooltip.style.top = y + "px";
   }
@@ -983,40 +1006,77 @@
     heatmapTooltip.style.display = "none";
   }
 
-  function renderHeatmap() {
-    const data = computeHeatmap();
-    const { cells, nBins, nRows, xMinMs, xMaxMs, binMs } = data;
-    if (nBins === 0) {
-      heatmapPanel.hidden = true;
-      return;
+  function seekToCell(bin, cell, xMinMs, binMs) {
+    // Click-to-seek: jump the video to the earliest contributing episode in
+    // the cell (and flash the corresponding sidebar row), or to the bin start
+    // when the cell has no flights.
+    const all = [...cell.contrail, ...cell.clear];
+    let targetMs;
+    let episodeId = null;
+    if (all.length === 0) {
+      targetMs = xMinMs + bin * binMs;
+    } else {
+      // Earliest episode = smallest onset among the cell's flights.
+      let earliest = null;
+      let earliestOnset = Infinity;
+      for (const f of all) {
+        const ep = manifest.episodes.find(
+          (e) => e.episode_id === f.episode_id);
+        if (!ep) continue;
+        const onset = Date.parse(ep.onset);
+        if (onset < earliestOnset) {
+          earliest = ep;
+          earliestOnset = onset;
+        }
+      }
+      if (!earliest) {
+        targetMs = xMinMs + bin * binMs;
+      } else {
+        targetMs = earliestOnset;
+        episodeId = earliest.episode_id;
+      }
     }
-    heatmapPanel.hidden = false;
+    const sec = wallMsToVideoTime(targetMs);
+    if (isFinite(sec) && sec >= 0) {
+      video.currentTime = sec;
+      video.play().catch(() => {});
+    }
+    if (episodeId != null) scrollToEpisode(episodeId);
+  }
 
-    // Layout: cell width auto-fits the available width with a 2px floor so a
-    // full 24h × 10-min span (~144 bins) fits inside a 420px sidebar without
-    // horizontal scroll. The panel falls back to overflow-x:auto otherwise.
-    const marginL = 36, marginR = 8, marginT = 8, marginB = 22;
-    const availW = Math.max(200, heatmapPanel.clientWidth - marginL - marginR - 16);
-    const cellW = Math.max(2, Math.floor(availW / nBins));
-    const cellH = 8;
+  function renderHeatmapInto(svg, opts, data) {
+    // Shared renderer for both the inline sidebar SVG and the pop-out modal.
+    // `opts` controls cell size and X-axis label cadence; the binning logic
+    // (computeHeatmap) is shared so both views show identical data. Caller
+    // can pass in pre-computed `data` so we don't bin twice when sizing.
+    data = data || computeHeatmap();
+    const { cells, nBins, nRows, xMinMs, xMaxMs, binMs } = data;
+    if (nBins === 0) return false;
+
+    const cellW = opts.cellW;
+    const cellH = opts.cellH;
+    const marginL = opts.marginL ?? 40;
+    const marginR = opts.marginR ?? 10;
+    const marginT = opts.marginT ?? 10;
+    const marginB = opts.marginB ?? 24;
+    const labelFontPx = opts.labelFontPx ?? 28;  // min px between hour labels
     const plotW = cellW * nBins;
     const plotH = cellH * nRows;
     const svgW = plotW + marginL + marginR;
     const svgH = plotH + marginT + marginB;
 
-    while (heatmapSvg.firstChild) heatmapSvg.removeChild(heatmapSvg.firstChild);
-    heatmapSvg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
-    heatmapSvg.setAttribute("width", svgW);
-    heatmapSvg.setAttribute("height", svgH);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+    svg.setAttribute("width", svgW);
+    svg.setAttribute("height", svgH);
 
-    // Plot frame.
     const frame = document.createElementNS(SVG_NS, "rect");
     frame.setAttribute("class", "hm-frame");
     frame.setAttribute("x", marginL);
     frame.setAttribute("y", marginT);
     frame.setAttribute("width", plotW);
     frame.setAttribute("height", plotH);
-    heatmapSvg.appendChild(frame);
+    svg.appendChild(frame);
 
     // Cells. y axis is inverted (FL450 at top, FL250 at bottom) to match the
     // mental model of altitude in atmospheric plots.
@@ -1036,7 +1096,14 @@
           showTooltip(e, b, r, cell, xMinMs, binMs));
         rect.addEventListener("mousemove", moveTooltip);
         rect.addEventListener("mouseleave", hideTooltip);
-        heatmapSvg.appendChild(rect);
+        rect.addEventListener("click", () => {
+          seekToCell(b, cell, xMinMs, binMs);
+          // Closing the modal here would be more flow-y if the user just
+          // wanted to jump to the moment — but keeping it open lets them
+          // scrub multiple cells in one session, which is the more common
+          // exploratory pattern.
+        });
+        svg.appendChild(rect);
       }
     }
 
@@ -1047,20 +1114,20 @@
       const txt = document.createElementNS(SVG_NS, "text");
       txt.setAttribute("class", "hm-axis");
       txt.setAttribute("x", marginL - 4);
-      txt.setAttribute("y", yPx + 3);
+      txt.setAttribute("y", yPx + (cellH / 2 + 1));
       txt.setAttribute("text-anchor", "end");
+      txt.setAttribute("dominant-baseline", "middle");
       txt.textContent = "FL" + fl;
-      heatmapSvg.appendChild(txt);
+      svg.appendChild(txt);
     }
 
-    // X-axis: HH:MM labels. Choose cadence so labels don't overlap — each
-    // "HH:MM" needs ~28px at 9px font, so we space at least that far apart.
+    // X-axis: HH:MM labels. Choose cadence so labels don't overlap — at the
+    // configured font size each "HH:MM" needs ~labelFontPx of horizontal room.
     const hourMs = 3_600_000;
-    const minPxBetweenLabels = 30;
     const pxPerHour = cellW * 6;
-    const labelEveryHours = pxPerHour >= minPxBetweenLabels ? 1
-      : pxPerHour * 2 >= minPxBetweenLabels ? 2
-      : pxPerHour * 4 >= minPxBetweenLabels ? 4
+    const labelEveryHours = pxPerHour >= labelFontPx ? 1
+      : pxPerHour * 2 >= labelFontPx ? 2
+      : pxPerHour * 4 >= labelFontPx ? 4
       : 6;
     const dayStartMs = Date.parse(manifest.date + "T00:00:00Z");
     const firstHour = Math.ceil((xMinMs - dayStartMs) / hourMs);
@@ -1075,16 +1142,76 @@
       tick.setAttribute("y1", marginT + plotH);
       tick.setAttribute("x2", xPx);
       tick.setAttribute("y2", marginT + plotH + 3);
-      heatmapSvg.appendChild(tick);
+      svg.appendChild(tick);
       const txt = document.createElementNS(SVG_NS, "text");
       txt.setAttribute("class", "hm-axis");
       txt.setAttribute("x", xPx);
-      txt.setAttribute("y", marginT + plotH + 12);
+      txt.setAttribute("y", marginT + plotH + (opts.timeLabelDy ?? 12));
       txt.setAttribute("text-anchor", "middle");
       txt.textContent = String(h % 24).padStart(2, "0") + ":00";
-      heatmapSvg.appendChild(txt);
+      svg.appendChild(txt);
     }
+    return true;
   }
+
+  function renderHeatmap() {
+    // Inline sidebar version: cells auto-fit the panel width with a 2px floor
+    // so a full 24h × 10-min span (~144 bins) fits a 420px sidebar without
+    // horizontal scroll. Re-renders the pop-out too when it's open so labels
+    // applied while the modal is showing flow through to the big view.
+    const data = computeHeatmap();
+    const marginL = 36, marginR = 8, marginT = 8, marginB = 22;
+    const availW = Math.max(200, heatmapPanel.clientWidth - marginL - marginR - 16);
+    const cellW = Math.max(2, Math.floor(availW / Math.max(1, data.nBins)));
+    const ok = renderHeatmapInto(heatmapSvg, {
+      cellW, cellH: 8,
+      marginL, marginR, marginT, marginB,
+      labelFontPx: 30, timeLabelDy: 12,
+    }, data);
+    heatmapPanel.hidden = !ok;
+    if (heatmapModal.classList.contains("open")) renderBigHeatmap(data);
+  }
+
+  function renderBigHeatmap(data) {
+    // Pop-out version: cells are big enough to click comfortably and read at
+    // arm's length on a projector. The modal scrolls when the SVG is wider
+    // than the viewport, which only happens for very small screens.
+    data = data || computeHeatmap();
+    const targetW = Math.min(1700, Math.max(900, window.innerWidth - 160));
+    const cellW = Math.max(6, Math.floor((targetW - 80) / Math.max(1, data.nBins)));
+    renderHeatmapInto(heatmapModalSvg, {
+      cellW,
+      cellH: 24,
+      marginL: 56,
+      marginR: 16,
+      marginT: 12,
+      marginB: 32,
+      labelFontPx: 38,
+      timeLabelDy: 18,
+    }, data);
+  }
+
+  function openHeatmapModal() {
+    heatmapModal.classList.add("open");
+    renderBigHeatmap();
+    document.addEventListener("keydown", onModalKey);
+  }
+  function closeHeatmapModal() {
+    heatmapModal.classList.remove("open");
+    hideTooltip();
+    document.removeEventListener("keydown", onModalKey);
+  }
+  function onModalKey(e) {
+    if (e.key === "Escape") closeHeatmapModal();
+  }
+  // Click on the dim backdrop (but not inside the dialog) closes the modal.
+  heatmapModal.addEventListener("click", (e) => {
+    if (e.target === heatmapModal) closeHeatmapModal();
+  });
+  document.getElementById("heatmap-modal-close")
+    .addEventListener("click", closeHeatmapModal);
+  document.getElementById("heatmap-expand-btn")
+    .addEventListener("click", openHeatmapModal);
 
   // --- Heatmap exports ---------------------------------------------------
   function serializeHeatmapSvg() {
