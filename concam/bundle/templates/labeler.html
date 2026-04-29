@@ -18,7 +18,7 @@
   #video-wrap { position: relative; line-height: 0; max-width: 100%; max-height: 100%; aspect-ratio: var(--video-aspect, 16/9); }
   #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
   video { width: 100%; height: 100%; background: #000; display: block; }
-  #sidebar { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid #ccc; }
+  #sidebar { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid #ccc; }
   #sidebar-header { padding: 0.4rem 0.5rem; background: #f8f8f8; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
   #sidebar-header span { font-size: 0.85em; color: #555; }
   #episodes { flex: 1; overflow-y: auto; padding: 0.25rem; }
@@ -53,6 +53,24 @@
     100% { background: transparent; }
   }
   #video-wrap.clickable { cursor: pointer; }
+  /* Heatmap panel: time × flight-level summary of contrail-forming regions. */
+  #heatmap-panel { position: relative; padding: 0.4rem 0.5rem; border-bottom: 1px solid #ddd; background: #fafafa; flex-shrink: 0; overflow-x: auto; }
+  #heatmap-panel h2 { font-size: 0.85em; margin: 0 0 0.25rem; font-weight: 600; color: #333; display: flex; align-items: baseline; gap: 0.5rem; }
+  #heatmap-panel h2 .subtitle { font-weight: 400; color: #777; font-size: 0.95em; }
+  #heatmap-svg { display: block; user-select: none; }
+  #heatmap-svg .hm-cell { cursor: default; }
+  #heatmap-svg .hm-cell:hover { stroke: #000; stroke-width: 0.5; }
+  #heatmap-svg .hm-axis { font: 9px system-ui, sans-serif; fill: #666; }
+  #heatmap-svg .hm-frame { fill: none; stroke: #bbb; stroke-width: 0.5; }
+  #heatmap-tooltip { position: absolute; pointer-events: none; background: rgba(20,20,20,0.92); color: #fff; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.78em; line-height: 1.35; white-space: nowrap; max-width: 280px; z-index: 100; display: none; }
+  #heatmap-tooltip strong { color: #fde68a; }
+  #heatmap-tooltip .hm-flight { white-space: nowrap; }
+  #heatmap-tooltip .hm-flight.contrail::before { content: "■ "; color: #ef4444; }
+  #heatmap-tooltip .hm-flight.clear::before { content: "■ "; color: #3b82f6; }
+  #heatmap-controls { margin-top: 0.3rem; display: flex; gap: 0.4rem; align-items: center; font-size: 0.78em; color: #555; }
+  #heatmap-controls button { padding: 0.1rem 0.5rem; font-size: 0.85em; cursor: pointer; }
+  #heatmap-legend { display: inline-flex; gap: 0.4rem; align-items: center; }
+  #heatmap-legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 1px; vertical-align: -1px; }
 </style>
 </head>
 <body>
@@ -107,6 +125,21 @@
       <span id="progress">loading…</span>
       <button id="export-btn" type="button">Export labels</button>
     </div>
+    <section id="heatmap-panel" hidden>
+      <h2>Flight levels &times; time <span class="subtitle">(UTC)</span></h2>
+      <svg id="heatmap-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="heatmap-tooltip"></div>
+      <div id="heatmap-controls">
+        <span id="heatmap-legend">
+          <span class="swatch" style="background:#ef4444"></span>contrail
+          <span class="swatch" style="background:#3b82f6; margin-left:0.3rem"></span>clear
+          <span class="swatch" style="background:#888; margin-left:0.3rem"></span>mixed
+        </span>
+        <span style="flex:1"></span>
+        <button id="heatmap-svg-btn" type="button" title="Download as SVG">SVG</button>
+        <button id="heatmap-png-btn" type="button" title="Download as PNG">PNG</button>
+      </div>
+    </section>
     <section id="episodes">
       <em>Loading manifest…</em>
     </section>
@@ -720,6 +753,7 @@
     saveLabels();
     refreshEpisodeDom(episodeId);
     updateProgress();
+    renderHeatmap();
   }
 
   function labelsForExport() {
@@ -769,6 +803,358 @@
   }
 
   document.getElementById("export-btn").addEventListener("click", exportLabels);
+
+  // --- Heatmap: time × flight level --------------------------------------
+  // Bins each episode (one flight pass) into a (10-min, 10-FL) cell. Color:
+  //   red   = at least one contrail observation (auto >= threshold OR human
+  //           label = "contrail") in that cell, no clear obs;
+  //   blue  = at least one clear observation, no contrail obs;
+  //   grey  = both contrail and clear obs in the same cell (disagreement);
+  //   black = no flight passed through that cell.
+  // Human labels override auto-detection; "unsure" excludes the episode.
+  // The bin spec is exposed on `window.heatmapSpec` so the post-hoc Python
+  // regenerator can reproduce the exact same rendering from manifest+labels.
+  const HEATMAP_FL_MIN = 250;
+  const HEATMAP_FL_MAX = 450;
+  const HEATMAP_FL_STEP = 10;
+  const HEATMAP_BIN_MIN = 10;
+  window.heatmapSpec = {
+    fl_min: HEATMAP_FL_MIN,
+    fl_max: HEATMAP_FL_MAX,
+    fl_step: HEATMAP_FL_STEP,
+    bin_minutes: HEATMAP_BIN_MIN,
+  };
+
+  function metresToFL(altMetres) {
+    if (altMetres == null || !isFinite(altMetres)) return null;
+    return (altMetres * 3.28084) / 100;
+  }
+
+  function episodeMedianFL(ep) {
+    const track = (manifest.flight_tracks || {})[ep.transponder_id];
+    if (!track) return null;
+    const onset = Date.parse(ep.onset);
+    const end = Date.parse(ep.end);
+    const fls = [];
+    for (const p of track.pings) {
+      const t = Date.parse(p.wall_time_utc);
+      if (t < onset || t > end) continue;
+      const alt = p.alt_baro_m != null ? p.alt_baro_m : p.alt_m;
+      const fl = metresToFL(alt);
+      if (fl != null) fls.push(fl);
+    }
+    if (fls.length === 0) return null;
+    fls.sort((a, b) => a - b);
+    return fls[Math.floor(fls.length / 2)];
+  }
+
+  function classifyEpisode(ep) {
+    // Human label wins. Returns "contrail", "clear", or null (excluded).
+    const entry = labelState[String(ep.episode_id)];
+    if (entry && VALID_LABELS.includes(entry.label)) {
+      if (entry.label === "contrail") return "contrail";
+      if (entry.label === "no_contrail") return "clear";
+      return null;  // unsure
+    }
+    return ep.peak_score >= detectionThreshold ? "contrail" : "clear";
+  }
+
+  function computeHeatmap() {
+    const dayStartMs = Date.parse(manifest.date + "T00:00:00Z");
+    const binMs = HEATMAP_BIN_MIN * 60_000;
+    const nRows = (HEATMAP_FL_MAX - HEATMAP_FL_MIN) / HEATMAP_FL_STEP;
+
+    const observations = [];
+    for (const ep of manifest.episodes) {
+      const fl = episodeMedianFL(ep);
+      if (fl == null) continue;
+      const cls = classifyEpisode(ep);
+      if (!cls) continue;
+      const tMid = (Date.parse(ep.onset) + Date.parse(ep.end)) / 2;
+      observations.push({ ep, tMid, fl, cls });
+    }
+
+    // X range: snap to bin boundaries around the activity window with one bin
+    // padding on each side; fall back to whole day if no observations.
+    let xMinMs, xMaxMs;
+    if (observations.length === 0) {
+      xMinMs = dayStartMs;
+      xMaxMs = dayStartMs + 86_400_000;
+    } else {
+      const tMin = Math.min(...observations.map((o) => o.tMid));
+      const tMax = Math.max(...observations.map((o) => o.tMid));
+      xMinMs = dayStartMs + Math.floor((tMin - dayStartMs) / binMs) * binMs - binMs;
+      xMaxMs = dayStartMs + Math.ceil((tMax - dayStartMs) / binMs) * binMs + binMs;
+    }
+    const nBins = Math.max(1, Math.round((xMaxMs - xMinMs) / binMs));
+
+    // cells[bin][row] = { contrail: [...], clear: [...] }
+    const cells = [];
+    for (let b = 0; b < nBins; b++) {
+      const col = [];
+      for (let r = 0; r < nRows; r++) col.push({ contrail: [], clear: [] });
+      cells.push(col);
+    }
+    for (const o of observations) {
+      const bin = Math.floor((o.tMid - xMinMs) / binMs);
+      if (bin < 0 || bin >= nBins) continue;
+      if (o.fl < HEATMAP_FL_MIN || o.fl >= HEATMAP_FL_MAX) continue;
+      const row = Math.floor((o.fl - HEATMAP_FL_MIN) / HEATMAP_FL_STEP);
+      cells[bin][row][o.cls].push({
+        callsign: o.ep.callsign,
+        episode_id: o.ep.episode_id,
+        score: o.ep.peak_score,
+        fl: o.fl,
+        label: (labelState[String(o.ep.episode_id)] || {}).label || null,
+      });
+    }
+    return { cells, nBins, nRows, xMinMs, xMaxMs, binMs };
+  }
+
+  function cellColor(c, k) {
+    // c = contrail count, k = clear count. Saturates at 4 for visual.
+    if (c === 0 && k === 0) return "#1a1a1a";
+    if (c > 0 && k > 0) return "#888888";
+    if (c > 0) {
+      const a = 0.4 + 0.15 * Math.min(c, 4);
+      return `rgba(239, 68, 68, ${a.toFixed(2)})`;
+    }
+    const a = 0.35 + 0.15 * Math.min(k, 4);
+    return `rgba(59, 130, 246, ${a.toFixed(2)})`;
+  }
+
+  const heatmapPanel = document.getElementById("heatmap-panel");
+  const heatmapSvg = document.getElementById("heatmap-svg");
+  const heatmapTooltip = document.getElementById("heatmap-tooltip");
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  function fmtCellTime(ms) {
+    return new Date(ms).toISOString().substring(11, 16);
+  }
+
+  function showTooltip(evt, bin, row, cell, xMinMs, binMs) {
+    const tStart = xMinMs + bin * binMs;
+    const tEnd = tStart + binMs;
+    const flLo = HEATMAP_FL_MIN + row * HEATMAP_FL_STEP;
+    const flHi = flLo + HEATMAP_FL_STEP;
+    const all = [
+      ...cell.contrail.map((f) => ({ ...f, _cls: "contrail" })),
+      ...cell.clear.map((f) => ({ ...f, _cls: "clear" })),
+    ];
+    if (all.length === 0) {
+      heatmapTooltip.innerHTML =
+        `<strong>${fmtCellTime(tStart)}–${fmtCellTime(tEnd)}Z` +
+        ` &middot; FL${flLo}–FL${flHi}</strong><br>no flights`;
+    } else {
+      const rows = all
+        .sort((a, b) => (a._cls === "contrail" ? -1 : 1))
+        .map((f) => {
+          const labelTag = f.label ? ` (${f.label.replace("_", " ")})` : "";
+          return `<div class="hm-flight ${f._cls}">${f.callsign}` +
+            ` &middot; FL${Math.round(f.fl)}` +
+            ` &middot; score ${f.score.toFixed(2)}${labelTag}</div>`;
+        })
+        .join("");
+      heatmapTooltip.innerHTML =
+        `<strong>${fmtCellTime(tStart)}–${fmtCellTime(tEnd)}Z` +
+        ` &middot; FL${flLo}–FL${flHi}</strong>${rows}`;
+    }
+    heatmapTooltip.style.display = "block";
+    moveTooltip(evt);
+  }
+
+  function moveTooltip(evt) {
+    const panelRect = heatmapPanel.getBoundingClientRect();
+    const tipRect = heatmapTooltip.getBoundingClientRect();
+    let x = evt.clientX - panelRect.left + 12;
+    let y = evt.clientY - panelRect.top + 12;
+    // Clamp inside the panel so the tooltip never escapes the sidebar.
+    if (x + tipRect.width > panelRect.width - 4) {
+      x = evt.clientX - panelRect.left - tipRect.width - 12;
+    }
+    if (y + tipRect.height > panelRect.height - 4) {
+      y = panelRect.height - tipRect.height - 4;
+    }
+    heatmapTooltip.style.left = x + "px";
+    heatmapTooltip.style.top = y + "px";
+  }
+
+  function hideTooltip() {
+    heatmapTooltip.style.display = "none";
+  }
+
+  function renderHeatmap() {
+    const data = computeHeatmap();
+    const { cells, nBins, nRows, xMinMs, xMaxMs, binMs } = data;
+    if (nBins === 0) {
+      heatmapPanel.hidden = true;
+      return;
+    }
+    heatmapPanel.hidden = false;
+
+    // Layout: cell width auto-fits the available width with a 2px floor so a
+    // full 24h × 10-min span (~144 bins) fits inside a 420px sidebar without
+    // horizontal scroll. The panel falls back to overflow-x:auto otherwise.
+    const marginL = 36, marginR = 8, marginT = 8, marginB = 22;
+    const availW = Math.max(200, heatmapPanel.clientWidth - marginL - marginR - 16);
+    const cellW = Math.max(2, Math.floor(availW / nBins));
+    const cellH = 8;
+    const plotW = cellW * nBins;
+    const plotH = cellH * nRows;
+    const svgW = plotW + marginL + marginR;
+    const svgH = plotH + marginT + marginB;
+
+    while (heatmapSvg.firstChild) heatmapSvg.removeChild(heatmapSvg.firstChild);
+    heatmapSvg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+    heatmapSvg.setAttribute("width", svgW);
+    heatmapSvg.setAttribute("height", svgH);
+
+    // Plot frame.
+    const frame = document.createElementNS(SVG_NS, "rect");
+    frame.setAttribute("class", "hm-frame");
+    frame.setAttribute("x", marginL);
+    frame.setAttribute("y", marginT);
+    frame.setAttribute("width", plotW);
+    frame.setAttribute("height", plotH);
+    heatmapSvg.appendChild(frame);
+
+    // Cells. y axis is inverted (FL450 at top, FL250 at bottom) to match the
+    // mental model of altitude in atmospheric plots.
+    for (let b = 0; b < nBins; b++) {
+      for (let r = 0; r < nRows; r++) {
+        const cell = cells[b][r];
+        const c = cell.contrail.length;
+        const k = cell.clear.length;
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("class", "hm-cell");
+        rect.setAttribute("x", marginL + b * cellW);
+        rect.setAttribute("y", marginT + (nRows - 1 - r) * cellH);
+        rect.setAttribute("width", cellW);
+        rect.setAttribute("height", cellH);
+        rect.setAttribute("fill", cellColor(c, k));
+        rect.addEventListener("mouseenter", (e) =>
+          showTooltip(e, b, r, cell, xMinMs, binMs));
+        rect.addEventListener("mousemove", moveTooltip);
+        rect.addEventListener("mouseleave", hideTooltip);
+        heatmapSvg.appendChild(rect);
+      }
+    }
+
+    // Y-axis: FL labels every 50 (5 rows). Label position = top of that row.
+    for (let fl = HEATMAP_FL_MIN; fl <= HEATMAP_FL_MAX; fl += 50) {
+      const rowFromBottom = (fl - HEATMAP_FL_MIN) / HEATMAP_FL_STEP;
+      const yPx = marginT + (nRows - rowFromBottom) * cellH;
+      const txt = document.createElementNS(SVG_NS, "text");
+      txt.setAttribute("class", "hm-axis");
+      txt.setAttribute("x", marginL - 4);
+      txt.setAttribute("y", yPx + 3);
+      txt.setAttribute("text-anchor", "end");
+      txt.textContent = "FL" + fl;
+      heatmapSvg.appendChild(txt);
+    }
+
+    // X-axis: HH:MM labels. Choose cadence so labels don't overlap — each
+    // "HH:MM" needs ~28px at 9px font, so we space at least that far apart.
+    const hourMs = 3_600_000;
+    const minPxBetweenLabels = 30;
+    const pxPerHour = cellW * 6;
+    const labelEveryHours = pxPerHour >= minPxBetweenLabels ? 1
+      : pxPerHour * 2 >= minPxBetweenLabels ? 2
+      : pxPerHour * 4 >= minPxBetweenLabels ? 4
+      : 6;
+    const dayStartMs = Date.parse(manifest.date + "T00:00:00Z");
+    const firstHour = Math.ceil((xMinMs - dayStartMs) / hourMs);
+    const lastHour = Math.floor((xMaxMs - dayStartMs) / hourMs);
+    for (let h = firstHour; h <= lastHour; h++) {
+      if (h % labelEveryHours !== 0) continue;
+      const tMs = dayStartMs + h * hourMs;
+      const xPx = marginL + ((tMs - xMinMs) / binMs) * cellW;
+      const tick = document.createElementNS(SVG_NS, "line");
+      tick.setAttribute("class", "hm-frame");
+      tick.setAttribute("x1", xPx);
+      tick.setAttribute("y1", marginT + plotH);
+      tick.setAttribute("x2", xPx);
+      tick.setAttribute("y2", marginT + plotH + 3);
+      heatmapSvg.appendChild(tick);
+      const txt = document.createElementNS(SVG_NS, "text");
+      txt.setAttribute("class", "hm-axis");
+      txt.setAttribute("x", xPx);
+      txt.setAttribute("y", marginT + plotH + 12);
+      txt.setAttribute("text-anchor", "middle");
+      txt.textContent = String(h % 24).padStart(2, "0") + ":00";
+      heatmapSvg.appendChild(txt);
+    }
+  }
+
+  // --- Heatmap exports ---------------------------------------------------
+  function serializeHeatmapSvg() {
+    // Inline the panel's CSS so the standalone file renders identically.
+    // We grab only the rules that target #heatmap-svg or .hm-* classes.
+    const rules = [
+      ".hm-axis { font: 9px system-ui, sans-serif; fill: #666; }",
+      ".hm-frame { fill: none; stroke: #bbb; stroke-width: 0.5; }",
+    ].join("\n");
+    const clone = heatmapSvg.cloneNode(true);
+    clone.setAttribute("xmlns", SVG_NS);
+    const style = document.createElementNS(SVG_NS, "style");
+    style.textContent = rules;
+    clone.insertBefore(style, clone.firstChild);
+    return new XMLSerializer().serializeToString(clone);
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadHeatmapSvg() {
+    const xml = serializeHeatmapSvg();
+    const blob = new Blob([xml], { type: "image/svg+xml" });
+    downloadBlob(blob, manifest.date + "_" + manifest.labeler_id + "_heatmap.svg");
+  }
+
+  function downloadHeatmapPng() {
+    // 2x rasterisation for crisp screenshots without bloating the SVG itself.
+    const xml = serializeHeatmapSvg();
+    const w = parseFloat(heatmapSvg.getAttribute("width"));
+    const h = parseFloat(heatmapSvg.getAttribute("height"));
+    const scale = 2;
+    const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      const cctx = canvas.getContext("2d");
+      cctx.fillStyle = "#fafafa";
+      cctx.fillRect(0, 0, canvas.width, canvas.height);
+      cctx.scale(scale, scale);
+      cctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((png) => {
+        if (png) downloadBlob(png,
+          manifest.date + "_" + manifest.labeler_id + "_heatmap.png");
+      }, "image/png");
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showError("PNG export failed: SVG could not be rasterised.");
+    };
+    img.src = url;
+  }
+
+  document.getElementById("heatmap-svg-btn")
+    .addEventListener("click", downloadHeatmapSvg);
+  document.getElementById("heatmap-png-btn")
+    .addEventListener("click", downloadHeatmapPng);
+  window.addEventListener("resize", () => { renderHeatmap(); });
 
   // --- Episode panel -----------------------------------------------------
   const panel = document.getElementById("episodes");
@@ -949,6 +1335,7 @@
   filterDetectedEl.addEventListener("change", renderEpisodeList);
   renderEpisodeList();
   updateProgress();
+  renderHeatmap();
 })();
 </script>
 
