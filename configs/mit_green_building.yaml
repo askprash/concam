@@ -32,17 +32,20 @@ ocr:
 # --- ADS-B ---
 adsb:
   data_dir: /home/mcast/data/feder
-  # Only include flights above this altitude (cruising altitude filter)
-  min_altitude_m: 8000.0
-  # Stratospheric-cruise ceiling (FL420 = 12,800 m). Matches the satellite-side
-  # regions_demo_local pipeline and excludes non-commercial outliers. Null/omit
-  # to disable the upper bound.
-  max_altitude_m: 12800.0
-  # Horizontal radius around the camera site. Widened from 50 km so contrails
-  # laid by aircraft along the NAT tracks (~80 km N of MIT) are not silently
-  # dropped. Spot-check 2026-04-09 14:13:52 UTC: BAW17R crossed ~78 km N at
-  # FL360 and its contrail was visible in the camera FOV.
-  max_radius_km: 150.0
+  # Only include flights above this altitude (cruising altitude filter).
+  # FL260 = 26,000 ft = 7924.8 m. Lowered from FL262.5 (8000 m) on 2026-05-01
+  # to catch slightly lower cruise levels visible in the camera FOV.
+  min_altitude_m: 7924.8
+  # Stratospheric-cruise ceiling. Raised from FL420 (12,800 m) to FL450
+  # (13,716 m) on 2026-05-01 — recent days showed contrails without an ADS-B
+  # match on 2026-04-08, and a few business-jet / high-cruise flights operate
+  # above FL420. Null/omit to disable the upper bound.
+  max_altitude_m: 13716.0
+  # Horizontal radius around the camera site. Widened 150 → 200 km on
+  # 2026-05-01 to chase contrails-without-ADS-B-match observations on
+  # 2026-04-08; the Green Building has no occluding skyline so even
+  # low-elevation flights at the new radius are unobstructed.
+  max_radius_km: 200.0
   site_lat: 42.360444
   site_lon: -71.089238
   # Altitude source policy for projection:
