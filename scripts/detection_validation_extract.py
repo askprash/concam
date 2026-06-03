@@ -41,6 +41,7 @@ import cv2
 import numpy as np
 
 from concam.config import load_config
+from concam.detection.viz import compose_grid
 from concam.video import decode_frames
 
 
@@ -306,28 +307,6 @@ def _annotate_tile(
     cv2.putText(tile, line3, (8, rh + 76), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
     return tile
 
-
-def _compose_grid(tiles: list[np.ndarray], cols: int = 5) -> np.ndarray:
-    if not tiles:
-        raise ValueError("no tiles to compose")
-    tw = max(t.shape[1] for t in tiles)
-    th = max(t.shape[0] for t in tiles)
-    padded: list[np.ndarray] = []
-    for t in tiles:
-        h, w = t.shape[:2]
-        if h == th and w == tw:
-            padded.append(t)
-        else:
-            pad = np.full((th, tw, 3), 32, dtype=np.uint8)
-            pad[:h, :w] = t
-            padded.append(pad)
-    rows = (len(padded) + cols - 1) // cols
-    grid = np.full((rows * th, cols * tw, 3), 16, dtype=np.uint8)
-    for i, t in enumerate(padded):
-        r = i // cols
-        c = i % cols
-        grid[r * th:(r + 1) * th, c * tw:(c + 1) * tw] = t
-    return grid
 
 
 def _write_labeller_html(
@@ -642,7 +621,7 @@ def main():
             }
         )
 
-    grid = _compose_grid(tiles, cols=5) if tiles else None
+    grid = compose_grid(tiles, cols=5) if tiles else None
     grid_path = validation_dir / "candidate_grid.png"
     if grid is not None:
         cv2.imwrite(str(grid_path), grid)

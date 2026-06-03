@@ -45,9 +45,10 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from concam.config import DetectionConfig, load_config
-from concam.detection import detect
+from concam.detection import detect, explain
 from concam.detection.geometry import candidate_geometry
 from concam.detection.metrics import mann_whitney_auc, rank_metric, youden_threshold
+from concam.detection.viz import compose_grid, render_detection_panels
 from concam.pipeline import resolve_video_path
 from concam.video import decode_frames
 
@@ -422,24 +423,6 @@ def _pad_to_height(img: np.ndarray, h: int) -> np.ndarray:
     return cv2.resize(img, (nw, h))
 
 
-def _compose_grid(tiles: list[np.ndarray], cols: int) -> np.ndarray:
-    if not tiles:
-        return np.zeros((10, 10, 3), dtype=np.uint8)
-    tw = max(t.shape[1] for t in tiles)
-    th = max(t.shape[0] for t in tiles)
-    padded = []
-    for t in tiles:
-        h, w = t.shape[:2]
-        p = np.full((th, tw, 3), 16, dtype=np.uint8)
-        p[:h, :w] = t
-        padded.append(p)
-    rows = (len(padded) + cols - 1) // cols
-    grid = np.full((rows * th, cols * tw, 3), 12, dtype=np.uint8)
-    for i, t in enumerate(padded):
-        r, c = i // cols, i % cols
-        grid[r * th:(r + 1) * th, c * tw:(c + 1) * tw] = t
-    return grid
-
 
 def _visualise_best_combo(
     best: dict,
@@ -457,6 +440,10 @@ def _visualise_best_combo(
     for meta, crop, label in rois:
         g = candidate_geometry(meta, crop.shape[:2], roi_along_px=roi_along, roi_cross_px=roi_cross)
         prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
+
+        # Obtain the exact DetectionPass the detector used so our panels show
+        # what the detector actually saw (not a hand-rolled re-implementation).
+        passed = explain(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
         result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
 
         vis_crop = crop if crop.ndim == 3 else cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
@@ -467,22 +454,9 @@ def _visualise_best_combo(
             x1, y1, x2, y2 = (int(v) for v in result.pixel_line)
             cv2.line(overlay, (x1, y1), (x2, y2), (80, 220, 80), 2)
 
-        # Also render the masked-edge preview so humans can see what Canny saw.
-        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.ndim == 3 else crop
-        mask = np.zeros(gray.shape, dtype=np.uint8)
-        cv2.fillPoly(mask, [g.polygon.astype(np.int32)], 255)
-        masked_vals = gray[mask > 0]
-        if masked_vals.size:
-            p_hi = float(np.percentile(masked_vals, combo.canny_percentile_high))
-            canny_high = max(int(p_hi), CANNY_MIN_HIGH)
-            canny_low = max(1, int(canny_high * combo.canny_low_ratio))
-            p_lo = float(np.percentile(masked_vals, CANNY_PCT_LOW))
-            gray_masked = cv2.bitwise_and(gray, gray, mask=mask)
-            _, gray_masked = cv2.threshold(gray_masked, int(p_lo), 255, cv2.THRESH_TOZERO)
-            edges = cv2.Canny(gray_masked, canny_low, canny_high)
-        else:
-            edges = np.zeros_like(gray)
-        edges_bgr = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+        # Use render_detection_panels to get the exact edges the detector computed.
+        panels = render_detection_panels(passed, labels=False)
+        edges_bgr = next(img for name, img in panels if name == "edges")
 
         combined = np.hstack([
             _pad_to_height(vis_crop, 160),
@@ -499,7 +473,7 @@ def _visualise_best_combo(
         cv2.putText(footer, line2, (8, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
         tiles.append(np.vstack([combined, footer]))
 
-    grid = _compose_grid(tiles, cols=4)
+    grid = compose_grid(tiles, cols=4, bg=12)
     cv2.imwrite(str(out_path), grid)
 
 

@@ -50,10 +50,10 @@ from detection_validation_extract import (
     _load_frame_zero_anchor,
     _load_projections,
     _annotate_tile,
-    _compose_grid,
     _video_meta,
     _write_labeller_html,
 )
+from concam.detection.viz import compose_grid
 
 
 def _sample_pings_per_transponder(
@@ -265,7 +265,7 @@ def main() -> None:
             "detection_score": score,
         })
 
-    grid = _compose_grid(tiles, cols=5)
+    grid = compose_grid(tiles, cols=5)
     grid_path = val_dir / "candidate_grid_scored.png"
     cv2.imwrite(str(grid_path), grid)
 

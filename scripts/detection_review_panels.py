@@ -39,8 +39,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from concam.config import DetectionConfig, load_config
-from concam.detection import detect
+from concam.detection import detect, explain
 from concam.detection.geometry import candidate_geometry
+from concam.detection.viz import compose_grid, render_detection_panels
 from concam.video import decode_frames
 
 EXTRACT_PAD = 20
@@ -58,68 +59,6 @@ def _crop_padded(frame: np.ndarray, roi: dict, pad: int = EXTRACT_PAD) -> np.nda
 
 
 
-def _compute_panels(
-    crop: np.ndarray,
-    poly: np.ndarray,
-    cfg: DetectionConfig,
-    prev_crop: np.ndarray | None = None,
-):
-    """Reproduce the detector's pre-Canny pipeline so we can render what it saw.
-
-    If ``prev_crop`` is provided and shape-matches, we apply the same
-    ``cv2.absdiff`` step ``concam.detection.detect`` does so the rendered
-    Canny / Hough panels reflect the diff path the live pipeline runs.
-    """
-    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.ndim == 3 else crop
-    base = gray
-    if prev_crop is not None:
-        prev_gray = cv2.cvtColor(prev_crop, cv2.COLOR_BGR2GRAY) if prev_crop.ndim == 3 else prev_crop
-        if prev_gray.shape == gray.shape:
-            base = cv2.absdiff(gray, prev_gray)
-    if cfg.blur_kernel and cfg.blur_kernel > 1:
-        k = int(cfg.blur_kernel) | 1
-        base = cv2.GaussianBlur(base, (k, k), 0)
-    mask = None
-    if cfg.use_rotated_mask:
-        mask = np.zeros(base.shape, dtype=np.uint8)
-        cv2.fillPoly(mask, [poly.astype(np.int32)], 255)
-        masked_values = base[mask > 0]
-    else:
-        masked_values = base.reshape(-1)
-    if cfg.use_adaptive_canny and masked_values.size:
-        p_hi = float(np.percentile(masked_values, cfg.canny_percentile_high))
-        p_lo = float(np.percentile(masked_values, cfg.canny_percentile_low))
-        canny_high = max(int(round(p_hi)), int(cfg.canny_min_high))
-        canny_low = max(1, int(round(canny_high * cfg.canny_low_ratio)))
-        floor = int(round(p_lo))
-    else:
-        canny_high = int(cfg.canny_high)
-        canny_low = int(cfg.canny_low)
-        floor = 0
-    crop_for_canny = base.copy()
-    if mask is not None:
-        crop_for_canny = cv2.bitwise_and(crop_for_canny, crop_for_canny, mask=mask)
-    if floor > 0:
-        _, crop_for_canny = cv2.threshold(crop_for_canny, floor, 255, cv2.THRESH_TOZERO)
-    edges = cv2.Canny(crop_for_canny, canny_low, canny_high)
-    if mask is not None:
-        edges = cv2.bitwise_and(edges, edges, mask=mask)
-    raw = cv2.HoughLinesP(
-        edges, rho=1, theta=np.pi / 180.0,
-        threshold=int(cfg.hough_threshold),
-        minLineLength=int(cfg.hough_min_line_length),
-        maxLineGap=int(cfg.hough_max_line_gap),
-    )
-    raw_lines = [] if raw is None else [tuple(int(v) for v in ln[0]) for ln in raw]
-    return {
-        "crop_for_canny": crop_for_canny,
-        "edges": edges,
-        "raw_lines": raw_lines,
-        "canny_low": canny_low,
-        "canny_high": canny_high,
-        "floor": floor,
-    }
-
 
 def _render_panel(
     cand: dict,
@@ -135,19 +74,23 @@ def _render_panel(
         roi_cross_px=cfg.roi_cross_px,
         extract_pad=EXTRACT_PAD,
     )
-    panels = _compute_panels(crop, g.polygon, cfg, prev_crop=prev_crop)
+    # Obtain the exact DetectionPass the detector used — panels derived from
+    # this are guaranteed to show what detect() actually saw, including any
+    # cross_grad / local_contrast preprocessing that _prepare_base applies.
+    passed = explain(
+        crop, g.rect, cfg,
+        polygon=g.polygon, path_vec=g.path_vec,
+        prev_frame=prev_crop,
+    )
     result = detect(
         crop, g.rect, cfg,
         polygon=g.polygon, path_vec=g.path_vec,
         prev_frame=prev_crop,
     )
+    panels_named = render_detection_panels(passed, labels=True)
+    panel_dict = {name: img for name, img in panels_named}
 
     path_angle = math.degrees(math.atan2(g.path_vec[1], g.path_vec[0])) % 180.0
-    tol = float(cfg.angle_tolerance_deg)
-
-    def _aligned(x1, y1, x2, y2):
-        a = math.degrees(math.atan2(y2 - y1, x2 - x1)) % 180.0
-        return abs(((a - path_angle + 90.0) % 180.0) - 90.0) <= tol
 
     vis = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
     poly_closed = np.vstack([g.polygon, g.polygon[:1]])
@@ -171,30 +114,39 @@ def _render_panel(
     )
     axes[0, 0].axis("off")
 
-    axes[0, 1].imshow(panels["crop_for_canny"], cmap="gray", vmin=0, vmax=255)
+    # Panel 2: preprocessed base (what Canny saw, post-floor) from the DetectionPass.
+    axes[0, 1].imshow(cv2.cvtColor(panel_dict["base"], cv2.COLOR_BGR2RGB), vmin=0, vmax=255)
     axes[0, 1].set_title(
-        f"post-floor  floor={panels['floor']}   "
-        f"canny={panels['canny_low']}/{panels['canny_high']}"
+        f"post-floor  floor={passed.floor}   "
+        f"canny={passed.canny_low}/{passed.canny_high}"
     )
     axes[0, 1].axis("off")
 
-    axes[1, 0].imshow(panels["edges"], cmap="gray")
-    axes[1, 0].set_title(f"Canny edges  ({int(panels['edges'].sum() / 255)} edge px)")
+    # Panel 3: Canny edges — exactly what the detector used.
+    axes[1, 0].imshow(passed.edges, cmap="gray")
+    axes[1, 0].set_title(f"Canny edges  ({int(passed.edges.sum() // 255)} edge px)")
     axes[1, 0].axis("off")
 
+    # Panel 4: overlay with aligned (green) and rejected (red) lines + pixel_line.
     axes[1, 1].imshow(vis)
     axes[1, 1].plot(poly_closed[:, 0], poly_closed[:, 1], color="#ffb000", lw=1.0)
-    n_aligned = n_rejected = 0
-    for (x1, y1, x2, y2) in panels["raw_lines"]:
-        if _aligned(x1, y1, x2, y2):
-            axes[1, 1].plot([x1, x2], [y1, y2], color="#50e050", lw=1.0, alpha=0.9)
-            n_aligned += 1
+    # raw_lines are full-frame; crop is the full input here so crop_origin offsets apply.
+    x0, y0 = passed.crop_origin
+    aligned_set = set(id(ln) for ln in passed.aligned)
+    n_aligned = len(passed.aligned)
+    n_rejected = len(passed.raw_lines) - n_aligned
+    for ln in passed.raw_lines:
+        fx1, fy1, fx2, fy2, _ = ln
+        # Translate full-frame -> crop-local for display on the crop image.
+        cx1, cy1 = fx1 - x0, fy1 - y0
+        cx2, cy2 = fx2 - x0, fy2 - y0
+        if id(ln) in aligned_set:
+            axes[1, 1].plot([cx1, cx2], [cy1, cy2], color="#50e050", lw=1.0, alpha=0.9)
         else:
-            axes[1, 1].plot([x1, x2], [y1, y2], color="#e04040", lw=0.8, alpha=0.5)
-            n_rejected += 1
+            axes[1, 1].plot([cx1, cx2], [cy1, cy2], color="#e04040", lw=0.8, alpha=0.5)
     if result.pixel_line is not None:
-        x1, y1, x2, y2 = result.pixel_line
-        axes[1, 1].plot([x1, x2], [y1, y2], color="#30ff30", lw=2.5)
+        px1, py1, px2, py2 = result.pixel_line
+        axes[1, 1].plot([px1 - x0, px2 - x0], [py1 - y0, py2 - y0], color="#30ff30", lw=2.5)
     axes[1, 1].set_title(
         f"score={result.score:.3f}  aligned={n_aligned}  "
         f"rejected={n_rejected}  long={result.num_long_lines}  ({result.method})"
@@ -268,19 +220,7 @@ def _write_grid(records: list[dict], out_dir: Path, cols: int = 4) -> None:
             imgs.append(img)
     if not imgs:
         return
-    th = max(i.shape[0] for i in imgs)
-    tw = max(i.shape[1] for i in imgs)
-    padded = []
-    for img in imgs:
-        canvas = np.full((th, tw, 3), 20, dtype=np.uint8)
-        h, w = img.shape[:2]
-        canvas[:h, :w] = img
-        padded.append(canvas)
-    rows = (len(padded) + cols - 1) // cols
-    grid = np.full((rows * th, cols * tw, 3), 12, dtype=np.uint8)
-    for i, t in enumerate(padded):
-        r, c = i // cols, i % cols
-        grid[r * th:(r + 1) * th, c * tw:(c + 1) * tw] = t
+    grid = compose_grid(imgs, cols, bg=12)
     cv2.imwrite(str(out_dir / "index.png"), grid)
 
 
