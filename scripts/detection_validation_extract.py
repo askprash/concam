@@ -37,11 +37,11 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
-import av
 import cv2
 import numpy as np
 
 from concam.config import load_config
+from concam.video import decode_frames
 
 
 @dataclass
@@ -240,52 +240,6 @@ def _pick_candidates(
         )
     return candidates
 
-
-def _decode_frames(
-    video_path: Path, frame_indices: list[int], total_frames: int, duration_s: float,
-    upscale_to: tuple[int, int] | None = None,
-) -> dict[int, np.ndarray]:
-    """Seek to each requested frame and decode. Returns {frame_idx: BGR ndarray}.
-
-    ``upscale_to`` is ``(width, height)``. When set and the decoded frame is
-    smaller, the frame is bilinearly upscaled. Use this when the video was
-    captured at a lower resolution than the calibration (e.g. 720p Oct 2025
-    archive vs 4K calibration) — the projection ROIs are in calibration coords
-    so the frame must be scaled to match before crops are taken.
-    """
-    out: dict[int, np.ndarray] = {}
-    container = av.open(str(video_path))
-    try:
-        stream = container.streams.video[0]
-        time_base = stream.time_base
-        for target_idx in sorted(set(frame_indices)):
-            target_time_s = (target_idx / total_frames) * duration_s if total_frames else 0.0
-            target_pts = int(target_time_s / float(time_base))
-            container.seek(target_pts, stream=stream, any_frame=False, backward=True)
-            decoded = None
-            for frame in container.decode(stream):
-                decoded = frame
-                if frame.pts is not None and frame.pts >= target_pts:
-                    break
-            if decoded is not None:
-                arr = decoded.to_ndarray(format="bgr24")
-                if upscale_to is not None and (arr.shape[1], arr.shape[0]) != upscale_to:
-                    arr = cv2.resize(arr, upscale_to, interpolation=cv2.INTER_LINEAR)
-                out[target_idx] = arr
-    finally:
-        container.close()
-    return out
-
-
-def _video_meta(video_path: Path) -> tuple[float, int]:
-    container = av.open(str(video_path))
-    try:
-        stream = container.streams.video[0]
-        duration_s = float(stream.duration * stream.time_base) if stream.duration else 0.0
-        frames = int(stream.frames) if stream.frames else int(round(duration_s * float(stream.average_rate or 30)))
-        return duration_s, frames
-    finally:
-        container.close()
 
 
 def _extract_roi_crop(frame: np.ndarray, roi: dict, pad: int = 20) -> np.ndarray:
@@ -645,7 +599,6 @@ def main():
     video_path = Path(args.video) if args.video else Path(config.video.root) / config.video.timelapse_glob.format(date=date)
     if not video_path.exists():
         raise SystemExit(f"Video not found: {video_path}")
-    duration_s, total_frames = _video_meta(video_path)
 
     upscale_to: tuple[int, int] | None = None
     if args.upscale_to_calibration:
@@ -653,9 +606,9 @@ def main():
         print(f"Upscaling decoded frames to calibration resolution {upscale_to}.")
 
     print(f"Decoding {len(candidates)} frames from {video_path}...")
-    frames = _decode_frames(
+    frames = decode_frames(
         video_path, [c.frame_idx for c in candidates],
-        total_frames, duration_s, upscale_to=upscale_to,
+        upscale_to=upscale_to,
     )
 
     tiles: list[np.ndarray] = []

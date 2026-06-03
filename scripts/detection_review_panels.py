@@ -41,50 +41,11 @@ import numpy as np
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
 from concam.detection.geometry import candidate_geometry
+from concam.video import decode_frames
 
 EXTRACT_PAD = 20
 
 
-def _decode_frames(
-    video_path: Path, frame_indices: list[int],
-    upscale_to: tuple[int, int] | None = None,
-) -> dict[int, np.ndarray]:
-    """Seek to each requested frame_idx and return a {frame_idx: BGR ndarray} map.
-
-    Mirrors the seek/decode loop in ``detection_validation_extract.py`` so the
-    prev_frame crops we feed into ``detect()`` are byte-identical to what the
-    extraction would have produced for that same frame. If ``upscale_to`` is set
-    the decoded frame is bilinearly upscaled to that ``(w, h)`` — used when the
-    archive video is lower-res than the calibration (Oct 2025 = 720p, calibration
-    = 4K).
-    """
-    out: dict[int, np.ndarray] = {}
-    container = av.open(str(video_path))
-    try:
-        stream = container.streams.video[0]
-        time_base = stream.time_base
-        duration_s = float(stream.duration * stream.time_base) if stream.duration else 0.0
-        total_frames = (
-            int(stream.frames) if stream.frames
-            else int(round(duration_s * float(stream.average_rate or 30)))
-        )
-        for target_idx in sorted(set(i for i in frame_indices if i >= 0)):
-            target_time_s = (target_idx / total_frames) * duration_s if total_frames else 0.0
-            target_pts = int(target_time_s / float(time_base))
-            container.seek(target_pts, stream=stream, any_frame=False, backward=True)
-            decoded = None
-            for frame in container.decode(stream):
-                decoded = frame
-                if frame.pts is not None and frame.pts >= target_pts:
-                    break
-            if decoded is not None:
-                arr = decoded.to_ndarray(format="bgr24")
-                if upscale_to is not None and (arr.shape[1], arr.shape[0]) != upscale_to:
-                    arr = cv2.resize(arr, upscale_to, interpolation=cv2.INTER_LINEAR)
-                out[target_idx] = arr
-    finally:
-        container.close()
-    return out
 
 
 def _crop_padded(frame: np.ndarray, roi: dict, pad: int = EXTRACT_PAD) -> np.ndarray:
@@ -389,7 +350,7 @@ def main() -> None:
             f"Decoding {len(prev_indices)} prev frames from {video_path.name} "
             f"for diff-mode rendering..."
         )
-        prev_full = _decode_frames(video_path, prev_indices, upscale_to=upscale_to)
+        prev_full = decode_frames(video_path, prev_indices, upscale_to=upscale_to)
         for cand in manifest["candidates"]:
             prev_idx = int(cand["frame_idx"]) - 1
             full = prev_full.get(prev_idx)

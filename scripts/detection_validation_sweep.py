@@ -37,7 +37,6 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
 
-import av
 import cv2
 import numpy as np
 
@@ -50,6 +49,7 @@ from concam.detection import detect
 from concam.detection.geometry import candidate_geometry
 from concam.detection.metrics import mann_whitney_auc, rank_metric, youden_threshold
 from concam.pipeline import resolve_video_path
+from concam.video import decode_frames
 
 # Parameter grid axes. 3^7 = 2187 combos × 20 ROIs × ~1 ms/detect() ≈ under a
 # minute total. long_line_min_px is sweepable because the rotated ROI is only
@@ -127,18 +127,6 @@ def _combo_to_config(
 
 
 
-def _video_meta(video_path: Path) -> tuple[float, int]:
-    """Return (duration_s, total_frames) for the video."""
-    container = av.open(str(video_path))
-    try:
-        stream = container.streams.video[0]
-        duration_s = float(stream.duration * stream.time_base) if stream.duration else 0.0
-        frames = int(stream.frames) if stream.frames else int(round(duration_s * float(stream.average_rate or 30)))
-        return duration_s, frames
-    finally:
-        container.close()
-
-
 def _extract_prev_crops(
     manifest: dict,
     video_path: Path,
@@ -151,53 +139,37 @@ def _extract_prev_crops(
     The crop is taken at the same ROI + pad as the saved roi_png so that calling
     ``detect(prev_crop, ...)`` produces a same-shaped temporal diff image.
     Candidates with frame_idx=0 are skipped (no previous frame).
+
+    Frame decoding delegates to ``concam.video.decode_frames`` (seek-per-frame
+    strategy); this function retains the crop logic which is script-specific.
     """
-    duration_s, total_frames = _video_meta(video_path)
-    target_frames: dict[int, int] = {}  # cand_idx -> frame_idx to seek
+    # Build seek_frame_idx -> list[cand_idx] map.
+    seek_to_cands: dict[int, list[int]] = {}
     for meta in rois_meta:
         fidx = meta.get("frame_idx", 0)
         if fidx > 0:
-            target_frames[meta["idx"]] = fidx - 1
+            seek_to_cands.setdefault(fidx - 1, []).append(meta["idx"])
 
-    if not target_frames:
+    if not seek_to_cands:
         return {}
 
-    # Build a reverse map: seek_frame_idx -> list of cand_idxs needing it.
-    seek_to_cands: dict[int, list[int]] = {}
-    for cand_idx, fidx in target_frames.items():
-        seek_to_cands.setdefault(fidx, []).append(cand_idx)
+    # Decode all needed frames in one call.
+    decoded_frames = decode_frames(video_path, list(seek_to_cands.keys()), upscale_to=upscale_to)
 
     prev_crops: dict[int, np.ndarray] = {}
-    container = av.open(str(video_path))
-    try:
-        stream = container.streams.video[0]
-        time_base = stream.time_base
-        for seek_fidx in sorted(seek_to_cands):
-            target_time_s = (seek_fidx / max(1, total_frames)) * duration_s
-            target_pts = int(target_time_s / float(time_base))
-            container.seek(target_pts, stream=stream, any_frame=False, backward=True)
-            decoded = None
-            for frame in container.decode(stream):
-                decoded = frame
-                if frame.pts is not None and frame.pts >= target_pts:
-                    break
-            if decoded is None:
-                continue
-            arr = decoded.to_ndarray(format="bgr24")
-            if upscale_to is not None and (arr.shape[1], arr.shape[0]) != upscale_to:
-                arr = cv2.resize(arr, upscale_to, interpolation=cv2.INTER_LINEAR)
-            fh, fw = arr.shape[:2]
-            for cand_idx in seek_to_cands[seek_fidx]:
-                # Find the matching candidate meta to get its ROI.
-                meta = next(m for m in rois_meta if m["idx"] == cand_idx)
-                roi = meta["roi"]
-                x1 = max(0, roi["x"] - pad)
-                y1 = max(0, roi["y"] - pad)
-                x2 = min(fw, roi["x"] + roi["w"] + pad)
-                y2 = min(fh, roi["y"] + roi["h"] + pad)
-                prev_crops[cand_idx] = arr[y1:y2, x1:x2].copy()
-    finally:
-        container.close()
+    for seek_fidx, cand_idxs in seek_to_cands.items():
+        arr = decoded_frames.get(seek_fidx)
+        if arr is None:
+            continue
+        fh, fw = arr.shape[:2]
+        for cand_idx in cand_idxs:
+            meta = next(m for m in rois_meta if m["idx"] == cand_idx)
+            roi = meta["roi"]
+            x1 = max(0, roi["x"] - pad)
+            y1 = max(0, roi["y"] - pad)
+            x2 = min(fw, roi["x"] + roi["w"] + pad)
+            y2 = min(fh, roi["y"] + roi["h"] + pad)
+            prev_crops[cand_idx] = arr[y1:y2, x1:x2].copy()
     return prev_crops
 
 

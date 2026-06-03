@@ -36,7 +36,6 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-import av
 import cv2
 import numpy as np
 
@@ -48,6 +47,7 @@ from concam.config import DetectionConfig, load_config
 from concam.detection import detect
 from concam.detection.geometry import candidate_geometry
 from concam.detection.metrics import mann_whitney_auc
+from concam.video import decode_frames_sequential
 
 
 # Sweep grid. Keep this small — the default ~20 labels × 8 frames/episode ≈ 160
@@ -171,51 +171,35 @@ def extract_crops(video_path: Path, targets: list[dict], pad: int) -> dict[int, 
 
     Scanning sequentially + emitting-on-match is much faster than seeking per
     target when targets are spread across the whole day.
+
+    Frame decoding delegates to ``concam.video.decode_frames_sequential``; this
+    function retains the per-target crop logic which is script-specific.
     """
     # Group targets by frame_idx to handle episodes whose sampled frames collide.
     by_frame: dict[int, list[int]] = {}
     for i, t in enumerate(targets):
         by_frame.setdefault(t["frame_idx"], []).append(i)
-    wanted = sorted(by_frame.keys())
-    if not wanted:
+    if not by_frame:
         return {}
 
+    # Decode all wanted frames in one sequential pass.
+    decoded = decode_frames_sequential(video_path, list(by_frame.keys()))
+
     crops: dict[int, np.ndarray] = {}
-    container = av.open(str(video_path))
-    try:
-        stream = container.streams.video[0]
-        stream.thread_type = "AUTO"
-        # Seek to just before the first wanted frame to avoid decoding the
-        # whole preceding day.
-        first = wanted[0]
-        if stream.time_base and stream.average_rate:
-            pts = int(first / float(stream.average_rate) / float(stream.time_base))
-            container.seek(max(pts - 10, 0), stream=stream, any_frame=False)
-        wi = 0
-        for pkt_frame in container.decode(stream):
-            fidx = pkt_frame.pts * stream.time_base * stream.average_rate
-            # pts-based frame index (MIT timelapse is CBR 1fps → fidx should be integer-like).
-            fidx = int(round(float(fidx)))
-            while wi < len(wanted) and wanted[wi] < fidx:
-                wi += 1
-            if wi >= len(wanted):
-                break
-            if wanted[wi] != fidx:
-                continue
-            img = pkt_frame.to_ndarray(format="bgr24")
-            h, w = img.shape[:2]
-            for ti in by_frame[fidx]:
-                roi = targets[ti]["roi"]
-                x0 = max(0, int(roi["x"]) - pad)
-                y0 = max(0, int(roi["y"]) - pad)
-                x1 = min(w, int(roi["x"]) + int(roi["w"]) + pad)
-                y1 = min(h, int(roi["y"]) + int(roi["h"]) + pad)
-                crops[ti] = img[y0:y1, x0:x1].copy()
-                targets[ti]["_crop_tl"] = (x0, y0)
-                targets[ti]["_crop_shape"] = (y1 - y0, x1 - x0)
-            wi += 1
-    finally:
-        container.close()
+    for fidx, tis in by_frame.items():
+        img = decoded.get(fidx)
+        if img is None:
+            continue
+        h, w = img.shape[:2]
+        for ti in tis:
+            roi = targets[ti]["roi"]
+            x0 = max(0, int(roi["x"]) - pad)
+            y0 = max(0, int(roi["y"]) - pad)
+            x1 = min(w, int(roi["x"]) + int(roi["w"]) + pad)
+            y1 = min(h, int(roi["y"]) + int(roi["h"]) + pad)
+            crops[ti] = img[y0:y1, x0:x1].copy()
+            targets[ti]["_crop_tl"] = (x0, y0)
+            targets[ti]["_crop_shape"] = (y1 - y0, x1 - x0)
     return crops
 
 
