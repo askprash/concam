@@ -41,40 +41,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.detection.metrics import mann_whitney_auc, rank_metric, youden_threshold
 from concam.projection import PixelPoint, Rect, rotated_polygon
 
 
-def _mann_whitney_auc(pos: list[float], neg: list[float]) -> float:
-    if not pos or not neg:
-        return 0.0
-    n_p, n_n = len(pos), len(neg)
-    rank_sum_p = 0.0
-    for p in pos:
-        for n in neg:
-            if p > n:
-                rank_sum_p += 1.0
-            elif p == n:
-                rank_sum_p += 0.5
-    return rank_sum_p / (n_p * n_n)
-
-
-def _best_threshold(pos: list[float], neg: list[float]) -> tuple[float, float]:
-    if not pos or not neg:
-        return 0.0, 0.0
-    thresholds = sorted(set(pos) | set(neg))
-    best_t, best_j = 0.0, -1.0
-    for t in thresholds:
-        tp = sum(1 for p in pos if p >= t)
-        fn = len(pos) - tp
-        fp = sum(1 for n in neg if n >= t)
-        tn = len(neg) - fp
-        tpr = tp / max(1, tp + fn)
-        fpr = fp / max(1, fp + tn)
-        j = tpr - fpr
-        if j > best_j:
-            best_j = j
-            best_t = t
-    return best_t, best_j
+# mann_whitney_auc and youden_threshold live in concam.detection.metrics.
 
 
 def _reconstruct_geometry(
@@ -263,8 +234,8 @@ def main() -> None:
                 pos_scores.append(s)
             else:
                 neg_scores.append(s)
-        auc = _mann_whitney_auc(pos_scores, neg_scores)
-        threshold, youden_j = _best_threshold(pos_scores, neg_scores)
+        auc = mann_whitney_auc(pos_scores, neg_scores)
+        threshold, youden_j = youden_threshold(pos_scores, neg_scores)
         p90 = float(np.percentile(pos_scores, 90)) if pos_scores else 0.0
         pos_saturated = sum(1 for s in pos_scores if s >= 1.0)
         results.append(
@@ -286,7 +257,10 @@ def main() -> None:
 
     # Rank by (auc, youden_j, -pos_saturated_fraction) so we prefer scores that
     # discriminate positives/negatives AND leave headroom on the positive set.
-    results.sort(key=lambda r: (r["auc"], r["youden_j"], -r["pos_saturated"]), reverse=True)
+    results.sort(
+        key=lambda r: (rank_metric(r["auc"]), rank_metric(r["youden_j"]), -r["pos_saturated"]),
+        reverse=True,
+    )
 
     # Report.
     out_dir = Path(args.output_dir) / args.date

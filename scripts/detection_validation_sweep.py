@@ -47,6 +47,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.detection.metrics import mann_whitney_auc, rank_metric, youden_threshold
 from concam.pipeline import resolve_video_path
 from concam.projection import PixelPoint, Rect, rotated_polygon
 
@@ -273,8 +274,8 @@ def _sweep(
                 pos_scores.append(result.score)
             elif label == "negative":
                 neg_scores.append(result.score)
-        auc = _mann_whitney_auc(pos_scores, neg_scores)
-        threshold, youden_j = _best_threshold(pos_scores, neg_scores)
+        auc = mann_whitney_auc(pos_scores, neg_scores)
+        threshold, youden_j = youden_threshold(pos_scores, neg_scores)
         results.append(
             {
                 "combo": combo.asdict(),
@@ -291,7 +292,10 @@ def _sweep(
                 "neg_scores": neg_scores,
             }
         )
-    results.sort(key=lambda r: (r["auc"], r["youden_j"], r["separation"]), reverse=True)
+    results.sort(
+        key=lambda r: (rank_metric(r["auc"]), rank_metric(r["youden_j"]), r["separation"]),
+        reverse=True,
+    )
     return results
 
 
@@ -322,8 +326,8 @@ def _score_combo_on_rois(
             pos_scores.append(result.score)
         elif label == "negative":
             neg_scores.append(result.score)
-    auc = _mann_whitney_auc(pos_scores, neg_scores)
-    threshold, youden_j = _best_threshold(pos_scores, neg_scores)
+    auc = mann_whitney_auc(pos_scores, neg_scores)
+    threshold, youden_j = youden_threshold(pos_scores, neg_scores)
     return auc, youden_j, threshold, pos_scores, neg_scores
 
 
@@ -368,7 +372,10 @@ def _roi_dimension_sweep(
                 "pos_scores": pos_scores,
                 "neg_scores": neg_scores,
             })
-    results.sort(key=lambda r: (r["auc"], r["youden_j"]), reverse=True)
+    results.sort(
+        key=lambda r: (rank_metric(r["auc"]), rank_metric(r["youden_j"])),
+        reverse=True,
+    )
     return results
 
 
@@ -469,36 +476,7 @@ def _write_roi_sweep_report(
     md_path.write_text("\n".join(lines))
 
 
-def _mann_whitney_auc(pos: list[float], neg: list[float]) -> float:
-    if not pos or not neg:
-        return 0.5
-    wins = 0.0
-    for p in pos:
-        for n in neg:
-            if p > n:
-                wins += 1.0
-            elif p == n:
-                wins += 0.5
-    return wins / (len(pos) * len(neg))
-
-
-def _best_threshold(pos: list[float], neg: list[float]) -> tuple[float, float]:
-    if not pos or not neg:
-        return 0.5, 0.0
-    scores = sorted(set(pos + neg))
-    if len(scores) == 1:
-        return scores[0] - 1e-6, 0.0
-    candidates = [(a + b) / 2 for a, b in zip(scores[:-1], scores[1:])]
-    best_t = candidates[0]
-    best_j = -1.0
-    for t in candidates:
-        tpr = sum(1 for p in pos if p >= t) / len(pos)
-        fpr = sum(1 for n in neg if n >= t) / len(neg)
-        j = tpr - fpr
-        if j > best_j:
-            best_j = j
-            best_t = t
-    return best_t, best_j
+# mann_whitney_auc and youden_threshold live in concam.detection.metrics.
 
 
 def _pad_to_height(img: np.ndarray, h: int) -> np.ndarray:

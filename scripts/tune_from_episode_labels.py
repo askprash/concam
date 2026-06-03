@@ -46,6 +46,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.detection.metrics import mann_whitney_auc
 from concam.projection import PixelPoint, Rect, rotated_polygon
 
 
@@ -245,20 +246,6 @@ def score_target(target: dict, crop: np.ndarray, config: DetectionConfig) -> flo
     return float(result.score)
 
 
-def auc(pos: list[float], neg: list[float]) -> float:
-    """Mann-Whitney U → ROC-AUC. Ties count half."""
-    if not pos or not neg:
-        return float("nan")
-    greater = 0
-    ties = 0
-    for p in pos:
-        for n in neg:
-            if p > n:
-                greater += 1
-            elif p == n:
-                ties += 1
-    return (greater + 0.5 * ties) / (len(pos) * len(neg))
-
 
 def main() -> int:
     args = parse_args()
@@ -315,7 +302,7 @@ def main() -> int:
                     "gain": gain,
                     "pct_high": pct,
                     "score_norm": norm,
-                    "auc": auc(pos_scores, neg_scores),
+                    "auc": mann_whitney_auc(pos_scores, neg_scores),
                     "fp": fp,
                     "tp": tp,
                     "fn": fn,
@@ -344,7 +331,7 @@ def main() -> int:
     print(f"Baseline (production defaults: gain={baseline_cfg.cross_grad_gain}, "
           f"pct_high={baseline_cfg.canny_percentile_high}, "
           f"score_norm={baseline_cfg.score_length_norm_px})")
-    print(f"  AUC={auc(b_pos, b_neg):.3f}  TP={b_tp}/{len(b_pos)}  "
+    print(f"  AUC={mann_whitney_auc(b_pos, b_neg):.3f}  TP={b_tp}/{len(b_pos)}  "
           f"FP={b_fp}/{len(b_neg)}  neg_max={max(b_neg) if b_neg else 0:.3f}")
     print()
     print("Top 10 by (FP↓, AUC↑, TP↑):")
