@@ -41,35 +41,12 @@ if str(REPO_ROOT) not in sys.path:
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.detection.geometry import candidate_geometry
 from concam.detection.metrics import mann_whitney_auc, rank_metric, youden_threshold
-from concam.projection import PixelPoint, Rect, rotated_polygon
 
 
 # mann_whitney_auc and youden_threshold live in concam.detection.metrics.
 
-
-def _reconstruct_geometry(
-    cand: dict,
-    crop_shape: tuple[int, int],
-    roi_along: int,
-    roi_cross: int,
-    extract_pad: int = 20,
-) -> tuple[Rect, np.ndarray, tuple[float, float]]:
-    ch, cw = crop_shape
-    roi = cand["roi"]
-    full_tl_x = max(0, int(roi["x"]) - extract_pad)
-    full_tl_y = max(0, int(roi["y"]) - extract_pad)
-    center_local = PixelPoint(
-        x=float(cand["pixel_x"]) - full_tl_x,
-        y=float(cand["pixel_y"]) - full_tl_y,
-    )
-    path_vec = (float(cand["path_dx"]), float(cand["path_dy"]))
-    dummy_cfg = DetectionConfig(
-        roi_along_px=roi_along, roi_cross_px=roi_cross, roi_padding=20,
-    )
-    poly = rotated_polygon(center_local, path_vec, dummy_cfg)
-    rect = Rect(x=0, y=0, w=cw, h=ch)
-    return rect, poly, path_vec
 
 
 def _load_candidates(date: str, labels_path: Path) -> tuple[list[dict], dict]:
@@ -200,13 +177,12 @@ def main() -> None:
     for cand in candidates:
         meta = cand["meta"]
         crop = cand["crop"]
-        rect, poly, path_vec = _reconstruct_geometry(
-            meta,
-            crop.shape[:2],
-            roi_along=det_cfg.roi_along_px,
-            roi_cross=det_cfg.roi_cross_px,
+        g = candidate_geometry(
+            meta, crop.shape[:2],
+            roi_along_px=det_cfg.roi_along_px,
+            roi_cross_px=det_cfg.roi_cross_px,
         )
-        r = detect(crop, rect, det_cfg, polygon=poly, path_vec=path_vec)
+        r = detect(crop, g.rect, det_cfg, polygon=g.polygon, path_vec=g.path_vec)
         records.append(
             {
                 "idx": meta["idx"],

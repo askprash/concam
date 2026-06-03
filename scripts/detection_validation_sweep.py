@@ -47,9 +47,9 @@ if str(REPO_ROOT) not in sys.path:
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.detection.geometry import candidate_geometry
 from concam.detection.metrics import mann_whitney_auc, rank_metric, youden_threshold
 from concam.pipeline import resolve_video_path
-from concam.projection import PixelPoint, Rect, rotated_polygon
 
 # Parameter grid axes. 3^7 = 2187 combos × 20 ROIs × ~1 ms/detect() ≈ under a
 # minute total. long_line_min_px is sweepable because the rotated ROI is only
@@ -125,46 +125,6 @@ def _combo_to_config(
         preprocessing=preprocessing,
     )
 
-
-def _reconstruct_geometry(
-    cand: dict,
-    crop_shape: tuple[int, int],
-    extract_pad: int = 20,
-    roi_along: int = ROI_ALONG_PX,
-    roi_cross: int = ROI_CROSS_PX,
-) -> tuple[Rect, np.ndarray, tuple[float, float], PixelPoint]:
-    """Given the manifest candidate and its saved crop, return the Rect/polygon/
-    path_vec/center needed to drive ``concam.detection.detect`` as if the crop
-    itself were the full frame.
-
-    Extract pads the crop by ``extract_pad`` on each side around the AABB (clipped
-    to 0). To reproduce the correct crop-local coordinates we need both the
-    crop's actual shape (to handle edge clipping) and the original AABB.
-    """
-    ch, cw = crop_shape
-    roi = cand["roi"]
-    # True full-frame top-left of the crop after edge clipping.
-    full_tl_x = max(0, int(roi["x"]) - extract_pad)
-    full_tl_y = max(0, int(roi["y"]) - extract_pad)
-
-    center_local = PixelPoint(
-        x=float(cand["pixel_x"]) - full_tl_x,
-        y=float(cand["pixel_y"]) - full_tl_y,
-    )
-    path_vec = (float(cand["path_dx"]), float(cand["path_dy"]))
-
-    # Rotated polygon built with the sweep's along/cross — independent of whatever
-    # roi_padding value the projection stage used when the crop was extracted.
-    dummy_cfg = DetectionConfig(
-        roi_along_px=roi_along, roi_cross_px=roi_cross, roi_padding=20,
-    )
-    poly = rotated_polygon(center_local, path_vec, dummy_cfg)
-
-    # The Rect handed to detect() is the whole crop — the rotated mask does the
-    # along-track selection. Use the crop's actual shape so we never reference
-    # pixels outside it.
-    rect = Rect(x=0, y=0, w=cw, h=ch)
-    return rect, poly, path_vec, center_local
 
 
 def _video_meta(video_path: Path) -> tuple[float, int]:
@@ -252,7 +212,8 @@ def _sweep(
     results: list[dict] = []
     # Pre-build per-ROI geometry once since it doesn't depend on the combo.
     roi_geoms = [
-        (meta, crop, label, *_reconstruct_geometry(meta, crop.shape[:2], roi_along=roi_along, roi_cross=roi_cross))
+        (meta, crop, label,
+         candidate_geometry(meta, crop.shape[:2], roi_along_px=roi_along, roi_cross_px=roi_cross))
         for meta, crop, label in rois
     ]
     for pct_hi, lo_ratio, ht, hml, hmg, tol, lmin in itertools.product(
@@ -264,10 +225,10 @@ def _sweep(
         cfg = _combo_to_config(combo, preprocessing=preprocessing, roi_along=roi_along, roi_cross=roi_cross)
         pos_scores: list[float] = []
         neg_scores: list[float] = []
-        for meta, crop, label, rect, poly, path_vec, _center in roi_geoms:
+        for meta, crop, label, g in roi_geoms:
             prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
             result = detect(
-                crop, rect, cfg, polygon=poly, path_vec=path_vec,
+                crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec,
                 prev_frame=prev_frame,
             )
             if label == "positive":
@@ -313,15 +274,16 @@ def _score_combo_on_rois(
     Used by the ROI dimension sub-grid sweep where other axes are frozen.
     """
     roi_geoms = [
-        (meta, crop, label, *_reconstruct_geometry(meta, crop.shape[:2], roi_along=roi_along, roi_cross=roi_cross))
+        (meta, crop, label,
+         candidate_geometry(meta, crop.shape[:2], roi_along_px=roi_along, roi_cross_px=roi_cross))
         for meta, crop, label in rois
     ]
     cfg = _combo_to_config(combo, preprocessing=preprocessing, roi_along=roi_along, roi_cross=roi_cross)
     pos_scores: list[float] = []
     neg_scores: list[float] = []
-    for meta, crop, label, rect, poly, path_vec, _center in roi_geoms:
+    for meta, crop, label, g in roi_geoms:
         prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
-        result = detect(crop, rect, cfg, polygon=poly, path_vec=path_vec, prev_frame=prev_frame)
+        result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
         if label == "positive":
             pos_scores.append(result.score)
         elif label == "negative":
@@ -521,14 +483,14 @@ def _visualise_best_combo(
     threshold = float(best["threshold"])
     tiles: list[np.ndarray] = []
     for meta, crop, label in rois:
-        rect, poly, path_vec, _center = _reconstruct_geometry(meta, crop.shape[:2], roi_along=roi_along, roi_cross=roi_cross)
+        g = candidate_geometry(meta, crop.shape[:2], roi_along_px=roi_along, roi_cross_px=roi_cross)
         prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
-        result = detect(crop, rect, cfg, polygon=poly, path_vec=path_vec, prev_frame=prev_frame)
+        result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
 
         vis_crop = crop if crop.ndim == 3 else cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
         # Draw the rotated polygon on the crop preview.
         overlay = vis_crop.copy()
-        cv2.polylines(overlay, [poly.astype(np.int32)], True, (0, 180, 255), 1)
+        cv2.polylines(overlay, [g.polygon.astype(np.int32)], True, (0, 180, 255), 1)
         if result.pixel_line is not None:
             x1, y1, x2, y2 = (int(v) for v in result.pixel_line)
             cv2.line(overlay, (x1, y1), (x2, y2), (80, 220, 80), 2)
@@ -536,7 +498,7 @@ def _visualise_best_combo(
         # Also render the masked-edge preview so humans can see what Canny saw.
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.ndim == 3 else crop
         mask = np.zeros(gray.shape, dtype=np.uint8)
-        cv2.fillPoly(mask, [poly.astype(np.int32)], 255)
+        cv2.fillPoly(mask, [g.polygon.astype(np.int32)], 255)
         masked_vals = gray[mask > 0]
         if masked_vals.size:
             p_hi = float(np.percentile(masked_vals, combo.canny_percentile_high))

@@ -40,7 +40,7 @@ import numpy as np
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
-from concam.projection import PixelPoint, Rect, rotated_polygon
+from concam.detection.geometry import candidate_geometry
 
 EXTRACT_PAD = 20
 
@@ -95,20 +95,6 @@ def _crop_padded(frame: np.ndarray, roi: dict, pad: int = EXTRACT_PAD) -> np.nda
     y2 = min(h, int(roi["y"]) + int(roi["h"]) + pad)
     return frame[y1:y2, x1:x2].copy()
 
-
-def _reconstruct(cand: dict, crop_shape: tuple[int, int], cfg: DetectionConfig):
-    ch, cw = crop_shape
-    roi = cand["roi"]
-    tlx = max(0, int(roi["x"]) - EXTRACT_PAD)
-    tly = max(0, int(roi["y"]) - EXTRACT_PAD)
-    center = PixelPoint(
-        x=float(cand["pixel_x"]) - tlx,
-        y=float(cand["pixel_y"]) - tly,
-    )
-    path_vec = (float(cand["path_dx"]), float(cand["path_dy"]))
-    poly = rotated_polygon(center, path_vec, cfg)
-    rect = Rect(x=0, y=0, w=cw, h=ch)
-    return rect, poly, path_vec, center
 
 
 def _compute_panels(
@@ -182,15 +168,20 @@ def _render_panel(
     out_path: Path,
     prev_crop: np.ndarray | None = None,
 ) -> dict:
-    rect, poly, path_vec, _center = _reconstruct(cand, crop.shape[:2], cfg)
-    panels = _compute_panels(crop, poly, cfg, prev_crop=prev_crop)
+    g = candidate_geometry(
+        cand, crop.shape[:2],
+        roi_along_px=cfg.roi_along_px,
+        roi_cross_px=cfg.roi_cross_px,
+        extract_pad=EXTRACT_PAD,
+    )
+    panels = _compute_panels(crop, g.polygon, cfg, prev_crop=prev_crop)
     result = detect(
-        crop, rect, cfg,
-        polygon=poly, path_vec=path_vec,
+        crop, g.rect, cfg,
+        polygon=g.polygon, path_vec=g.path_vec,
         prev_frame=prev_crop,
     )
 
-    path_angle = math.degrees(math.atan2(path_vec[1], path_vec[0])) % 180.0
+    path_angle = math.degrees(math.atan2(g.path_vec[1], g.path_vec[0])) % 180.0
     tol = float(cfg.angle_tolerance_deg)
 
     def _aligned(x1, y1, x2, y2):
@@ -198,17 +189,17 @@ def _render_panel(
         return abs(((a - path_angle + 90.0) % 180.0) - 90.0) <= tol
 
     vis = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-    poly_closed = np.vstack([poly, poly[:1]])
-    cx = float(cand["pixel_x"]) - max(0, int(cand["roi"]["x"]) - EXTRACT_PAD)
-    cy = float(cand["pixel_y"]) - max(0, int(cand["roi"]["y"]) - EXTRACT_PAD)
+    poly_closed = np.vstack([g.polygon, g.polygon[:1]])
+    cx = g.center.x
+    cy = g.center.y
     L = 40.0
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7.2))
     axes[0, 0].imshow(vis)
     axes[0, 0].plot(poly_closed[:, 0], poly_closed[:, 1], color="#ffb000", lw=1.5)
     axes[0, 0].plot(
-        [cx - L * path_vec[0], cx + L * path_vec[0]],
-        [cy - L * path_vec[1], cy + L * path_vec[1]],
+        [cx - L * g.path_vec[0], cx + L * g.path_vec[0]],
+        [cy - L * g.path_vec[1], cy + L * g.path_vec[1]],
         color="#ff6030", lw=1.0, alpha=0.8,
     )
     axes[0, 0].scatter([cx], [cy], c="#ff6030", s=14)

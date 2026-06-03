@@ -46,8 +46,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from concam.config import DetectionConfig, load_config
 from concam.detection import detect
+from concam.detection.geometry import candidate_geometry
 from concam.detection.metrics import mann_whitney_auc
-from concam.projection import PixelPoint, Rect, rotated_polygon
 
 
 # Sweep grid. Keep this small — the default ~20 labels × 8 frames/episode ≈ 160
@@ -231,18 +231,26 @@ def build_config(base: DetectionConfig, gain: float, pct_high: float,
     )
 
 
-def score_target(target: dict, crop: np.ndarray, config: DetectionConfig) -> float:
-    """Run detect() on one cached crop; return its score (0 on any failure)."""
-    tl_x, tl_y = target["_crop_tl"]
-    center_local = PixelPoint(
-        x=float(target["pixel_x"]) - tl_x,
-        y=float(target["pixel_y"]) - tl_y,
+def score_target(
+    target: dict,
+    crop: np.ndarray,
+    config: DetectionConfig,
+    extract_pad: int = 40,
+) -> float:
+    """Run detect() on one cached crop; return its score (0 on any failure).
+
+    ``extract_pad`` must match the pad used when the crop was extracted
+    (i.e. ``args.crop_pad_px``; default 40).  It is forwarded to
+    :func:`~concam.detection.geometry.candidate_geometry` so that the
+    crop-local coordinates are computed consistently with the crop boundary.
+    """
+    g = candidate_geometry(
+        target, crop.shape[:2],
+        roi_along_px=config.roi_along_px,
+        roi_cross_px=config.roi_cross_px,
+        extract_pad=extract_pad,
     )
-    path_vec = (float(target["path_dx"]), float(target["path_dy"]))
-    poly = rotated_polygon(center_local, path_vec, config)
-    h, w = crop.shape[:2]
-    rect = Rect(x=0, y=0, w=w, h=h)
-    result = detect(crop, rect, config, polygon=poly, path_vec=path_vec)
+    result = detect(crop, g.rect, config, polygon=g.polygon, path_vec=g.path_vec)
     return float(result.score)
 
 
@@ -288,7 +296,7 @@ def main() -> int:
                 per_episode_peak: dict[int, float] = {}
                 for ti in kept:
                     t = targets[ti]
-                    s = score_target(t, crops[ti], cfg)
+                    s = score_target(t, crops[ti], cfg, extract_pad=args.crop_pad_px)
                     ep_id = t["episode_id"]
                     per_episode_peak[ep_id] = max(per_episode_peak.get(ep_id, 0.0), s)
                 pos_scores = [s for eid, s in per_episode_peak.items()
@@ -316,7 +324,7 @@ def main() -> int:
     baseline_peak: dict[int, float] = {}
     for ti in kept:
         t = targets[ti]
-        s = score_target(t, crops[ti], baseline_cfg)
+        s = score_target(t, crops[ti], baseline_cfg, extract_pad=args.crop_pad_px)
         ep_id = t["episode_id"]
         baseline_peak[ep_id] = max(baseline_peak.get(ep_id, 0.0), s)
     b_pos = [s for eid, s in baseline_peak.items() if labels[eid] == "contrail"]
