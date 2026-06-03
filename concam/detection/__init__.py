@@ -26,18 +26,42 @@ production sibling pipelines (camera-flight-overlay / groundcam_contrail_observa
 The legacy AABB-only / fixed-threshold path is kept as an opt-out via
 ``DetectionConfig.use_rotated_mask=False`` + ``use_adaptive_canny=False``; the
 existing test_detection.py suite exercises that fallback.
+
+Architecture
+------------
+The edge+Hough math lives in exactly one place — :func:`run_detection_pass` in
+:mod:`concam.detection._core`, which returns a :class:`DetectionPass` carrying
+every intermediate array.  :func:`detect` scores from it, :func:`explain`
+returns it for visualisation, and :func:`grow_contrail_length` grows from it.
+Render the same :class:`DetectionPass` you scored and a visualiser cannot drift
+from the production detector.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import cv2
 import numpy as np
 
 from concam.config import DetectionConfig
 from concam.projection import Rect
+
+from concam.detection._core import (
+    DetectionPass,
+    _pass_on_base,
+    _prepare_base,
+    run_detection_pass,
+)
+
+__all__ = [
+    "DetectionResult",
+    "DetectionPass",
+    "detect",
+    "explain",
+    "grow_contrail_length",
+    "run_detection_pass",
+]
 
 
 @dataclass
@@ -51,236 +75,6 @@ class DetectionResult:
     aligned_lines: int = 0  # aligned lines total (any length)
     # Along-track pixel span of aligned long lines (0.0 when no lines found).
     contrail_length_px: float = 0.0
-
-
-def _to_gray(frame: np.ndarray) -> np.ndarray:
-    if frame.ndim == 3:
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    return frame
-
-
-def _angle180(dx: float, dy: float) -> float:
-    """Line angle in [0, 180)."""
-    return math.degrees(math.atan2(dy, dx)) % 180.0
-
-
-def _angle_delta(a: float, b: float) -> float:
-    """Unsigned acute angle between two orientations (both in [0, 180))."""
-    return abs(((a - b + 90.0) % 180.0) - 90.0)
-
-
-def _prepare_base(
-    frame: np.ndarray,
-    config: DetectionConfig,
-    *,
-    path_vec: tuple[float, float] | None = None,
-    prev_frame: np.ndarray | None = None,
-    crop: tuple[int, int, int, int] | None = None,
-) -> tuple[np.ndarray, str]:
-    """Apply temporal diff and spatial preprocessing to produce a detection base.
-
-    Returns ``(base_gray, method_suffix)`` where ``method_suffix`` is appended
-    to the detector method name to record which preprocessing was applied.
-
-    When ``crop=(x1, y1, x2, y2)`` (full-frame pixel coords) is supplied, the
-    spatial ops are applied on a halo-padded slice of the frame and the result
-    is trimmed back, so ``base.shape == (y2-y1, x2-x1)``. The halo equals the
-    widest stencil footprint across the enabled ops, so the interior pixels
-    match a full-frame computation.
-    """
-    preprocessing = getattr(config, "preprocessing", "none")
-    has_diff = (
-        prev_frame is not None
-        and prev_frame.shape[:2] == frame.shape[:2]
-    )
-
-    method_suffix = ""
-    if has_diff:
-        method_suffix += "_diff"
-    if preprocessing == "local_contrast":
-        method_suffix += "_lc"
-    elif preprocessing == "cross_grad" and path_vec is not None:
-        method_suffix += "_cg"
-
-    pad = 0
-    if preprocessing == "cross_grad" and path_vec is not None:
-        pad = max(pad, 1)  # Sobel ksize=3
-    if preprocessing == "local_contrast":
-        sigma = float(getattr(config, "local_contrast_sigma", 25.0))
-        pad = max(pad, int(math.ceil(3.0 * sigma)))
-    if config.blur_kernel and config.blur_kernel > 1:
-        k = int(config.blur_kernel) | 1
-        pad = max(pad, k // 2)
-
-    h_fr, w_fr = frame.shape[:2]
-    if crop is not None:
-        x1 = max(0, min(w_fr, int(crop[0])))
-        y1 = max(0, min(h_fr, int(crop[1])))
-        x2 = max(x1, min(w_fr, int(crop[2])))
-        y2 = max(y1, min(h_fr, int(crop[3])))
-        if x2 <= x1 or y2 <= y1:
-            return np.zeros((y2 - y1, x2 - x1), dtype=np.uint8), method_suffix
-        px1 = max(0, x1 - pad)
-        py1 = max(0, y1 - pad)
-        px2 = min(w_fr, x2 + pad)
-        py2 = min(h_fr, y2 + pad)
-        gray = _to_gray(frame[py1:py2, px1:px2])
-        base = gray
-        if has_diff:
-            prev_gray = _to_gray(prev_frame[py1:py2, px1:px2])
-            base = cv2.absdiff(gray, prev_gray)
-        trim_y = y1 - py1
-        trim_x = x1 - px1
-        trim_h = y2 - y1
-        trim_w = x2 - x1
-    else:
-        gray = _to_gray(frame)
-        base = gray
-        if has_diff:
-            prev_gray = _to_gray(prev_frame)
-            base = cv2.absdiff(gray, prev_gray)
-        trim_y = trim_x = 0
-        trim_h, trim_w = base.shape[:2]
-
-    if preprocessing == "local_contrast":
-        sigma = float(getattr(config, "local_contrast_sigma", 25.0))
-        base_f = base.astype(np.float32)
-        bg = cv2.GaussianBlur(base_f, (0, 0), sigma)
-        base = np.clip(base_f - bg + 128.0, 0, 255).astype(np.uint8)
-    elif preprocessing == "cross_grad" and path_vec is not None:
-        px_v, py_v = float(path_vec[0]), float(path_vec[1])
-        perp_x, perp_y = -py_v, px_v   # 90° rotation, unit length
-        base_f = base.astype(np.float32)
-        sx = cv2.Sobel(base_f, cv2.CV_32F, 1, 0, ksize=3)
-        sy = cv2.Sobel(base_f, cv2.CV_32F, 0, 1, ksize=3)
-        cross = np.abs(sx * perp_x + sy * perp_y)
-        gain = float(getattr(config, "cross_grad_gain", 2.0))
-        base = np.clip(cross * gain, 0, 255).astype(np.uint8)
-
-    if config.blur_kernel and config.blur_kernel > 1:
-        k = int(config.blur_kernel) | 1
-        base = cv2.GaussianBlur(base, (k, k), 0)
-
-    if crop is not None:
-        base = base[trim_y : trim_y + trim_h, trim_x : trim_x + trim_w]
-
-    return base, method_suffix
-
-
-def _canny_and_hough_in_polygon(
-    base: np.ndarray,
-    polygon: np.ndarray,
-    config: DetectionConfig,
-    x1: int,
-    y1: int,
-    w_fr: int,
-    h_fr: int,
-) -> tuple[list[tuple[int, int, int, int, float]], list[tuple[int, int, int, int, float]]]:
-    """Run Canny + Hough within a rotated polygon crop.
-
-    ``polygon`` must be in full-frame coords.  ``x1``, ``y1`` are the top-left
-    corner of the crop already extracted from ``base`` (``base[y1:y2, x1:x2]``).
-
-    Returns ``(aligned, long_aligned)`` line lists where each element is
-    ``(lx1, ly1, lx2, ly2, length)`` in **full-frame** coordinates.
-    Only lines within ``angle_tolerance_deg`` of the implicit path_vec are
-    returned; the caller is responsible for setting ``path_vec=None`` → angle
-    filter disabled by passing ``config.angle_tolerance_deg=90``.
-    """
-    x2 = min(w_fr, int(round(float(np.max(polygon[:, 0])))) + 1)
-    y2 = min(h_fr, int(round(float(np.max(polygon[:, 1])))) + 1)
-    crop = base[y1:y2, x1:x2]
-    if crop.size == 0:
-        return [], []
-
-    ch, cw = crop.shape[:2]
-
-    # Build rotated-polygon mask in crop-local coords.
-    local_poly = polygon.copy().astype(np.float32)
-    local_poly[:, 0] -= x1
-    local_poly[:, 1] -= y1
-    local_poly_int = np.round(local_poly).astype(np.int32)
-    mask = np.zeros((ch, cw), dtype=np.uint8)
-    cv2.fillPoly(mask, [local_poly_int], 255)
-    masked_values = crop[mask > 0]
-
-    if masked_values.size == 0:
-        return [], []
-
-    # Adaptive Canny thresholds.
-    if config.use_adaptive_canny:
-        p_hi = float(np.percentile(masked_values, config.canny_percentile_high))
-        canny_high = max(int(round(p_hi)), int(config.canny_min_high))
-        canny_low = max(1, int(round(canny_high * config.canny_low_ratio)))
-        p_lo = float(np.percentile(masked_values, config.canny_percentile_low))
-        floor = int(round(p_lo))
-    else:
-        canny_high = int(config.canny_high)
-        canny_low = int(config.canny_low)
-        floor = None
-
-    crop_for_canny = cv2.bitwise_and(crop, crop, mask=mask)
-    if floor is not None and floor > 0:
-        _, crop_for_canny = cv2.threshold(crop_for_canny, floor, 255, cv2.THRESH_TOZERO)
-
-    edges = cv2.Canny(crop_for_canny, canny_low, canny_high)
-    edges = cv2.bitwise_and(edges, edges, mask=mask)
-
-    lines_raw = cv2.HoughLinesP(
-        edges,
-        rho=1,
-        theta=np.pi / 180.0,
-        threshold=int(config.hough_threshold),
-        minLineLength=int(config.hough_min_line_length),
-        maxLineGap=int(config.hough_max_line_gap),
-    )
-    return lines_raw, (x1, y1)
-
-
-def _filter_lines(
-    lines_raw,
-    x1: int,
-    y1: int,
-    path_angle: float | None,
-    config: DetectionConfig,
-) -> tuple[list, list]:
-    """Filter raw HoughLinesP output to aligned / long-aligned subsets.
-
-    Returns ``(aligned, long_aligned)`` in full-frame coordinates.
-    """
-    if lines_raw is None or len(lines_raw) == 0:
-        return [], []
-
-    tol = float(config.angle_tolerance_deg)
-    min_long = float(config.long_line_min_px)
-    aligned = []
-    long_aligned = []
-    for ln in lines_raw:
-        lx1, ly1, lx2, ly2 = (int(v) for v in ln[0])
-        length = float(math.hypot(lx2 - lx1, ly2 - ly1))
-        if path_angle is not None:
-            line_angle = _angle180(float(lx2 - lx1), float(ly2 - ly1))
-            if _angle_delta(line_angle, path_angle) > tol:
-                continue
-        aligned.append((lx1 + x1, ly1 + y1, lx2 + x1, ly2 + y1, length))
-        if length >= min_long:
-            long_aligned.append((lx1 + x1, ly1 + y1, lx2 + x1, ly2 + y1, length))
-    return aligned, long_aligned
-
-
-def _line_span_px(
-    long_aligned: list[tuple[int, int, int, int, float]],
-    path_vec: tuple[float, float],
-) -> float:
-    """Along-track span of long-aligned Hough line endpoints (full-frame coords)."""
-    if not long_aligned:
-        return 0.0
-    vx, vy = float(path_vec[0]), float(path_vec[1])
-    projections = (
-        [vx * lx1 + vy * ly1 for lx1, ly1, lx2, ly2, _ in long_aligned]
-        + [vx * lx2 + vy * ly2 for lx1, ly1, lx2, ly2, _ in long_aligned]
-    )
-    return float(max(projections) - min(projections))
 
 
 def detect(
@@ -313,148 +107,28 @@ def detect(
         (or None), method string, the aligned/long-aligned line counts, and
         ``contrail_length_px`` (along-track span of aligned long lines).
     """
-    method = "rotated_hough" if (
-        polygon is not None and config.use_rotated_mask
-    ) else "aabb_hough"
-
-    h_fr, w_fr = frame.shape[:2]
-    # Clip AABB to frame bounds before preprocessing so Sobel/blur run on the
-    # cropped ROI (~180×200 px) instead of the full 3840×2160 frame.
-    x1 = max(0, int(roi.x))
-    y1 = max(0, int(roi.y))
-    x2 = min(w_fr, int(roi.x + roi.w))
-    y2 = min(h_fr, int(roi.y + roi.h))
-
-    base, method_suffix = _prepare_base(
-        frame, config,
+    p = run_detection_pass(
+        frame, roi, config,
+        polygon=polygon,
         path_vec=path_vec,
         prev_frame=prev_frame,
-        crop=(x1, y1, x2, y2),
-    )
-    method = method + method_suffix
-
-    if x2 <= x1 or y2 <= y1:
-        return DetectionResult(score=0.0, pixel_line=None, method=method)
-
-    crop = base
-    if crop.size == 0:
-        return DetectionResult(score=0.0, pixel_line=None, method=method)
-
-    # Build the rotated-polygon mask in crop-local coords (or a full-crop mask
-    # if we're falling back to AABB-only).
-    ch, cw = crop.shape[:2]
-    if polygon is not None and config.use_rotated_mask:
-        local_poly = polygon.copy().astype(np.float32)
-        local_poly[:, 0] -= x1
-        local_poly[:, 1] -= y1
-        local_poly_int = np.round(local_poly).astype(np.int32)
-        mask = np.zeros((ch, cw), dtype=np.uint8)
-        cv2.fillPoly(mask, [local_poly_int], 255)
-        masked_values = crop[mask > 0]
-    else:
-        mask = None
-        masked_values = crop.reshape(-1)
-
-    if masked_values.size == 0:
-        return DetectionResult(score=0.0, pixel_line=None, method=method)
-
-    # Decide Canny thresholds.
-    if config.use_adaptive_canny:
-        p_hi = float(np.percentile(masked_values, config.canny_percentile_high))
-        canny_high = max(int(round(p_hi)), int(config.canny_min_high))
-        canny_low = max(1, int(round(canny_high * config.canny_low_ratio)))
-        # Pixel floor: zero-out anything below the p_low percentile so Canny
-        # doesn't respond to low-contrast sky texture.
-        p_lo = float(np.percentile(masked_values, config.canny_percentile_low))
-        floor = int(round(p_lo))
-    else:
-        canny_high = int(config.canny_high)
-        canny_low = int(config.canny_low)
-        floor = None
-
-    # Apply the floor, rotated mask, and timestamp exclusion region before Canny.
-    crop_for_canny = crop
-    if mask is not None:
-        crop_for_canny = cv2.bitwise_and(crop_for_canny, crop_for_canny, mask=mask)
-    if floor is not None and floor > 0:
-        _, crop_for_canny = cv2.threshold(crop_for_canny, floor, 255, cv2.THRESH_TOZERO)
-
-    # Zero out the burned-in timestamp region so its glyph edges cannot produce
-    # aligned Hough lines.  The exclusion region is in full-frame coords
-    # [y0, y1, x0, x1]; translate to crop-local coordinates before zeroing.
-    excl = getattr(config, "timestamp_exclusion_region", None)
-    if excl is not None and len(excl) == 4:
-        ey0, ey1, ex0, ex1 = int(excl[0]), int(excl[1]), int(excl[2]), int(excl[3])
-        # Translate to crop-local row/col indices.
-        ry0 = max(0, ey0 - y1)
-        ry1 = min(ch, ey1 - y1)
-        cx0 = max(0, ex0 - x1)
-        cx1 = min(cw, ex1 - x1)
-        if ry1 > ry0 and cx1 > cx0:
-            if crop_for_canny is crop:
-                crop_for_canny = crop_for_canny.copy()
-            crop_for_canny[ry0:ry1, cx0:cx1] = 0
-
-    edges = cv2.Canny(crop_for_canny, canny_low, canny_high)
-    if mask is not None:
-        edges = cv2.bitwise_and(edges, edges, mask=mask)
-
-    lines = cv2.HoughLinesP(
-        edges,
-        rho=1,
-        theta=np.pi / 180.0,
-        threshold=int(config.hough_threshold),
-        minLineLength=int(config.hough_min_line_length),
-        maxLineGap=int(config.hough_max_line_gap),
-    )
-    if lines is None or len(lines) == 0:
-        return DetectionResult(score=0.0, pixel_line=None, method=method)
-
-    # Angle filter against the flight-path vector.
-    tol = float(config.angle_tolerance_deg)
-    min_long = float(config.long_line_min_px)
-    if path_vec is not None:
-        path_angle = _angle180(float(path_vec[0]), float(path_vec[1]))
-    else:
-        path_angle = None
-
-    aligned: list[tuple[int, int, int, int, float]] = []
-    long_aligned: list[tuple[int, int, int, int, float]] = []
-    for ln in lines:
-        lx1, ly1, lx2, ly2 = (int(v) for v in ln[0])
-        length = float(math.hypot(lx2 - lx1, ly2 - ly1))
-        if path_angle is not None:
-            line_angle = _angle180(float(lx2 - lx1), float(ly2 - ly1))
-            if _angle_delta(line_angle, path_angle) > tol:
-                continue
-        aligned.append((lx1, ly1, lx2, ly2, length))
-        if length >= min_long:
-            long_aligned.append((lx1, ly1, lx2, ly2, length))
-
-    if not aligned:
-        return DetectionResult(score=0.0, pixel_line=None, method=method)
-
-    best_bucket = long_aligned if long_aligned else aligned
-    best = max(best_bucket, key=lambda t: t[4])
-    bx1, by1, bx2, by2, _ = best
-    pixel_line = (
-        float(bx1 + x1),
-        float(by1 + y1),
-        float(bx2 + x1),
-        float(by2 + y1),
+        apply_exclusion=True,
     )
 
-    # Along-track pixel span from the seed ROI.  Requires path_vec; falls back
-    # to the length of the single best Hough line when path_vec is unavailable.
-    if path_vec is not None:
-        length_px = _line_span_px(
-            [(la[0]+x1, la[1]+y1, la[2]+x1, la[3]+y1, la[4]) for la in long_aligned],
-            path_vec,
+    if not p.aligned:
+        return DetectionResult(
+            score=0.0,
+            pixel_line=None,
+            method=p.method,
+            num_long_lines=len(p.long_aligned),
+            aligned_lines=len(p.aligned),
+            contrail_length_px=p.length_px,
         )
-    elif long_aligned:
-        length_px = max(la[4] for la in long_aligned)
-    else:
-        length_px = 0.0
+
+    best_bucket = p.long_aligned if p.long_aligned else p.aligned
+    best = max(best_bucket, key=lambda t: t[4])
+    pixel_line = (float(best[0]), float(best[1]), float(best[2]), float(best[3]))
+    length_px = p.length_px
 
     # Scoring contract.  "length" (default) uses the along-track contrail pixel
     # span normalised by ``score_length_norm_px`` — continuous, does not
@@ -463,7 +137,7 @@ def detect(
     score_fn = getattr(config, "score_fn", "length")
     if score_fn == "count":
         norm = max(1, int(config.score_norm_count))
-        score = min(1.0, len(long_aligned) / float(norm))
+        score = min(1.0, len(p.long_aligned) / float(norm))
     else:
         norm_px = float(getattr(config, "score_length_norm_px", 130.0))
         if norm_px <= 0.0:
@@ -473,10 +147,36 @@ def detect(
     return DetectionResult(
         score=score,
         pixel_line=pixel_line,
-        method=method,
-        num_long_lines=len(long_aligned),
-        aligned_lines=len(aligned),
+        method=p.method,
+        num_long_lines=len(p.long_aligned),
+        aligned_lines=len(p.aligned),
         contrail_length_px=length_px,
+    )
+
+
+def explain(
+    frame: np.ndarray,
+    roi: Rect,
+    config: DetectionConfig,
+    *,
+    polygon: np.ndarray | None = None,
+    path_vec: tuple[float, float] | None = None,
+    prev_frame: np.ndarray | None = None,
+) -> DetectionPass:
+    """Return the full :class:`DetectionPass` the detector produced for an ROI.
+
+    This is :func:`detect`'s computation without the scoring step: the same
+    base, mask, Canny thresholds, edges, and aligned/long-aligned line sets that
+    :func:`detect` scored from.  Visualisers should render *this* — rendering the
+    pass guarantees the panels show exactly what the detector saw, instead of a
+    hand-rolled re-implementation that can silently diverge from production.
+    """
+    return run_detection_pass(
+        frame, roi, config,
+        polygon=polygon,
+        path_vec=path_vec,
+        prev_frame=prev_frame,
+        apply_exclusion=True,
     )
 
 
@@ -492,12 +192,16 @@ def grow_contrail_length(
 
     Starting from ``config.roi_along_px``, grows the rotated rectangle along
     the flight-path vector (both directions) by ``config.growth_step_px`` per
-    iteration until the count of aligned long Hough lines stops increasing or
-    the total along-track dimension reaches ``config.roi_max_along_px``.
+    iteration until the aligned-long-line span stops increasing or the total
+    along-track dimension reaches ``config.roi_max_along_px``.
 
     Returns the along-track projection span of all aligned long Hough line
     endpoints at convergence, in full-frame pixel units.  Returns 0.0 when no
     aligned lines are found in the seed polygon.
+
+    Note: growth runs the kernel with ``apply_exclusion=False`` — the
+    timestamp-exclusion region is *not* applied here, matching this function's
+    historical behaviour (only :func:`detect` excludes the overlay region).
     """
     h_fr, w_fr = frame.shape[:2]
 
@@ -505,7 +209,6 @@ def grow_contrail_length(
     vx, vy = float(path_vec[0]), float(path_vec[1])
     nx, ny = -vy, vx  # cross-track unit vector
     cross_half = float(getattr(config, "roi_cross_px", 40)) / 2.0
-    path_angle = _angle180(vx, vy)
 
     growth_step = int(getattr(config, "growth_step_px", 20))
     max_along = int(getattr(config, "roi_max_along_px", 600))
@@ -521,6 +224,8 @@ def grow_contrail_length(
     if max_x2 <= max_x1 or max_y2 <= max_y1:
         return 0.0
 
+    # Prepare the detection base once over the max-case crop; each growth
+    # iteration re-masks a sub-view of it (so Sobel/blur halos are consistent).
     base, _ = _prepare_base(
         frame, config,
         path_vec=path_vec,
@@ -535,7 +240,7 @@ def grow_contrail_length(
     while current_along <= max_along:
         along_half = current_along / 2.0
 
-        # Rotated polygon at current along-track size.
+        # Rotated polygon at current along-track size (full-frame coords).
         corners = np.array(
             [
                 [cx - along_half * vx - cross_half * nx, cy - along_half * vy - cross_half * ny],
@@ -546,7 +251,6 @@ def grow_contrail_length(
             dtype=np.float32,
         )
 
-        # AABB for the crop.
         xs = corners[:, 0]
         ys = corners[:, 1]
         bx1 = max(0, int(math.floor(float(xs.min()))))
@@ -557,71 +261,18 @@ def grow_contrail_length(
             break
 
         crop = base[by1 - max_y1 : by2 - max_y1, bx1 - max_x1 : bx2 - max_x1]
-        ch, cw = crop.shape[:2]
 
-        # Rotated mask in crop-local coords.
-        local_poly = corners.copy()
-        local_poly[:, 0] -= bx1
-        local_poly[:, 1] -= by1
-        local_poly_int = np.round(local_poly).astype(np.int32)
-        mask = np.zeros((ch, cw), dtype=np.uint8)
-        cv2.fillPoly(mask, [local_poly_int], 255)
-        masked_values = crop[mask > 0]
-
-        if masked_values.size == 0:
-            break
-
-        # Adaptive Canny.
-        if config.use_adaptive_canny:
-            p_hi = float(np.percentile(masked_values, config.canny_percentile_high))
-            canny_high = max(int(round(p_hi)), int(config.canny_min_high))
-            canny_low = max(1, int(round(canny_high * config.canny_low_ratio)))
-            p_lo = float(np.percentile(masked_values, config.canny_percentile_low))
-            floor = int(round(p_lo))
-        else:
-            canny_high = int(config.canny_high)
-            canny_low = int(config.canny_low)
-            floor = None
-
-        crop_c = cv2.bitwise_and(crop, crop, mask=mask)
-        if floor is not None and floor > 0:
-            _, crop_c = cv2.threshold(crop_c, floor, 255, cv2.THRESH_TOZERO)
-
-        edges = cv2.Canny(crop_c, canny_low, canny_high)
-        edges = cv2.bitwise_and(edges, edges, mask=mask)
-
-        lines_raw = cv2.HoughLinesP(
-            edges,
-            rho=1,
-            theta=np.pi / 180.0,
-            threshold=int(config.hough_threshold),
-            minLineLength=int(config.hough_min_line_length),
-            maxLineGap=int(config.hough_max_line_gap),
+        p = _pass_on_base(
+            crop,
+            (bx1, by1),
+            corners,
+            config,
+            method="grow",
+            path_vec=path_vec,
+            use_mask=True,
+            apply_exclusion=False,
         )
-
-        # Angle-filter to aligned long lines in full-frame coords.
-        tol = float(config.angle_tolerance_deg)
-        min_long = float(config.long_line_min_px)
-        long_lines: list[tuple[int, int, int, int]] = []
-        if lines_raw is not None:
-            for ln in lines_raw:
-                lx1f, ly1f, lx2f, ly2f = (int(v) for v in ln[0])
-                length = float(math.hypot(lx2f - lx1f, ly2f - ly1f))
-                line_angle = _angle180(float(lx2f - lx1f), float(ly2f - ly1f))
-                if _angle_delta(line_angle, path_angle) <= tol and length >= min_long:
-                    long_lines.append((lx1f + bx1, ly1f + by1, lx2f + bx1, ly2f + by1))
-
-        count = len(long_lines)
-
-        # Compute the along-track span of all aligned long line endpoints.
-        if count > 0:
-            projections = (
-                [vx * lx1 + vy * ly1 for lx1, ly1, lx2, ly2 in long_lines]
-                + [vx * lx2 + vy * ly2 for lx1, ly1, lx2, ly2 in long_lines]
-            )
-            span = float(max(projections) - min(projections))
-        else:
-            span = 0.0
+        span = p.length_px
 
         # Stop growing when the span stops increasing.  Using span rather than
         # count handles the common case where a single Hough segment spans more
