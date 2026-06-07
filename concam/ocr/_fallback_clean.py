@@ -3,8 +3,13 @@
 Adapted from the reference camera-flight-overlay codebase at
 ``camera-flight-overlay/utilities/ocr_utils.py`` (function
 ``clean_easyocr_output``).  The intent and regexes are unchanged; the only
-edits are to remove unused imports and to return 24-hour strings (the camera
-overlay is 24-hour, so we drop the optional AM/PM path).
+edits are to remove unused imports and to always return a 24-hour string.
+
+The output is always 24-hour ``HH:MM:SS``.  The MIT Green Building overlay
+itself is 24-hour, but EasyOCR can still emit a spurious ``AM``/``PM`` token
+(it is in the allowlist), so :func:`_canon_time` honours such a suffix and
+converts it to 24-hour rather than dropping it -- emitting the 12-hour value
+verbatim would corrupt every PM reading and midnight.
 """
 
 from __future__ import annotations
@@ -36,11 +41,20 @@ def _canon_date(m, d, y) -> str:
 def _canon_time(h, mi, s, ampm) -> str:
     h, mi = int(h), int(mi)
     s = int(s) if s is not None else 0
+    if not (0 <= mi <= 59 and 0 <= s <= 59):
+        return ""
     if ampm:
-        if not (1 <= h <= 12 and 0 <= mi <= 59 and 0 <= s <= 59):
+        # 12-hour clock: validate the 1-12 range, then convert to 24-hour.
+        # 12 AM -> 00, 1-11 AM -> unchanged, 12 PM -> 12, 1-11 PM -> +12.
+        if not (1 <= h <= 12):
             return ""
+        is_pm = ampm.strip().upper().startswith("P")
+        if is_pm:
+            h = h if h == 12 else h + 12
+        else:
+            h = 0 if h == 12 else h
     else:
-        if not (0 <= h <= 23 and 0 <= mi <= 59 and 0 <= s <= 59):
+        if not (0 <= h <= 23):
             return ""
     return f"{h:02d}:{mi:02d}:{s:02d}"
 
