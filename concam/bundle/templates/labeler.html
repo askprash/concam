@@ -81,6 +81,42 @@
   #heatmap-modal-close { position: absolute; top: 0.3rem; right: 0.6rem; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: #666; line-height: 1; padding: 0.1rem 0.4rem; }
   #heatmap-modal-close:hover { color: #000; }
   #heatmap-modal-hint { margin-top: 0.4rem; font-size: 0.8em; color: #666; }
+  /* Measure tool: contrail length via camera ray-cast at a user-supplied altitude. */
+  #video-wrap.measuring { cursor: crosshair; }
+  #measure-popup { position: fixed; z-index: 1200; background: #fff; border: 1px solid #aaa; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.18); padding: 0.5rem 0.6rem; font-size: 0.85em; min-width: 220px; display: none; }
+  #measure-popup.open { display: block; }
+  #measure-popup label { display: block; margin: 0.15rem 0; }
+  #measure-popup .row { display: flex; gap: 0.3rem; align-items: center; margin: 0.2rem 0; }
+  #measure-popup input[type="text"] { width: 5.5em; font-family: inherit; font-size: 1em; padding: 0.1rem 0.25rem; }
+  #measure-popup .length-out { font-weight: 600; color: #166534; }
+  #measure-popup .length-out.bad { color: #b91c1c; }
+  #measure-popup .actions { display: flex; gap: 0.3rem; margin-top: 0.3rem; justify-content: flex-end; }
+  #measure-popup button { padding: 0.15rem 0.5rem; font-size: 0.9em; cursor: pointer; }
+  #measure-popup .ep-target { font-size: 0.85em; color: #555; }
+
+  /* Calendar date picker — open button lives in the header next to the dropdown. */
+  #hdr-calendar-btn { font-size: 0.95em; line-height: 1; padding: 0.1rem 0.3rem; margin-left: 0.25rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+  #hdr-calendar-btn:hover { border-color: #1f2937; }
+  #calendar-modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 1000; align-items: center; justify-content: center; padding: 1.5rem; }
+  #calendar-modal.open { display: flex; }
+  #calendar-modal-inner { background: #fafafa; border-radius: 6px; padding: 0.9rem 1.1rem 0.7rem; max-width: 96vw; max-height: 96vh; overflow: auto; position: relative; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); }
+  #calendar-modal-inner h2 { font-size: 1rem; margin: 0 0 0.6rem; font-weight: 600; color: #222; }
+  #calendar-modal-inner h2 .subtitle { font-weight: 400; color: #777; font-size: 0.9em; margin-left: 0.4em; }
+  #calendar-modal-close { position: absolute; top: 0.3rem; right: 0.6rem; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: #666; line-height: 1; padding: 0.1rem 0.4rem; }
+  #calendar-modal-close:hover { color: #000; }
+  #calendar-months { display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: flex-start; }
+  .cal-month { width: 14.5rem; }
+  .cal-month-title { font-size: 0.85em; font-weight: 600; color: #333; margin-bottom: 0.25rem; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-dow { font-size: 0.62em; color: #999; text-align: center; padding-bottom: 2px; }
+  .cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.72em; border-radius: 3px; color: #c4c4c4; background: transparent; }
+  .cal-cell.blank { visibility: hidden; }
+  .cal-cell.has-data { cursor: pointer; color: #1a1a1a; outline: 1px solid rgba(0, 0, 0, 0.08); }
+  .cal-cell.has-data:hover { outline: 2px solid #1f2937; }
+  .cal-cell.current { outline: 2px solid #2563eb; font-weight: 700; }
+  #calendar-legend { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.7rem; font-size: 0.75em; color: #555; }
+  #calendar-legend .lg-swatch { width: 1.1rem; height: 0.8rem; border-radius: 2px; outline: 1px solid rgba(0, 0, 0, 0.08); }
+  #calendar-hint { margin-top: 0.45rem; font-size: 0.78em; color: #666; max-width: 42rem; }
 </style>
 </head>
 <body>
@@ -89,6 +125,7 @@
   <h1>ConCam Labeler</h1>
   <label id="hdr-date-switcher" hidden>date:
     <select id="hdr-date-select"></select>
+    <button type="button" id="hdr-calendar-btn" title="Pick a date from the calendar" aria-label="Open calendar date picker">&#128197;</button>
   </label>
   <span id="hdr-date"></span>
   <span id="hdr-episode-count"></span>
@@ -106,6 +143,7 @@
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-ring" value="ring"> ring</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-zoom"> Zoom box</label>
+  <label style="margin-left:1rem"><input type="checkbox" id="toggle-measure"> Measure</label>
   <label style="margin-left:1rem">Sort:
     <select id="sort-mode">
       <option value="time">time</option>
@@ -156,6 +194,18 @@
   </div>
 </div>
 
+<div id="measure-popup" role="dialog" aria-label="Contrail length measurement">
+  <div class="row">
+    <label>FL <input type="text" id="measure-fl" placeholder="370" autocomplete="off"></label>
+    <span>length: <span class="length-out" id="measure-length">—</span></span>
+  </div>
+  <label><input type="checkbox" id="measure-save"> save with episode <span class="ep-target" id="measure-ep"></span></label>
+  <div class="actions">
+    <button type="button" id="measure-cancel">cancel</button>
+    <button type="button" id="measure-done">done</button>
+  </div>
+</div>
+
 <div id="heatmap-modal" role="dialog" aria-modal="true" aria-labelledby="heatmap-modal-title">
   <div id="heatmap-modal-inner">
     <button id="heatmap-modal-close" type="button" aria-label="Close">&times;</button>
@@ -165,6 +215,20 @@
   </div>
 </div>
 <div id="heatmap-tooltip"></div>
+
+<div id="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title">
+  <div id="calendar-modal-inner">
+    <button id="calendar-modal-close" type="button" aria-label="Close">&times;</button>
+    <h2 id="calendar-modal-title">Pick a date <span class="subtitle">shaded by flights with detected contrails</span></h2>
+    <div id="calendar-months"></div>
+    <div id="calendar-legend"></div>
+    <div id="calendar-hint">
+      Shaded days have a published timelapse; darker green = more flight passes that
+      crossed the detector threshold. Faint days had a timelapse but no detections.
+      Blank days were not processed. Click any shaded day to open it. Press Esc or click outside to close.
+    </div>
+  </div>
+</div>
 
 <script>
 // Browser-based labeler — video playback + canvas overlays.
@@ -245,16 +309,137 @@
       switcher.hidden = false;
       // Hide the static date span — the dropdown already shows the current date.
       document.getElementById("hdr-date").hidden = true;
-      select.addEventListener("change", () => {
-        const target = select.value;
+
+      // Navigation preserves the query string (notably ?user=) across dates.
+      const query = new URL(location.href).search;
+      const navigateToDate = (target) => {
         if (!target || target === manifest.date) return;
-        const query = new URL(location.href).search;
         location.href = "../" + target + "/labeler.html" + query;
-      });
+      };
+      select.addEventListener("change", () => navigateToDate(select.value));
+
+      buildCalendar(entries, navigateToDate);
     } catch (_) {
       // No dates.json — single-date deployment. Silent no-op.
     }
   })();
+
+  // --- Calendar date picker ----------------------------------------------
+  // Renders one grid per calendar month spanning the published date range,
+  // shading each day by its detected-contrail count so reviewers can spot
+  // active days at a glance. Only plain YYYY-MM-DD dates are placed on the
+  // grid; A/B variant entries (e.g. 2026-04-09-tuned) stay in the dropdown.
+  function buildCalendar(entries, navigateToDate) {
+    const PLAIN = /^\d{4}-\d{2}-\d{2}$/;
+    const byDate = new Map();
+    for (const e of entries) {
+      if (PLAIN.test(e.date)) byDate.set(e.date, e);
+    }
+    if (byDate.size === 0) return;
+
+    const maxDetected = Math.max(1, ...[...byDate.values()].map((e) => e.detected || 0));
+
+    // Pale → deep green ramp; days with data but zero detections still read as
+    // "has data" via the near-white floor colour + outline.
+    const shadeFor = (detected) => {
+      const t = Math.sqrt((detected || 0) / maxDetected); // sqrt: lift low counts
+      const lerp = (a, b) => Math.round(a + (b - a) * t);
+      const r = lerp(0xee, 0x10);
+      const g = lerp(0xf7, 0x5a);
+      const b = lerp(0xe9, 0x2c);
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    const parts = [...byDate.keys()].map((d) => d.split("-").map(Number));
+    const minKey = parts.reduce((a, p) => Math.min(a, p[0] * 12 + (p[1] - 1)), Infinity);
+    const maxKey = parts.reduce((a, p) => Math.max(a, p[0] * 12 + (p[1] - 1)), -Infinity);
+
+    const DOW = ["S", "M", "T", "W", "T", "F", "S"];
+    const MONTHS = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    const pad = (n) => String(n).padStart(2, "0");
+
+    const monthsEl = document.getElementById("calendar-months");
+    monthsEl.textContent = "";
+
+    for (let key = minKey; key <= maxKey; key++) {
+      const year = Math.floor(key / 12);
+      const month = key % 12; // 0-based
+      const monthEl = document.createElement("div");
+      monthEl.className = "cal-month";
+
+      const title = document.createElement("div");
+      title.className = "cal-month-title";
+      title.textContent = `${MONTHS[month]} ${year}`;
+      monthEl.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "cal-grid";
+      for (const d of DOW) {
+        const h = document.createElement("div");
+        h.className = "cal-dow";
+        h.textContent = d;
+        grid.appendChild(h);
+      }
+
+      // Leading blanks so day 1 lands under its weekday (UTC to avoid TZ drift).
+      const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay();
+      for (let i = 0; i < firstDow; i++) {
+        const blank = document.createElement("div");
+        blank.className = "cal-cell blank";
+        grid.appendChild(blank);
+      }
+
+      const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const iso = `${year}-${pad(month + 1)}-${pad(day)}`;
+        const cell = document.createElement("div");
+        cell.className = "cal-cell";
+        cell.textContent = String(day);
+        const entry = byDate.get(iso);
+        if (entry) {
+          cell.classList.add("has-data");
+          cell.style.background = shadeFor(entry.detected);
+          cell.title = `${iso}\n${entry.episodes} flight passes · ${entry.detected} with detected contrails`;
+          if (iso === manifest.date) cell.classList.add("current");
+          cell.addEventListener("click", () => navigateToDate(iso));
+        }
+        grid.appendChild(cell);
+      }
+      monthEl.appendChild(grid);
+      monthsEl.appendChild(monthEl);
+    }
+
+    // Legend: pale (no detections) → deep (most detections).
+    const legend = document.getElementById("calendar-legend");
+    legend.textContent = "";
+    const mk = (el) => document.createElement(el);
+    const lo = mk("span"); lo.textContent = "0 detected";
+    const hi = mk("span"); hi.textContent = `${maxDetected} detected`;
+    legend.appendChild(lo);
+    for (const v of [0, 0.25, 0.5, 0.75, 1].map((f) => f * maxDetected)) {
+      const sw = mk("span");
+      sw.className = "lg-swatch";
+      sw.style.background = shadeFor(v);
+      legend.appendChild(sw);
+    }
+    legend.appendChild(hi);
+
+    // Open/close wiring.
+    const modal = document.getElementById("calendar-modal");
+    const openBtn = document.getElementById("hdr-calendar-btn");
+    const closeModal = () => modal.classList.remove("open");
+    openBtn.addEventListener("click", () => {
+      modal.classList.add("open");
+      const cur = monthsEl.querySelector(".cal-cell.current");
+      if (cur) cur.scrollIntoView({ block: "center" });
+    });
+    document.getElementById("calendar-modal-close").addEventListener("click", closeModal);
+    modal.addEventListener("click", (ev) => { if (ev.target === modal) closeModal(); });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && modal.classList.contains("open")) closeModal();
+    });
+  }
 
   // --- Time mapping -------------------------------------------------------
   const videoStartMs = manifest.video.start_utc
@@ -639,6 +824,7 @@
     if (toggleDetections.checked) {
       drawDetections(wallMs);
     }
+    drawMeasurements(wallMs);
     ctx.globalAlpha = 1.0;
   }
 
@@ -662,12 +848,21 @@
   }
 
   const videoWrap = document.getElementById("video-wrap");
-  videoWrap.addEventListener("click", (e) => {
+  function videoPixelFromEvent(e) {
     const rect = video.getBoundingClientRect();
-    const sx = imgW / rect.width;
-    const sy = imgH / rect.height;
-    const ix = (e.clientX - rect.left) * sx;
-    const iy = (e.clientY - rect.top) * sy;
+    return {
+      x: (e.clientX - rect.left) * (imgW / rect.width),
+      y: (e.clientY - rect.top) * (imgH / rect.height),
+    };
+  }
+  videoWrap.addEventListener("click", (e) => {
+    if (measureMode) {
+      handleMeasureClick(e);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const { x: ix, y: iy } = videoPixelFromEvent(e);
     for (let i = hitZones.length - 1; i >= 0; i--) {
       const z = hitZones[i];
       if (ix >= z.x1 && ix <= z.x2 && iy >= z.y1 && iy <= z.y2) {
@@ -681,11 +876,8 @@
   // Show pointer cursor when hovering over a registered hit zone so reviewers
   // discover the affordance.
   videoWrap.addEventListener("mousemove", (e) => {
-    const rect = video.getBoundingClientRect();
-    const sx = imgW / rect.width;
-    const sy = imgH / rect.height;
-    const ix = (e.clientX - rect.left) * sx;
-    const iy = (e.clientY - rect.top) * sy;
+    if (measureMode) return;
+    const { x: ix, y: iy } = videoPixelFromEvent(e);
     let over = false;
     for (const z of hitZones) {
       if (ix >= z.x1 && ix <= z.x2 && iy >= z.y1 && iy <= z.y2) {
@@ -695,6 +887,319 @@
     }
     videoWrap.classList.toggle("clickable", over);
   });
+
+  // --- Measure tool ------------------------------------------------------
+  // Click two endpoints on the video, type the contrail's flight level, and
+  // the tool reports the great-circle-ish length in metres. Each pixel is
+  // back-projected through the camera intrinsics to a 3D ray, intersected
+  // with a horizontal plane at (FL × 100 ft) above the camera in ENU, and
+  // the two intersection points are differenced.
+  //
+  // Geometry assumes the contrail lies in a horizontal plane at constant
+  // altitude above the WGS84 ellipsoid; ENU curvature is ignored, which adds
+  // up to ~1% error per ~50 km of horizontal extent. Distortion is undone
+  // iteratively (8 fixed-point steps) using the OpenCV rational distortion
+  // model — k1..k6 + p1,p2 from the calibration npz.
+  const calib = manifest.calibration || null;
+  const toggleMeasure = document.getElementById("toggle-measure");
+  const measurePopup = document.getElementById("measure-popup");
+  const measureFlInput = document.getElementById("measure-fl");
+  const measureLengthOut = document.getElementById("measure-length");
+  const measureSaveCb = document.getElementById("measure-save");
+  const measureEpLabel = document.getElementById("measure-ep");
+  const measureCancelBtn = document.getElementById("measure-cancel");
+  const measureDoneBtn = document.getElementById("measure-done");
+
+  let measureMode = false;
+  // Active in-progress measurement: { p1, p2|null, popupX, popupY, episodeId }.
+  let measureActive = null;
+
+  if (!calib) {
+    toggleMeasure.disabled = true;
+    toggleMeasure.parentElement.title =
+      "Manifest has no calibration block; measure unavailable.";
+  }
+
+  function undistortPixel(u, v) {
+    const K = calib.camera_matrix;
+    const D = calib.distortion_coefficients;
+    const fx = K[0][0], fy = K[1][1], cx = K[0][2], cy = K[1][2];
+    const k1 = D[0] || 0, k2 = D[1] || 0, p1 = D[2] || 0, p2 = D[3] || 0;
+    const k3 = D[4] || 0, k4 = D[5] || 0, k5 = D[6] || 0, k6 = D[7] || 0;
+    const x0 = (u - cx) / fx;
+    const y0 = (v - cy) / fy;
+    let x = x0, y = y0;
+    for (let i = 0; i < 8; i++) {
+      const r2 = x * x + y * y;
+      const radial = (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2) /
+                     (1 + k4 * r2 + k5 * r2 * r2 + k6 * r2 * r2 * r2);
+      const dx = 2 * p1 * x * y + p2 * (r2 + 2 * x * x);
+      const dy = p1 * (r2 + 2 * y * y) + 2 * p2 * x * y;
+      x = (x0 - dx) / radial;
+      y = (y0 - dy) / radial;
+    }
+    return [x, y];
+  }
+
+  function pixelToEnuOnPlane(u, v, altMetres) {
+    // Returns the [E, N, U] point where the camera ray through (u,v) meets
+    // the horizontal plane z = altMetres - camera_alt_m. Returns null when
+    // the ray points away from the plane.
+    const [xn, yn] = undistortPixel(u, v);
+    const R = calib.rotation;
+    const t = calib.translation;
+    // Ray dir in ENU = R^T @ [xn, yn, 1]
+    const dx = R[0][0] * xn + R[1][0] * yn + R[2][0];
+    const dy = R[0][1] * xn + R[1][1] * yn + R[2][1];
+    const dz = R[0][2] * xn + R[1][2] * yn + R[2][2];
+    // Camera origin in ENU = -R^T @ t (small — ENU is camera-centred)
+    const ox = -(R[0][0] * t[0] + R[1][0] * t[1] + R[2][0] * t[2]);
+    const oy = -(R[0][1] * t[0] + R[1][1] * t[1] + R[2][1] * t[2]);
+    const oz = -(R[0][2] * t[0] + R[1][2] * t[1] + R[2][2] * t[2]);
+    const zPlane = altMetres - calib.camera_alt_m;
+    if (Math.abs(dz) < 1e-9) return null;
+    const s = (zPlane - oz) / dz;
+    if (s <= 0) return null;
+    return [ox + s * dx, oy + s * dy, zPlane];
+  }
+
+  function flToMetres(fl) {
+    return fl * 100 * 0.3048;  // FL → feet → metres
+  }
+
+  function parseFlInput(raw) {
+    // Accepts "370", "FL370", "fl 370", " 350 ".  Returns integer FL or NaN.
+    if (raw == null) return NaN;
+    const m = String(raw).trim().match(/^(?:fl\s*)?(\d{2,3})$/i);
+    return m ? parseInt(m[1], 10) : NaN;
+  }
+
+  function computeMeasureLength(p1, p2, fl) {
+    const altM = flToMetres(fl);
+    const a = pixelToEnuOnPlane(p1.x, p1.y, altM);
+    const b = pixelToEnuOnPlane(p2.x, p2.y, altM);
+    if (!a || !b) return null;
+    const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  function fmtLengthM(m) {
+    if (m == null || !isFinite(m)) return "—";
+    return m >= 1000 ? (m / 1000).toFixed(2) + " km" : m.toFixed(0) + " m";
+  }
+
+  function activeEpisodeAtTime(wallMs) {
+    // The "save with episode" target: the episode whose [onset, end] covers
+    // this wall time. When several flights overlap (rare), prefer the one
+    // with the highest peak score — that's the most contrail-like, which is
+    // almost always what the user is measuring.
+    let best = null;
+    let bestScore = -Infinity;
+    for (const ep of manifest.episodes) {
+      const onset = Date.parse(ep.onset);
+      const end = Date.parse(ep.end);
+      if (wallMs < onset - FRAME_MATCH_MS || wallMs > end + FRAME_MATCH_MS) continue;
+      if (ep.peak_score > bestScore) {
+        best = ep;
+        bestScore = ep.peak_score;
+      }
+    }
+    return best;
+  }
+
+  toggleMeasure.addEventListener("change", () => {
+    measureMode = toggleMeasure.checked;
+    videoWrap.classList.toggle("measuring", measureMode);
+    if (!measureMode) {
+      cancelActiveMeasurement();
+    }
+  });
+
+  function cancelActiveMeasurement() {
+    measureActive = null;
+    measurePopup.classList.remove("open");
+    draw();
+  }
+
+  function handleMeasureClick(e) {
+    const { x, y } = videoPixelFromEvent(e);
+    if (!measureActive || measureActive.p2) {
+      // Start fresh: first endpoint only, no popup yet.
+      measureActive = { p1: { x, y }, p2: null };
+      measurePopup.classList.remove("open");
+      draw();
+      return;
+    }
+    // Second endpoint — finalize and show popup at the click location.
+    measureActive.p2 = { x, y };
+    measureActive.popupClientX = e.clientX;
+    measureActive.popupClientY = e.clientY;
+    const wallMs = currentWallMs(video.currentTime);
+    const ep = activeEpisodeAtTime(wallMs);
+    measureActive.episodeId = ep ? ep.episode_id : null;
+    // Default FL: median for the active episode, else previously typed value.
+    const lastFl = parseFlInput(measureFlInput.value);
+    const epFl = ep ? episodeMedianFL(ep) : null;
+    if (epFl != null) measureFlInput.value = String(Math.round(epFl));
+    else if (!isFinite(lastFl)) measureFlInput.value = "";
+    measureSaveCb.checked = false;
+    measureSaveCb.disabled = !ep;
+    measureEpLabel.textContent = ep
+      ? "(#" + ep.episode_id + " " + ep.callsign + ")"
+      : "(no active flight)";
+    showMeasurePopup();
+    updateMeasureLength();
+    draw();
+    measureFlInput.focus();
+    measureFlInput.select();
+  }
+
+  function showMeasurePopup() {
+    // Position the popup near the second-click point, clamped to viewport.
+    measurePopup.classList.add("open");
+    const pad = 12;
+    const rect = measurePopup.getBoundingClientRect();
+    let x = (measureActive.popupClientX || 0) + pad;
+    let y = (measureActive.popupClientY || 0) + pad;
+    if (x + rect.width > window.innerWidth - 6) {
+      x = (measureActive.popupClientX || 0) - rect.width - pad;
+    }
+    if (y + rect.height > window.innerHeight - 6) {
+      y = (measureActive.popupClientY || 0) - rect.height - pad;
+    }
+    if (x < 6) x = 6;
+    if (y < 6) y = 6;
+    measurePopup.style.left = x + "px";
+    measurePopup.style.top = y + "px";
+  }
+
+  function updateMeasureLength() {
+    if (!measureActive || !measureActive.p2) {
+      measureLengthOut.textContent = "—";
+      measureLengthOut.classList.remove("bad");
+      return;
+    }
+    const fl = parseFlInput(measureFlInput.value);
+    if (!isFinite(fl)) {
+      measureLengthOut.textContent = "enter FL";
+      measureLengthOut.classList.add("bad");
+      measureActive.fl = null;
+      measureActive.lengthM = null;
+      draw();
+      return;
+    }
+    const lm = computeMeasureLength(measureActive.p1, measureActive.p2, fl);
+    measureActive.fl = fl;
+    measureActive.lengthM = lm;
+    if (lm == null) {
+      measureLengthOut.textContent = "ray miss";
+      measureLengthOut.classList.add("bad");
+    } else {
+      measureLengthOut.textContent = fmtLengthM(lm);
+      measureLengthOut.classList.remove("bad");
+    }
+    draw();
+  }
+
+  measureFlInput.addEventListener("input", updateMeasureLength);
+  measureFlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finishMeasurement(); }
+    if (e.key === "Escape") { e.preventDefault(); cancelActiveMeasurement(); }
+  });
+  measureCancelBtn.addEventListener("click", cancelActiveMeasurement);
+  measureDoneBtn.addEventListener("click", finishMeasurement);
+
+  function finishMeasurement() {
+    if (!measureActive || !measureActive.p2) return;
+    if (measureSaveCb.checked && measureActive.episodeId != null
+        && measureActive.lengthM != null) {
+      const entry = getLabelEntry(measureActive.episodeId);
+      const measurements = Array.isArray(entry.measurements)
+        ? entry.measurements.slice() : [];
+      measurements.push({
+        p1: { x: Math.round(measureActive.p1.x), y: Math.round(measureActive.p1.y) },
+        p2: { x: Math.round(measureActive.p2.x), y: Math.round(measureActive.p2.y) },
+        flight_level: measureActive.fl,
+        length_m: Math.round(measureActive.lengthM),
+        wall_time_utc: new Date(currentWallMs(video.currentTime)).toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      updateLabel(measureActive.episodeId, { measurements });
+    }
+    measureActive = null;
+    measurePopup.classList.remove("open");
+    draw();
+  }
+
+  function drawMeasurements(wallMs) {
+    // Saved per-episode measurements (only for episodes covering wallMs).
+    for (const ep of manifest.episodes) {
+      const entry = labelState[String(ep.episode_id)];
+      if (!entry || !Array.isArray(entry.measurements)) continue;
+      const onset = Date.parse(ep.onset);
+      const end = Date.parse(ep.end);
+      if (wallMs < onset - FRAME_MATCH_MS || wallMs > end + FRAME_MATCH_MS) continue;
+      for (const m of entry.measurements) {
+        drawMeasureLine(m.p1, m.p2, "#10b981",
+          fmtLengthM(m.length_m) + " @ FL" + m.flight_level, false);
+      }
+    }
+    // Active in-progress measurement on top.
+    if (measureActive) {
+      const a = measureActive.p1;
+      const b = measureActive.p2;
+      const label = measureActive.lengthM != null
+        ? fmtLengthM(measureActive.lengthM) + (measureActive.fl
+            ? " @ FL" + measureActive.fl : "")
+        : null;
+      drawMeasureLine(a, b, "#facc15", label, true);
+    }
+  }
+
+  function drawMeasureLine(a, b, color, label, isActive) {
+    if (!a) return;
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+    if (b) {
+      // Halo for contrast against bright sky.
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    function endpoint(p) {
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    endpoint(a);
+    if (b) endpoint(b);
+    if (b && label) {
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2 - 14;
+      ctx.font = "bold 22px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#000";
+      ctx.fillText(label, mx + 1, my + 1);
+      ctx.fillStyle = color;
+      ctx.fillText(label, mx, my);
+      ctx.textAlign = "start";
+    }
+    ctx.restore();
+  }
 
   // Sync overlay to every presented video frame. "timeupdate" only fires at
   // ~4 Hz regardless of playback fps, so at 30 fps playback the ping would
@@ -796,6 +1301,9 @@
       }
       const notes = (entry.label_notes || "").trim();
       if (notes) record.label_notes = notes;
+      if (Array.isArray(entry.measurements) && entry.measurements.length > 0) {
+        record.measurements = entry.measurements;
+      }
       out.push(record);
     }
     return out;

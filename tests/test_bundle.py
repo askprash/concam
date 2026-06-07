@@ -5,7 +5,9 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
 from click.testing import CliRunner
 
@@ -16,6 +18,7 @@ from concam.bundle import (
     assign_episodes,
     generate_bundles,
 )
+from concam.bundle import calibration_block
 from concam.cli import main as cli_main
 from concam.storage import Database
 
@@ -396,6 +399,147 @@ def test_manifest_omits_start_utc_when_ocr_missing(
     assert "detection_threshold" in m
 
 
+# ---------- Calibration block ----------
+
+
+def _synthetic_calibration() -> SimpleNamespace:
+    """Build the smallest object that satisfies calibration_block().
+
+    calibration_block() reads exactly six attributes:
+      camera_matrix            – ndarray (3, 3)
+      distortion_coefficients  – ndarray with .flatten() → 1-D iterable
+      rotation                 – ndarray (3, 3), .tolist()
+      translation              – ndarray with .flatten() → 1-D iterable
+      camera_gps               – indexable; [2] is the camera altitude in metres
+      calibration_resolution   – iterable of two ints (width, height)
+
+    We use SimpleNamespace so the real Calibration.__init__ (which calls
+    cv2.Rodrigues and sets up pyproj transforms) is never triggered, keeping
+    the test fast and dependency-free.
+    """
+    cam_matrix = np.array(
+        [[2000.0, 0.0, 1920.0],
+         [0.0,    2000.0, 1080.0],
+         [0.0,    0.0,    1.0]],
+        dtype=np.float64,
+    )
+    dist_coeffs = np.array([0.1, -0.05, 0.0, 0.0, 0.01], dtype=np.float64).reshape(-1, 1)
+    rotation = np.eye(3, dtype=np.float64)
+    translation = np.array([[0.5], [-0.3], [10.0]], dtype=np.float64)
+    camera_gps = np.array([42.36, -71.09, 75.0])  # lat, lon, alt_m
+
+    return SimpleNamespace(
+        camera_matrix=cam_matrix,
+        distortion_coefficients=dist_coeffs,
+        rotation=rotation,
+        translation=translation,
+        camera_gps=camera_gps,
+        calibration_resolution=(3840, 2160),
+    )
+
+
+def test_calibration_block_keys_and_types() -> None:
+    """calibration_block() must return a dict with the expected keys and types."""
+    calib = _synthetic_calibration()
+    block = calibration_block(calib)
+
+    # Exact key set.
+    assert set(block.keys()) == {
+        "camera_matrix",
+        "distortion_coefficients",
+        "rotation",
+        "translation",
+        "camera_alt_m",
+        "calibration_resolution",
+    }
+
+    # camera_matrix: 3×3 nested list of floats.
+    assert isinstance(block["camera_matrix"], list)
+    assert len(block["camera_matrix"]) == 3
+    assert all(len(row) == 3 for row in block["camera_matrix"])
+    assert block["camera_matrix"][0][0] == pytest.approx(2000.0)
+    assert block["camera_matrix"][0][2] == pytest.approx(1920.0)
+
+    # distortion_coefficients: flat list (flatten() was called).
+    assert isinstance(block["distortion_coefficients"], list)
+    assert block["distortion_coefficients"][0] == pytest.approx(0.1)
+
+    # rotation: 3×3 nested list; identity in our synthetic fixture.
+    assert block["rotation"] == [[1.0, 0.0, 0.0],
+                                  [0.0, 1.0, 0.0],
+                                  [0.0, 0.0, 1.0]]
+
+    # translation: flat list (flatten() was called).
+    assert isinstance(block["translation"], list)
+    assert block["translation"][2] == pytest.approx(10.0)
+
+    # camera_alt_m: float, taken from camera_gps[2].
+    assert isinstance(block["camera_alt_m"], float)
+    assert block["camera_alt_m"] == pytest.approx(75.0)
+
+    # calibration_resolution: list of two ints.
+    assert block["calibration_resolution"] == [3840, 2160]
+
+
+def test_generate_bundles_injects_calibration_block(
+    synthetic_pipeline_outputs: dict, tmp_path: Path
+) -> None:
+    """generate_bundles(..., calibration=<calib>) must write a 'calibration'
+    key into every labeler's manifest.json, with the keys calibration_block
+    produces."""
+    out = tmp_path / "bundles"
+    calib = _synthetic_calibration()
+    generate_bundles(
+        date=synthetic_pipeline_outputs["date"],
+        labelers=["alice"],
+        overlap_fraction=0.0,
+        db_path=synthetic_pipeline_outputs["db"],
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        video_path=synthetic_pipeline_outputs["video"],
+        image_size=(3840, 2160),
+        output_dir=out,
+        calibration=calib,
+    )
+    with open(out / "alice" / "manifest.json") as f:
+        m = json.load(f)
+
+    assert "calibration" in m
+    cb = m["calibration"]
+    assert set(cb.keys()) == {
+        "camera_matrix",
+        "distortion_coefficients",
+        "rotation",
+        "translation",
+        "camera_alt_m",
+        "calibration_resolution",
+    }
+    assert cb["camera_alt_m"] == pytest.approx(75.0)
+    assert cb["calibration_resolution"] == [3840, 2160]
+
+
+def test_generate_bundles_omits_calibration_when_not_provided(
+    synthetic_pipeline_outputs: dict, tmp_path: Path
+) -> None:
+    """Omitting calibration= must leave the manifest without a 'calibration'
+    key (None-safe; the default is None)."""
+    out = tmp_path / "bundles"
+    generate_bundles(
+        date=synthetic_pipeline_outputs["date"],
+        labelers=["alice"],
+        overlap_fraction=0.0,
+        db_path=synthetic_pipeline_outputs["db"],
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        video_path=synthetic_pipeline_outputs["video"],
+        image_size=(3840, 2160),
+        output_dir=out,
+    )
+    with open(out / "alice" / "manifest.json") as f:
+        m = json.load(f)
+    assert "calibration" not in m
+
+
 # ---------- Labeler HTML structure ----------
 
 
@@ -433,9 +577,15 @@ def test_labeler_html_has_overlay_controls_and_logic(
     assert "seconds_per_frame" in html
     assert "detection_threshold" in html
 
-    # Draw loop synced to timeupdate + seeked.
-    assert 'addEventListener("timeupdate"' in html
+    # Draw loop synced via requestVideoFrameCallback (RVFC) for frame-accurate
+    # overlay. The labeler falls back to rAF when RVFC is unavailable, and
+    # still redraws on explicit seek/pause events so the overlay is correct
+    # when the video is not playing.
+    assert "requestVideoFrameCallback" in html
+    assert 'addEventListener("play"' in html
     assert 'addEventListener("seeked"' in html
+    assert 'addEventListener("pause"' in html
+    assert 'addEventListener("loadeddata"' in html
 
     # Track and detection drawing routines.
     assert "drawTrack" in html

@@ -29,7 +29,9 @@ import json
 import shutil
 from pathlib import Path
 
+from concam.bundle import calibration_block
 from concam.config import load_config
+from concam.projection import load_calibration
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "mit_green_building.yaml"
@@ -232,6 +234,7 @@ def main() -> None:
     # re-run since the bundle was generated, in which case the source manifest
     # misses any flights added by the rerun.
     manifest["flight_tracks"] = _build_flight_tracks_with_altitude(projections)
+    manifest["calibration"] = calibration_block(load_calibration(site.calibration))
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "manifest.json").write_text(json.dumps(manifest))

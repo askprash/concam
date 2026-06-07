@@ -32,6 +32,7 @@ from typing import Iterable
 
 import av
 
+from concam.projection import Calibration
 from concam.storage import Database
 
 logger = logging.getLogger(__name__)
@@ -236,6 +237,25 @@ def _probe_video_fps(video_path: Path) -> float:
     return 30.0  # safe fallback for the MIT timelapse
 
 
+def calibration_block(calib: Calibration) -> dict:
+    """Serialize calibration into a JSON-friendly dict for the labeler UI.
+
+    The browser needs the camera intrinsics + extrinsics to back-project a
+    pixel into a 3D ray when measuring contrail length at a user-supplied
+    altitude. ``camera_alt_m`` is the camera's altitude above the WGS84
+    ellipsoid in metres (the ENU origin's height); the labeler subtracts it
+    from the contrail altitude to get z in ENU.
+    """
+    return {
+        "camera_matrix": calib.camera_matrix.tolist(),
+        "distortion_coefficients": calib.distortion_coefficients.flatten().tolist(),
+        "rotation": calib.rotation.tolist(),
+        "translation": calib.translation.flatten().tolist(),
+        "camera_alt_m": float(calib.camera_gps[2]),
+        "calibration_resolution": list(calib.calibration_resolution),
+    }
+
+
 def _symlink_video(video_path: Path, bundle_dir: Path) -> str:
     """Symlink the video into the bundle directory and return the link name.
 
@@ -266,6 +286,7 @@ def build_manifest(
     seconds_per_frame: float,
     video_start_utc: str | None = None,
     detection_threshold: float = 0.3,
+    calibration: Calibration | None = None,
 ) -> dict:
     """Assemble the manifest dict for a single labeler.
 
@@ -305,7 +326,7 @@ def build_manifest(
     if video_start_utc is not None:
         video_block["start_utc"] = video_start_utc
 
-    return {
+    manifest: dict = {
         "schema_version": 1,
         "date": date.isoformat(),
         "labeler_id": labeler_id,
@@ -317,6 +338,9 @@ def build_manifest(
         "episodes": episodes_out,
         "flight_tracks": flight_tracks,
     }
+    if calibration is not None:
+        manifest["calibration"] = calibration_block(calibration)
+    return manifest
 
 
 def generate_bundles(
@@ -333,6 +357,7 @@ def generate_bundles(
     seconds_per_frame: float = 1.0,
     ocr_path: Path | None = None,
     detection_threshold: float = 0.3,
+    calibration: Calibration | None = None,
 ) -> dict[str, Path]:
     """Generate one bundle directory per labeler.
 
@@ -374,6 +399,7 @@ def generate_bundles(
             seconds_per_frame=seconds_per_frame,
             video_start_utc=video_start_utc,
             detection_threshold=detection_threshold,
+            calibration=calibration,
         )
         with open(bundle_dir / "manifest.json", "w") as f:
             json.dump(manifest, f, indent=2)

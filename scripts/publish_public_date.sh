@@ -73,7 +73,9 @@ dates = []
 for child in sorted(public_root.iterdir()):
     if not child.is_dir():
         continue
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", child.name):
+    # Accept YYYY-MM-DD plus optional `-suffix` for A/B variants
+    # (e.g. 2026-04-09-tuned alongside 2026-04-09).
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+)?", child.name):
         continue
     manifest_path = child / "manifest.json"
     if not manifest_path.exists():
@@ -116,9 +118,22 @@ html = f"""<!doctype html>
   li {{ margin: 0.3em 0; }}
   .note {{ color: #666; font-size: 0.9em; }}
   code {{ background: #f3f3f3; padding: 0 0.25em; border-radius: 3px; }}
+  .banner {{ border: 1px solid #f0c36d; background: #fdf6e3; border-radius: 6px;
+            padding: 0.75rem 1rem; margin: 0 0 1.5rem; font-size: 0.95rem; }}
+  .banner strong {{ font-size: 1.05rem; }}
+  .banner .bookmark-link {{ display: block; margin-top: 0.5rem; padding: 0.5rem 0.75rem;
+            background: #f3f3f3; border-radius: 4px; font-family: ui-monospace,
+            SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem;
+            word-break: break-all; }}
 </style>
 </head>
 <body>
+<div class="banner">
+  <strong>&#128204; Bookmark this page.</strong><br>
+  Asked to log in twice? You opened the address without the trailing slash.
+  Use this exact link (replace <code>YOURNAME</code> with your username):
+  <a class="bookmark-link" href="index.html">https://hex.mit.edu/~prash/concam/index.html?user=YOURNAME</a>
+</div>
 <h1>MIT ConCam daily review</h1>
 <p>
   Daily sky-camera timelapse from the MIT Green Building, with ADS-B flight

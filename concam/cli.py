@@ -199,6 +199,7 @@ def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
     from concam.bundle import generate_bundles
     from concam.config import load_config
     from concam.pipeline import resolve_video_path, stage_paths
+    from concam.projection import load_calibration
 
     try:
         parsed_date = datetime.date.fromisoformat(date)
@@ -239,6 +240,7 @@ def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
         seconds_per_frame=seconds_per_frame,
         ocr_path=paths["ocr"] if paths["ocr"].exists() else None,
         detection_threshold=site_config.aggregation.detection_threshold,
+        calibration=load_calibration(site_config.calibration),
     )
     for lbl, bundle_dir in result.items():
         click.echo(f"{lbl}: {bundle_dir}")
