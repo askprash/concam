@@ -28,27 +28,18 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# Slot x-coordinates (left edge of 32px-wide character cell) inside the
-# 80x875 timestamp ROI, for the 19 characters of "MM/DD/YYYY HH:MM:SS".
-# Derived from contour analysis of real frames.
-SLOT_X_STARTS = [
-    128, 160, 192, 224, 256, 288, 320, 352, 384, 416,   # MM/DD/YYYY
-    480, 512, 544, 576, 608, 640, 672, 704,             # HH:MM:SS
-]
-
-SLOT_KIND = [
-    "digit", "digit", "slash", "digit", "digit", "slash",
-    "digit", "digit", "digit", "digit",
-    "digit", "digit", "colon", "digit", "digit", "colon", "digit", "digit",
-]
-
-SLOT_WIDTH = 32
-SLOT_Y_TOP = 12
-SLOT_HEIGHT = 48
-
-# Canonical normalized glyph size.
-TEMPLATE_H = 44
-TEMPLATE_W = 28
+# Pixel preprocessing (crop / binarize / slot extraction / glyph normalization)
+# and the slot-layout constants are imported from the single shared module so
+# the templates we extract here are built with EXACTLY the preprocessing the
+# runtime reader applies.  These helpers used to be copy-pasted into this script
+# and had drifted (this script cropped only top-right, did not clamp slot bounds
+# to the ROI, and emitted uint8 glyphs); the shared module is the canonical home.
+from concam.ocr._preprocess import (
+    crop_roi as _crop_roi,
+    binarize as _binarize,
+    extract_slot as _extract_slot,
+    normalize_glyph as _normalize_glyph,
+)
 
 # Raw-segment frame rate.  Verified from the sample files.
 FPS = 4.0
@@ -60,52 +51,6 @@ def _load_frame(cap: cv2.VideoCapture, frame_idx: int) -> np.ndarray:
     if not ok:
         raise RuntimeError(f"failed to read frame {frame_idx}")
     return frame
-
-
-def _crop_roi(frame: np.ndarray, region: tuple[int, int]) -> np.ndarray:
-    h, w = frame.shape[:2]
-    region_h, region_w = region
-    return frame[0:region_h, w - region_w : w]
-
-
-def _binarize(roi: np.ndarray, threshold: int = 200) -> np.ndarray:
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY) if roi.ndim == 3 else roi
-    _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
-    return binary
-
-
-def _extract_slot(binary: np.ndarray, slot_idx: int) -> np.ndarray:
-    x = SLOT_X_STARTS[slot_idx]
-    return binary[SLOT_Y_TOP : SLOT_Y_TOP + SLOT_HEIGHT, x : x + SLOT_WIDTH]
-
-
-def _normalize_glyph(slot: np.ndarray) -> np.ndarray:
-    """Tight-crop a glyph from its slot and pad to the canonical template size.
-
-    This makes the template robust to small horizontal shifts from frame to
-    frame and to character-width variation (e.g., the narrower '1').
-    """
-    # Tight-crop to non-zero pixels.
-    rows = np.where(slot.any(axis=1))[0]
-    cols = np.where(slot.any(axis=0))[0]
-    if len(rows) == 0 or len(cols) == 0:
-        # Empty slot (shouldn't happen for known-good frames).
-        return np.zeros((TEMPLATE_H, TEMPLATE_W), dtype=np.uint8)
-    y0, y1 = rows[0], rows[-1] + 1
-    x0, x1 = cols[0], cols[-1] + 1
-    cropped = slot[y0:y1, x0:x1]
-
-    # Center-pad to the canonical size.
-    out = np.zeros((TEMPLATE_H, TEMPLATE_W), dtype=np.uint8)
-    ch, cw = cropped.shape
-    if ch > TEMPLATE_H or cw > TEMPLATE_W:
-        # Resize down if over-sized (rare; guard against font-scale surprises).
-        cropped = cv2.resize(cropped, (min(cw, TEMPLATE_W), min(ch, TEMPLATE_H)))
-        ch, cw = cropped.shape
-    dy = (TEMPLATE_H - ch) // 2
-    dx = (TEMPLATE_W - cw) // 2
-    out[dy : dy + ch, dx : dx + cw] = cropped
-    return out
 
 
 def _expected_timestamp(
@@ -189,7 +134,7 @@ def main() -> None:
         for ch, occurrences in labels.items():
             frame_id, slot_idx = occurrences[0]
             frame = _load_frame(cap, frame_id)
-            roi = _crop_roi(frame, region)
+            roi = _crop_roi(frame, region, "top_right")
             binary = _binarize(roi, args.threshold)
             slot = _extract_slot(binary, slot_idx)
             templates[ch] = _normalize_glyph(slot)
