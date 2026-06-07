@@ -61,6 +61,42 @@ The detector keeps the edge+Hough math in one place; callers route through it.
   `{index: BGR}`, callers crop. The two strategies agree on in-range indices but
   differ past the end of the video (seek clamps to last frame; sequential
   omits) — a documented, not-yet-reconciled inconsistency.
+- **Detection parameter single-source** — `DetectionConfig` and
+  `AggregationConfig` (`concam/config.py`) are the one home for every detection
+  and aggregation parameter. Dataclass defaults are kept equal to the base site
+  YAML (`configs/mit_green_building.yaml`), so a bare `DetectionConfig()` is
+  honest about production behaviour, and `tests/test_config.py` fails if code and
+  YAML ever drift. Sweep scripts (`detection_validation_sweep.py`) derive their
+  ROI from the loaded `det_cfg` rather than module constants; the score-function
+  catalogue in `detection_score_sweep.py` keeps fixed normalization constants on
+  purpose (each variant must be compared at one common reference geometry).
+
+## Architecture concepts (OCR cluster)
+
+Every Frame's wall-clock truth is the `MM/DD/YYYY HH:MM:SS` overlay the camera
+burns into the corner; reading it is a two-engine problem behind one seam.
+
+- **Timestamp engine** (`concam.ocr.engines`) — `TimestampEngine` Protocol
+  (`read(frame) -> EngineRead | None`). A `None` means "engine unavailable /
+  produced nothing"; an `EngineRead` with `parsed_dt=None` means "ran but text
+  didn't parse" — the distinction the composition needs. Two adapters satisfy
+  it: `TemplateMatchEngine` (primary, dependency-free, classifies fixed glyph
+  slots by cross-correlation against `templates.npz`) and `EasyOcrEngine`
+  (fallback, heavy/optional, **lazily** imports `easyocr` only on first use).
+  `FixedFormatTimestampReader` *composes* them — primary, then fallback only when
+  the primary fails to parse or its confidence is below threshold — instead of
+  hardcoding EasyOCR inline. Two adapters = a real seam.
+- **OCR preprocessing** (`concam.ocr._preprocess`) — the single home for the
+  pixel pipeline (crop → binarize → slot extraction → glyph normalization) and
+  slot-layout constants. Both the runtime engine and the one-shot template
+  generator (`scripts/generate_ocr_templates.py`) import it — load-bearing,
+  because the template bank is only valid if built with *exactly* the
+  preprocessing applied at match time.
+- **Timestamp cleanup** (`concam.ocr._fallback_clean`) — canonicalises EasyOCR's
+  loose tokens. *Resolved correctness note:* `_canon_time` once honoured an
+  AM/PM token's hour range but never converted to 24-hour, corrupting every PM
+  and midnight reading from the fallback; it now does the 12→24 conversion
+  (`tests/test_ocr_fallback_clean.py` pins the truth table).
 
 ## Known latent inconsistencies (documented, deliberately not auto-"fixed")
 
