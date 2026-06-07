@@ -22,6 +22,11 @@ if str(SCRIPTS) not in sys.path:
 
 regression_e2e = pytest.importorskip("regression_e2e")
 
+from concam.config import load_config  # noqa: E402
+
+_SITE_CFG = load_config(REPO_ROOT / "configs" / "mit_green_building.yaml")
+_THRESHOLD = _SITE_CFG.aggregation.detection_threshold
+
 
 def test_score_histogram_bucketing_matches_thresholds():
     detections = [
@@ -41,7 +46,7 @@ def test_score_histogram_bucketing_matches_thresholds():
 
 
 def test_pick_episodes_dedups_near_threshold_from_top():
-    threshold = 0.083
+    threshold = _THRESHOLD
     episodes = [
         {"callsign": "AAA", "transponder_id": "T1",
          "peak_score": 1.0, "onset": "t1"},
@@ -58,6 +63,13 @@ def test_pick_episodes_dedups_near_threshold_from_top():
     ]
     picks = regression_e2e._pick_episodes(
         episodes, threshold=threshold, n_top=2, n_threshold=3
+    )
+    # Verify the config-derived threshold we're using is the expected value.
+    # If this assertion fails, it means AggregationConfig.detection_threshold
+    # in the YAML was changed without updating the test episodes' score values.
+    assert threshold == pytest.approx(0.083, abs=1e-6), (
+        f"Aggregation threshold changed from 0.083 to {threshold}; "
+        "review test episode scores to ensure they still exercise the near-threshold logic."
     )
 
     # Top picks are the two highest.
@@ -76,7 +88,7 @@ def test_pick_episodes_handles_short_lists():
     episodes = [
         {"callsign": "X", "transponder_id": "T", "peak_score": 0.5, "onset": "t"},
     ]
-    picks = regression_e2e._pick_episodes(episodes, threshold=0.083,
+    picks = regression_e2e._pick_episodes(episodes, threshold=_THRESHOLD,
                                           n_top=5, n_threshold=5)
     assert len(picks["top"]) == 1
     # All above-threshold episodes are in top; near-threshold dedups → empty.

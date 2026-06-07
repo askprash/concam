@@ -54,8 +54,7 @@ from concam.video import decode_frames
 
 # Parameter grid axes. 3^7 = 2187 combos × 20 ROIs × ~1 ms/detect() ≈ under a
 # minute total. long_line_min_px is sweepable because the rotated ROI is only
-# 120 px along-track; a 40 px floor (the sibling default) throws away shorter
-# fragmented contrails.
+# a 40 px floor (the sibling default) throws away shorter fragmented contrails.
 CANNY_PCT_HIGH = (99.0, 99.5, 99.8)
 CANNY_LOW_RATIO = (0.25, 0.4, 0.5)
 HOUGH_THRESHOLD = (15, 30, 50)
@@ -68,8 +67,10 @@ LONG_LINE_MIN_PX = (15.0, 25.0, 40.0)
 CANNY_MIN_HIGH = 60
 CANNY_PCT_LOW = 96.0
 SCORE_NORM_COUNT = 6
-ROI_ALONG_PX = 120
-ROI_CROSS_PX = 40
+# Default ROI dimensions: read from the loaded DetectionConfig at runtime.
+# These module-level sentinels are overridden in main() once the config is loaded.
+_DEFAULT_ROI_ALONG_PX = 180
+_DEFAULT_ROI_CROSS_PX = 40
 
 # ROI dimension sub-grid for --roi-sweep mode (item 20).
 ROI_SWEEP_ALONG = (120, 180, 240, 320)
@@ -101,11 +102,10 @@ class Combo:
 def _combo_to_config(
     combo: Combo,
     preprocessing: str = "none",
-    roi_along: int = ROI_ALONG_PX,
-    roi_cross: int = ROI_CROSS_PX,
+    roi_along: int = _DEFAULT_ROI_ALONG_PX,
+    roi_cross: int = _DEFAULT_ROI_CROSS_PX,
 ) -> DetectionConfig:
     return DetectionConfig(
-        score_threshold=0.3,
         canny_low=50, canny_high=150,
         hough_threshold=int(combo.hough_threshold),
         hough_min_line_length=int(combo.hough_min_line_length),
@@ -178,8 +178,8 @@ def _sweep(
     rois: list[tuple[dict, np.ndarray, str]],
     preprocessing: str = "none",
     prev_crops: dict[int, np.ndarray] | None = None,
-    roi_along: int = ROI_ALONG_PX,
-    roi_cross: int = ROI_CROSS_PX,
+    roi_along: int = _DEFAULT_ROI_ALONG_PX,
+    roi_cross: int = _DEFAULT_ROI_CROSS_PX,
 ) -> list[dict]:
     """For each parameter combination, score every labeled ROI and summarise."""
     results: list[dict] = []
@@ -382,7 +382,7 @@ def _write_roi_sweep_report(
     lines.append("## Best (along, cross) pair")
     lines.append("")
     lines.append(f"- **roi_along_px = {best['roi_along']}**  roi_cross_px = {best['roi_cross']}")
-    lines.append(f"- AUC: **{best['auc']:.3f}** (baseline 120×40: {baseline_auc:.3f})")
+    lines.append(f"- AUC: **{best['auc']:.3f}** (best prior combo: {baseline_auc:.3f})")
     lines.append(f"- Youden's J: **{best['youden_j']:.3f}** (baseline: {baseline_j:.3f})")
     lines.append(f"- Recommended threshold: {best['threshold']:.3f}")
     lines.append(f"- Positive scores: median {best['pos_median']:.3f}, min {best['pos_min']:.3f}")
@@ -430,8 +430,8 @@ def _visualise_best_combo(
     out_path: Path,
     preprocessing: str = "none",
     prev_crops: dict[int, np.ndarray] | None = None,
-    roi_along: int = ROI_ALONG_PX,
-    roi_cross: int = ROI_CROSS_PX,
+    roi_along: int = _DEFAULT_ROI_ALONG_PX,
+    roi_cross: int = _DEFAULT_ROI_CROSS_PX,
 ) -> None:
     combo = Combo(**best["combo"])
     cfg = _combo_to_config(combo, preprocessing=preprocessing, roi_along=roi_along, roi_cross=roi_cross)
@@ -485,8 +485,8 @@ def _write_report(
     top_n: int = 10,
     preprocessing: str = "none",
     use_prev_frame: bool = False,
-    roi_along: int = ROI_ALONG_PX,
-    roi_cross: int = ROI_CROSS_PX,
+    roi_along: int = _DEFAULT_ROI_ALONG_PX,
+    roi_cross: int = _DEFAULT_ROI_CROSS_PX,
 ) -> None:
     best = results[0]
     c = best["combo"]
@@ -577,6 +577,12 @@ def main():
     ap.add_argument("--output-dir", default="output")
     ap.add_argument("--top-n", type=int, default=10)
     ap.add_argument(
+        "--config",
+        default="configs/mit_green_building.yaml",
+        help="Site YAML config. ROI defaults (--roi-along/--roi-cross) are taken "
+             "from detection.roi_along_px / detection.roi_cross_px in this file.",
+    )
+    ap.add_argument(
         "--preprocessing",
         default="none",
         choices=["none", "local_contrast", "cross_grad"],
@@ -602,10 +608,11 @@ def main():
              "cropping. Use for sub-4K videos (e.g. Oct 2025 720p archive).",
     )
     # ROI dimension overrides (single values; use --roi-sweep for the full sub-grid).
-    ap.add_argument("--roi-along", type=int, default=ROI_ALONG_PX,
-                    help=f"roi_along_px override (default {ROI_ALONG_PX})")
-    ap.add_argument("--roi-cross", type=int, default=ROI_CROSS_PX,
-                    help=f"roi_cross_px override (default {ROI_CROSS_PX})")
+    # Defaults are set after config loading below; we use None as a sentinel here.
+    ap.add_argument("--roi-along", type=int, default=None,
+                    help="roi_along_px override (default: detection.roi_along_px from --config)")
+    ap.add_argument("--roi-cross", type=int, default=None,
+                    help="roi_cross_px override (default: detection.roi_cross_px from --config)")
     # ROI dimension sub-grid sweep (item 20). Freezes other axes at best combo from a prior run.
     ap.add_argument(
         "--roi-sweep",
@@ -621,6 +628,12 @@ def main():
              "the same date.",
     )
     args = ap.parse_args()
+
+    # Load the site config so ROI defaults track production, not stale constants.
+    site = load_config(args.config)
+    det_cfg = site.detection
+    roi_along = args.roi_along if args.roi_along is not None else det_cfg.roi_along_px
+    roi_cross = args.roi_cross if args.roi_cross is not None else det_cfg.roi_cross_px
 
     validation_dir = Path(args.output_dir) / "validation" / "detection" / args.date
     manifest_path = validation_dir / "manifest.json"
@@ -707,7 +720,7 @@ def main():
         print(
             f"Best ROI: along={best_roi['roi_along']}  cross={best_roi['roi_cross']}  "
             f"AUC={best_roi['auc']:.3f}  J={best_roi['youden_j']:.3f}  "
-            f"(baseline 120×40: AUC={baseline_auc:.3f}  J={baseline_j:.3f})"
+            f"(best prior combo: AUC={baseline_auc:.3f}  J={baseline_j:.3f})"
         )
         roi_json_path = validation_dir / "roi_dimension_sweep_results.json"
         roi_json_path.write_text(
@@ -745,14 +758,13 @@ def main():
         return
 
     # --- Standard full-combo sweep mode ---
-    roi_along = args.roi_along
-    roi_cross = args.roi_cross
+    # roi_along / roi_cross already resolved from config + CLI overrides above.
 
     # Build output filename suffix so multiple preprocessing runs don't overwrite each other.
     suffix = args.preprocessing if args.preprocessing != "none" else "none"
     if args.use_prev_frame:
         suffix = f"diff_{suffix}" if suffix != "none" else "diff"
-    if roi_along != ROI_ALONG_PX or roi_cross != ROI_CROSS_PX:
+    if roi_along != det_cfg.roi_along_px or roi_cross != det_cfg.roi_cross_px:
         suffix = f"{suffix}_along{roi_along}_cross{roi_cross}"
 
     total_combos = (

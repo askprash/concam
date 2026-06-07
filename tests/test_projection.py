@@ -175,9 +175,10 @@ class TestFlightPathVector:
 class TestOrientedROI:
     def test_horizontal_path_gives_wide_rect(self):
         center = PixelPoint(x=1000.0, y=1000.0)
+        # roi_along_px=180, roi_cross_px=40 (production defaults) → wide rect
         config = DetectionConfig(roi_padding=20)
         roi = oriented_roi(center, (1.0, 0.0), config)
-        # Along-track = 3*20=60 each side = 120 wide, cross-track = 20 each side = 40 tall
+        # roi_along_px (180) > roi_cross_px (40) → width > height for horizontal path
         assert roi.w > roi.h
 
     def test_vertical_path_gives_tall_rect(self):

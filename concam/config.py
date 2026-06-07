@@ -74,22 +74,20 @@ class CalibrationConfig:
 
 @dataclass
 class DetectionConfig:
-    # Minimum Hough score (0-1) to count as a detection
-    score_threshold: float = 0.3
     # Fallback Canny thresholds when use_adaptive_canny=False
     canny_low: int = 50
     canny_high: int = 150
     # Hough parameters
-    hough_threshold: int = 30
-    hough_min_line_length: int = 30
+    hough_threshold: int = 15
+    hough_min_line_length: int = 20
     hough_max_line_gap: int = 10
     # Legacy ROI knob: along=3*pad, cross=pad. Kept for back-compat when
     # roi_along_px/roi_cross_px are unset.
     roi_padding: int = 20
     # Explicit along-track length and cross-track width of the rotated
     # detection rectangle (pixels). When both are set they override
-    # ``roi_padding``-based sizing. Defaults mirror the legacy 120x40 box.
-    roi_along_px: int = 120
+    # ``roi_padding``-based sizing.
+    roi_along_px: int = 180
     roi_cross_px: int = 40
     # Adaptive percentile-based Canny thresholds on the masked ROI pixel
     # distribution. Mirrors camera-flight-overlay/contrail_labeler prod detector.
@@ -100,9 +98,9 @@ class DetectionConfig:
     canny_min_high: int = 60  # clamp floor for Canny high threshold
     # Angle constraint: keep only Hough lines within ±tol degrees of the
     # flight-path vector. Disabled when path_vec is None.
-    angle_tolerance_deg: float = 8.0
+    angle_tolerance_deg: float = 12.0
     # Minimum Hough-line length (pixels) to count toward the score.
-    long_line_min_px: float = 40.0
+    long_line_min_px: float = 25.0
     # Score function.  "length" uses ``contrail_length_px / score_length_norm_px``
     # (preferred: continuous, does not saturate on strong contrails).  "count"
     # reproduces the legacy discrete score ``num_long_lines / score_norm_count``.
@@ -111,11 +109,11 @@ class DetectionConfig:
     # Count of aligned long lines that maps to score=1.0.
     score_norm_count: int = 6
     # Length-based score normalisation (used when score_fn == "length").  The
-    # along-track contrail pixel span at which the score reaches 1.0.  Default
-    # 130 px ≈ 0.7 × sqrt(roi_along_px² + roi_cross_px²) for the default
-    # 180×40 rotated ROI, chosen so the April-8 full-run score histogram stops
-    # piling up at 1.0 while preserving AUC.  Tune alongside roi_along_px.
-    score_length_norm_px: float = 130.0
+    # along-track contrail pixel span at which the score reaches 1.0.
+    # 200 px ≈ 1.1 × roi_along_px (180), chosen to spread the score distribution
+    # so the last bright-cloud FP drops under the 0.083 gate (Apr-9 sweep).
+    # Tune alongside roi_along_px.
+    score_length_norm_px: float = 200.0
     # When True, the detector masks the rotated polygon before Canny/Hough.
     # False falls back to the AABB-only legacy path.
     use_rotated_mask: bool = True
@@ -137,7 +135,7 @@ class DetectionConfig:
     #   "cross_grad"      – gradient magnitude along the direction perpendicular
     #                       to the flight-path vector (emphasises cross-track
     #                       edges = contrail profile; requires path_vec kwarg).
-    preprocessing: str = "none"
+    preprocessing: str = "cross_grad"
     # Gaussian sigma for the "local_contrast" preprocessing mode.
     local_contrast_sigma: float = 25.0
     # Multiplier applied to the perpendicular-gradient magnitude in the
@@ -145,7 +143,7 @@ class DetectionConfig:
     # saturate more pixels (increasing edge density = more Hough candidates);
     # lower values preserve gradient shape and typically suppress false
     # positives on bright cloud edges.
-    cross_grad_gain: float = 2.0
+    cross_grad_gain: float = 1.0
     # Adaptive contrail length measurement via iterative ROI growth.
     # After a detection scores above zero the along-track axis is grown by
     # growth_step_px (each direction) until the aligned-long-line count stops
@@ -156,8 +154,10 @@ class DetectionConfig:
 
 @dataclass
 class AggregationConfig:
-    # Minimum score to include a frame in an episode
-    detection_threshold: float = 0.3
+    # Minimum score to include a frame in an episode.
+    # 0.083 = Youden-J threshold from the April-8 sweep (one aligned long
+    # line → score 0.167; threshold 0.083 accepts that as a hit).
+    detection_threshold: float = 0.083
     # Maximum gap (seconds) between detections to merge into one episode
     max_gap_seconds: float = 30.0
     # Rolling-median window (odd integer, in frames) applied to each flight's
@@ -166,7 +166,7 @@ class AggregationConfig:
     # flight vector — is killed by the median when it's surrounded by
     # below-threshold neighbours, while a sustained contrail (score high for
     # many consecutive frames) survives untouched. Set to 1 to disable.
-    smoothing_window_frames: int = 1
+    smoothing_window_frames: int = 3
 
 
 @dataclass

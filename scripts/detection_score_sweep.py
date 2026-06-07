@@ -81,9 +81,22 @@ def _load_candidates(date: str, labels_path: Path) -> tuple[list[dict], dict]:
 # self-explanatory.
 # -----------------------------------------------------------------------------
 
-ROI_ALONG = 180
-ROI_CROSS = 40
-LONG_MIN = 25.0
+# Fixed reference normalization constants for the analytical score-function
+# catalogue below.  These are intentionally NOT pulled from the loaded config
+# at runtime: each function in SCORE_FNS is a distinct mathematical variant
+# whose denominator is meant to be a stable reference (e.g. "length / diagonal
+# of the 180×40 ROI").  Changing them per-run would alter what each function
+# *means*, defeating the comparative analysis.
+#
+# These values MUST match configs/mit_green_building.yaml detection section.
+# If production roi_along_px / roi_cross_px / long_line_min_px are ever
+# re-tuned, update these constants and re-run the sweep to regenerate
+# interpretable reference scores.
+#
+# Verified against configs/mit_green_building.yaml on 2026-06-07.
+ROI_ALONG = 180   # == det.roi_along_px in the base YAML
+ROI_CROSS = 40    # == det.roi_cross_px in the base YAML
+LONG_MIN = 25.0   # == det.long_line_min_px in the base YAML
 ROI_DIAG = math.hypot(ROI_ALONG, ROI_CROSS)
 
 

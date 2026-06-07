@@ -78,7 +78,6 @@ calibration:
 # Source: output/validation/detection/2026-04-08/roi_dimension_sweep_report.md
 #         output/validation/detection/2026-04-08/sweep_report_cross_grad.md
 detection:
-  score_threshold: 0.3
   # Legacy / fallback Canny thresholds (used when use_adaptive_canny=false)
   canny_low: 50
   canny_high: 150

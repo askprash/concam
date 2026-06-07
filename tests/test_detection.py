@@ -14,7 +14,6 @@ from concam.projection import PixelPoint, Rect, rotated_polygon
 def _make_config(**overrides) -> DetectionConfig:
     """Config tuned so synthetic 200x200 test frames produce sensible scores."""
     base = dict(
-        score_threshold=0.3,
         canny_low=50,
         canny_high=150,
         hough_threshold=20,
@@ -178,7 +177,6 @@ class TestRotatedROIDetector:
 @pytest.fixture
 def legacy_config() -> DetectionConfig:
     return DetectionConfig(
-        score_threshold=0.3,
         canny_low=50, canny_high=150,
         hough_threshold=20,
         hough_min_line_length=20,

@@ -33,7 +33,11 @@ def _fr(
     )
 
 
-DEFAULT_CONFIG = AggregationConfig(detection_threshold=0.3, max_gap_seconds=30.0)
+# Explicit smoothing_window_frames=1 (disabled) so these unit tests exercise the
+# threshold logic in isolation without median-smoothing side-effects.
+# (The production default is smoothing_window_frames=3, matching the base YAML.)
+DEFAULT_CONFIG = AggregationConfig(detection_threshold=0.3, max_gap_seconds=30.0,
+                                   smoothing_window_frames=1)
 
 
 # ---------------------------------------------------------------------------
