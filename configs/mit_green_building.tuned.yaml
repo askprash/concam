@@ -1,0 +1,64 @@
+name: mit_green_building
+timezone: America/New_York
+camera_lat: 42.360444
+camera_lon: -71.089238
+camera_alt_m: 84.226575
+video:
+  root: /net/d16/data/contrail-camera
+  timelapse_glob: '{date:%Y_%m_%d}_0000_2359.mp4'
+  raw_segment_glob: raw_segments_clean/{date:%Y-%m-%d}_*.mp4
+ocr:
+  timestamp_position: top_right
+  timestamp_region:
+  - 80
+  - 875
+  fallback_confidence_threshold: 0.6
+adsb:
+  data_dir: /home/mcast/data/feder
+  min_altitude_m: 7924.8
+  max_altitude_m: 13716.0
+  max_radius_km: 200.0
+  site_lat: 42.360444
+  site_lon: -71.089238
+  altitude_source: auto
+  altitude_discrepancy_threshold_m: 122.0
+  site_geoid_offset_m: -28.0
+calibration:
+  npz_path: /home/prash/contrails/LAE_skycam/calibration/pointpicker_calibration_estimate.npz
+  calibration_resolution:
+  - 3840
+  - 2160
+detection:
+  canny_low: 50
+  canny_high: 150
+  hough_threshold: 15
+  hough_min_line_length: 20
+  hough_max_line_gap: 10
+  roi_padding: 20
+  roi_along_px: 240
+  roi_cross_px: 40
+  use_adaptive_canny: true
+  canny_percentile_low: 96.0
+  canny_percentile_high: 99.7
+  canny_low_ratio: 0.25
+  canny_min_high: 60
+  angle_tolerance_deg: 12.0
+  long_line_min_px: 25.0
+  score_fn: length
+  score_length_norm_px: 200.0
+  score_norm_count: 6
+  use_rotated_mask: true
+  blur_kernel: 3
+  preprocessing: cross_grad
+  cross_grad_gain: 0.75
+  timestamp_exclusion_region:
+  - 0
+  - 95
+  - 2950
+  - 3840
+  growth_step_px: 20
+  roi_max_along_px: 600
+aggregation:
+  detection_threshold: 0.18
+  max_gap_seconds: 30.0
+  smoothing_window_frames: 3
