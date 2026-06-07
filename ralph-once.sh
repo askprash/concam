@@ -62,4 +62,4 @@ If the PRD is complete, commit prd.json as the final tracking record, then outpu
 EOF
 )
 
-claude --permission-mode acceptEdits "@.ralph/prd.json @.ralph/progress.txt $PROMPT"
+claude --model opus --permission-mode acceptEdits "@.ralph/prd.json @.ralph/progress.txt $PROMPT"

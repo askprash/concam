@@ -12,3 +12,7 @@ dist/
 *.egg-info/
 .hypothesis/
 .pytest_cache/
+scratch/
+output-profile/
+*.bak
+.claude/settings.local.json
