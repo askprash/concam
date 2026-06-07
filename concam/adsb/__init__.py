@@ -6,6 +6,7 @@ import datetime
 import logging
 import math
 import os
+import zoneinfo
 from dataclasses import dataclass
 
 import numpy as np
@@ -234,11 +235,49 @@ def _upsample_pings(pings: list[Ping]) -> list[Ping]:
     return result
 
 
-def load_flights(date: datetime.date, config: AdsbConfig) -> list[Flight]:
-    """
-    Load and filter ADS-B flights for a UTC calendar day.
+def _day_window_utc(
+    date: datetime.date,
+    timezone: str | None,
+) -> tuple[datetime.datetime, datetime.datetime]:
+    """Return (t_start, t_end) as timezone-aware UTC datetimes spanning *date*.
 
-    Queries feder for all flights with any pings during the UTC day, then:
+    When *timezone* is None the window is exactly UTC 00:00:00 to the next
+    day's UTC 00:00:00 (always 24 h).  When a tz string is given the window
+    runs from local midnight to local midnight, converted to UTC — so on DST
+    spring-forward days the window is 23 h and on fall-back days it is 25 h.
+    """
+    utc = datetime.timezone.utc
+    if timezone is not None:
+        tz = zoneinfo.ZoneInfo(timezone)
+        t_start = datetime.datetime.combine(
+            date, datetime.time.min, tzinfo=tz
+        ).astimezone(utc)
+        t_end = datetime.datetime.combine(
+            date + datetime.timedelta(days=1), datetime.time.min, tzinfo=tz
+        ).astimezone(utc)
+    else:
+        t_start = datetime.datetime(date.year, date.month, date.day, 0, 0, 0,
+                                    tzinfo=utc)
+        t_end = t_start + datetime.timedelta(days=1)
+    return t_start, t_end
+
+
+def load_flights(
+    date: datetime.date,
+    config: AdsbConfig,
+    timezone: str | None = None,
+) -> list[Flight]:
+    """
+    Load and filter ADS-B flights for a calendar day.
+
+    The day is interpreted in ``timezone`` (e.g. ``"America/New_York"``) when
+    given, otherwise UTC. Local-time framing matters because the daily timelapse
+    video covers a local-time day, so a UTC-day query truncates the last
+    ``UTC-offset`` hours of overlay coverage. DST transitions are handled
+    correctly via ``zoneinfo`` — the resulting UTC window is 23 h or 25 h on
+    transition days.
+
+    Pipeline:
       1. Converts feder Points to Pings, storing both GNSS (HAE) and barometric
          (ISA-MSL → HAE via site geoid offset) altitudes.
       2. Selects the effective altitude per ``config.altitude_source``.
@@ -262,9 +301,7 @@ def load_flights(date: datetime.date, config: AdsbConfig) -> list[Flight]:
             f"got {config.altitude_source!r}"
         )
 
-    t_start = datetime.datetime(date.year, date.month, date.day, 0, 0, 0,
-                                tzinfo=datetime.timezone.utc)
-    t_end = t_start + datetime.timedelta(days=1)
+    t_start, t_end = _day_window_utc(date, timezone)
 
     min_lat, max_lat, min_lon, max_lon = _bbox_for_radius(
         config.site_lat, config.site_lon, config.max_radius_km

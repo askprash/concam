@@ -13,6 +13,7 @@ from concam.adsb import (
     Flight,
     Ping,
     _choose_altitude,
+    _day_window_utc,
     _haversine_km,
     _upsample_pings,
     load_flights,
@@ -254,6 +255,51 @@ def test_fixture_within_radius():
             assert dist <= cfg.max_radius_km, (
                 f"{f.callsign} ping at {dist:.1f}km exceeds {cfg.max_radius_km}km"
             )
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: _day_window_utc (pure — no feder, no I/O)
+# ---------------------------------------------------------------------------
+
+
+def test_day_window_utc_none_is_exact_utc_day():
+    """timezone=None → window is exactly UTC midnight to UTC midnight, 24 h."""
+    date = datetime.date(2026, 6, 15)
+    t_start, t_end = _day_window_utc(date, None)
+    assert t_start == datetime.datetime(2026, 6, 15, 0, 0, 0, tzinfo=_UTC)
+    assert t_end == datetime.datetime(2026, 6, 16, 0, 0, 0, tzinfo=_UTC)
+    assert (t_end - t_start) == datetime.timedelta(hours=24)
+
+
+def test_day_window_utc_edt_regular_day():
+    """America/New_York regular summer day (EDT = UTC-4): window starts 04:00 UTC."""
+    date = datetime.date(2026, 6, 15)
+    t_start, t_end = _day_window_utc(date, "America/New_York")
+    assert t_start == datetime.datetime(2026, 6, 15, 4, 0, 0, tzinfo=_UTC)
+    assert t_end == datetime.datetime(2026, 6, 16, 4, 0, 0, tzinfo=_UTC)
+    assert (t_end - t_start) == datetime.timedelta(hours=24)
+
+
+def test_day_window_utc_dst_spring_forward_23h():
+    """Spring-forward 2026-03-08 (2am→3am): clocks skip an hour → 23 h UTC window."""
+    date = datetime.date(2026, 3, 8)
+    t_start, t_end = _day_window_utc(date, "America/New_York")
+    # Before DST: EST = UTC-5, so local midnight → 05:00 UTC
+    assert t_start == datetime.datetime(2026, 3, 8, 5, 0, 0, tzinfo=_UTC)
+    # After DST: EDT = UTC-4, so next local midnight → 04:00 UTC
+    assert t_end == datetime.datetime(2026, 3, 9, 4, 0, 0, tzinfo=_UTC)
+    assert (t_end - t_start) == datetime.timedelta(hours=23)
+
+
+def test_day_window_utc_dst_fall_back_25h():
+    """Fall-back 2026-11-01 (2am→1am): clocks repeat an hour → 25 h UTC window."""
+    date = datetime.date(2026, 11, 1)
+    t_start, t_end = _day_window_utc(date, "America/New_York")
+    # Before DST ends: EDT = UTC-4, so local midnight → 04:00 UTC
+    assert t_start == datetime.datetime(2026, 11, 1, 4, 0, 0, tzinfo=_UTC)
+    # After DST ends: EST = UTC-5, so next local midnight → 05:00 UTC
+    assert t_end == datetime.datetime(2026, 11, 2, 5, 0, 0, tzinfo=_UTC)
+    assert (t_end - t_start) == datetime.timedelta(hours=25)
 
 
 # ---------------------------------------------------------------------------

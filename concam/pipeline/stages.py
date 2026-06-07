@@ -203,7 +203,7 @@ def run_adsb_stage(
 ) -> int:
     """Load flights from feder and serialize to JSON.  Returns flight count."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    flights = load_flights(date, site_config.adsb)
+    flights = load_flights(date, site_config.adsb, timezone=site_config.timezone)
     with open(out_path, "w") as f:
         json.dump([_flight_to_dict(fl) for fl in flights], f)
     return len(flights)
