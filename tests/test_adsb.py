@@ -10,8 +10,12 @@ from pathlib import Path
 import pytest
 
 from concam.adsb import (
+    FederFlightSource,
     Flight,
     Ping,
+    RawPoint,
+    RawTrajectory,
+    RecordedFlightSource,
     _choose_altitude,
     _day_window_utc,
     _haversine_km,
@@ -22,6 +26,7 @@ from concam.config import AdsbConfig
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SAMPLE_FIXTURE = FIXTURES_DIR / "adsb_april8_sample.json"
+RAW_TRACE_FIXTURE = FIXTURES_DIR / "adsb_raw_trace.json"
 
 SITE_LAT = 42.360444
 SITE_LON = -71.089238
@@ -300,6 +305,128 @@ def test_day_window_utc_dst_fall_back_25h():
     # After DST ends: EST = UTC-5, so next local midnight → 05:00 UTC
     assert t_end == datetime.datetime(2026, 11, 2, 5, 0, 0, tzinfo=_UTC)
     assert (t_end - t_start) == datetime.timedelta(hours=25)
+
+
+# ---------------------------------------------------------------------------
+# FlightSource seam: convert/filter/upsample driven by a fake source
+# (no feder, no skip — exercises the previously feder-gated logic everywhere)
+# ---------------------------------------------------------------------------
+
+_FT_TO_M = 0.3048
+
+
+def _raw_point(t_s, lat, lon, alt_ft, alt_gnss_ft):
+    base = datetime.datetime(2026, 4, 8, 12, 0, 0, tzinfo=_UTC)
+    return RawPoint(
+        time=base + datetime.timedelta(seconds=t_s),
+        lat=lat,
+        lon=lon,
+        alt_ft=alt_ft,
+        alt_gnss_ft=alt_gnss_ft,
+    )
+
+
+def test_feder_source_construction_is_inert():
+    """Constructing FederFlightSource must not import feder or touch the
+    filesystem; it just records the data dir and satisfies the fetch port."""
+    src = FederFlightSource("/nonexistent/data/dir")
+    assert src._data_dir == "/nonexistent/data/dir"
+    assert callable(src.fetch)
+
+
+def test_load_flights_recorded_source_basic():
+    """RecordedFlightSource drives convert/filter/upsample with no feder."""
+    cfg = AdsbConfig()
+    source = RecordedFlightSource.from_json(RAW_TRACE_FIXTURE)
+    flights = load_flights(datetime.date(2026, 4, 8), cfg, source=source)
+
+    # FAKE002 is entirely below threshold -> dropped; only FAKE001 survives.
+    assert [f.callsign for f in flights] == ["FAKE001"]
+    f = flights[0]
+    assert f.transponder_id == "ABC123"
+    assert f.aircraft_type == "A320"
+    assert f.orig == "KBOS"
+    assert f.dest == "KJFK"
+
+
+def test_load_flights_recorded_altitude_filter_drops_low_point():
+    """The 5000 ft point and the whole low trajectory are filtered out;
+    every surviving ping is above the configured altitude threshold."""
+    cfg = AdsbConfig()
+    source = RecordedFlightSource.from_json(RAW_TRACE_FIXTURE)
+    flights = load_flights(datetime.date(2026, 4, 8), cfg, source=source)
+    for f in flights:
+        for p in f.pings:
+            assert p.alt_m >= cfg.min_altitude_m
+
+
+def test_load_flights_recorded_radius_filter_drops_far_point():
+    """The point ~127 km away is dropped; survivors are within max_radius_km."""
+    cfg = AdsbConfig()
+    source = RecordedFlightSource.from_json(RAW_TRACE_FIXTURE)
+    flights = load_flights(datetime.date(2026, 4, 8), cfg, source=source)
+    for f in flights:
+        for p in f.pings:
+            dist = _haversine_km(SITE_LAT, SITE_LON, p.lat, p.lon)
+            assert dist <= cfg.max_radius_km
+
+
+def test_load_flights_recorded_upsamples_to_1s():
+    """Two surviving points 5 s apart upsample to 6 pings at 1 s spacing."""
+    cfg = AdsbConfig()
+    source = RecordedFlightSource.from_json(RAW_TRACE_FIXTURE)
+    flights = load_flights(datetime.date(2026, 4, 8), cfg, source=source)
+    pings = flights[0].pings
+    # Original 2 surviving points 5 s apart -> 6 pings after upsampling.
+    assert len(pings) == 6
+    for a, b in zip(pings, pings[1:]):
+        assert (b.time - a.time).total_seconds() == pytest.approx(1.0)
+
+
+def test_load_flights_recorded_altitude_conversion():
+    """Effective altitude reflects feet->metre conversion and policy choice.
+
+    With altitude_source='auto' and GNSS (35100 ft) vs baro+geoid
+    (35000 ft * 0.3048 - 28 m) agreeing within threshold, GNSS is used."""
+    cfg = AdsbConfig()
+    source = RecordedFlightSource.from_json(RAW_TRACE_FIXTURE)
+    flights = load_flights(datetime.date(2026, 4, 8), cfg, source=source)
+    first = flights[0].pings[0]
+    assert first.alt_source == "gnss"
+    assert first.alt_gnss_m == pytest.approx(35100.0 * _FT_TO_M)
+    assert first.alt_baro_m == pytest.approx(35000.0 * _FT_TO_M + cfg.site_geoid_offset_m)
+    assert first.alt_m == pytest.approx(first.alt_gnss_m)
+
+
+def test_load_flights_recorded_from_in_memory_list():
+    """RecordedFlightSource also accepts an in-memory RawTrajectory list."""
+    cfg = AdsbConfig()
+    traj = RawTrajectory(
+        callsign="MEM001",
+        transponder_id="XYZ",
+        aircraft_type=None,
+        orig=None,
+        dest=None,
+        points=[
+            _raw_point(0, 42.40, -71.10, 35000.0, 35100.0),
+            _raw_point(1, 42.41, -71.11, 35000.0, 35100.0),
+        ],
+    )
+    flights = load_flights(
+        datetime.date(2026, 4, 8), cfg, source=RecordedFlightSource([traj])
+    )
+    assert [f.callsign for f in flights] == ["MEM001"]
+    assert flights[0].aircraft_type is None
+    assert len(flights[0].pings) == 2
+
+
+def test_load_flights_invalid_altitude_policy_raises_without_source():
+    """The policy validation fires before any source is touched."""
+    cfg = AdsbConfig(altitude_source="invalid")
+    with pytest.raises(ValueError):
+        load_flights(
+            datetime.date(2026, 4, 8), cfg, source=RecordedFlightSource([])
+        )
 
 
 # ---------------------------------------------------------------------------

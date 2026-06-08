@@ -1,0 +1,64 @@
+[
+  {
+    "callsign": "FAKE001",
+    "transponder_id": "ABC123",
+    "aircraft_type": "A320",
+    "orig": "KBOS",
+    "dest": "KJFK",
+    "_comment": "First two points pass (high + near site) with a 5s time gap to exercise upsampling; third point is too low (dropped); fourth point is beyond 50km radius (dropped).",
+    "points": [
+      {
+        "time": "2026-04-08T12:00:00+00:00",
+        "lat": 42.40,
+        "lon": -71.10,
+        "alt_ft": 35000.0,
+        "alt_gnss_ft": 35100.0
+      },
+      {
+        "time": "2026-04-08T12:00:05+00:00",
+        "lat": 42.45,
+        "lon": -71.15,
+        "alt_ft": 35000.0,
+        "alt_gnss_ft": 35100.0
+      },
+      {
+        "time": "2026-04-08T12:00:06+00:00",
+        "lat": 42.46,
+        "lon": -71.16,
+        "alt_ft": 5000.0,
+        "alt_gnss_ft": 5050.0
+      },
+      {
+        "time": "2026-04-08T12:00:07+00:00",
+        "lat": 43.50,
+        "lon": -71.16,
+        "alt_ft": 35000.0,
+        "alt_gnss_ft": 35100.0
+      }
+    ]
+  },
+  {
+    "callsign": "FAKE002",
+    "transponder_id": "DEF456",
+    "aircraft_type": "B738",
+    "orig": "KLGA",
+    "dest": "KBOS",
+    "_comment": "All points below the 8000 m altitude threshold; this whole trajectory must be dropped (no surviving pings).",
+    "points": [
+      {
+        "time": "2026-04-08T13:00:00+00:00",
+        "lat": 42.36,
+        "lon": -71.09,
+        "alt_ft": 4000.0,
+        "alt_gnss_ft": 4050.0
+      },
+      {
+        "time": "2026-04-08T13:00:01+00:00",
+        "lat": 42.37,
+        "lon": -71.10,
+        "alt_ft": 4100.0,
+        "alt_gnss_ft": 4150.0
+      }
+    ]
+  }
+]

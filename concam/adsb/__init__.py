@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import math
 import os
 import zoneinfo
 from dataclasses import dataclass
+from typing import Iterator, Protocol
 
 import numpy as np
 
@@ -70,6 +72,188 @@ def _patch_feder_readonly_open() -> None:
 
     feder_db.sqlite3 = _SqliteCompat()
     feder_db._concam_immutable_patched = True
+
+
+# ---------------------------------------------------------------------------
+# FlightSource port + raw types
+# ---------------------------------------------------------------------------
+#
+# The ADS-B loader is split into two halves across a port/adapter seam:
+#
+#   * A ``FlightSource`` (the port) yields raw, pre-conversion trajectories in
+#     exactly the units feder provides (altitudes in *feet*). This is the only
+#     surface that touches the feder package.
+#   * ``load_flights`` (the consumer) owns the units conversion, altitude-policy
+#     selection, radius/altitude filtering, and 1-second upsampling. It is
+#     feder-agnostic and so can be exercised with any ``FlightSource``.
+#
+# Production uses ``FederFlightSource``; tests can use ``RecordedFlightSource``
+# to drive the convert/filter/upsample path without the live feder data store.
+
+
+@dataclass(slots=True)
+class RawPoint:
+    """One raw position fix straight off the source, in feder's native units.
+
+    Altitudes are in *feet* (``alt_ft`` is barometric, ``alt_gnss_ft`` is GNSS),
+    matching feder's ``Point.alt`` / ``Point.alt_gnss`` exactly. ``load_flights``
+    is responsible for the feet→metre conversion and the geoid offset.
+    """
+
+    time: datetime.datetime  # UTC, timezone-aware
+    lat: float
+    lon: float
+    alt_ft: float | None  # barometric altitude (feet); feder Point.alt
+    alt_gnss_ft: float | None  # GNSS altitude (feet); feder Point.alt_gnss
+
+
+@dataclass(slots=True)
+class RawTrajectory:
+    """One raw flight trajectory off the source, before conversion/filtering."""
+
+    callsign: str
+    transponder_id: str | None
+    aircraft_type: str | None
+    orig: str | None
+    dest: str | None
+    points: list[RawPoint]
+
+
+class FlightSource(Protocol):
+    """Port: yields raw trajectories for a time window and spatial pre-filter.
+
+    The parameters mirror exactly what the feder query pre-filters on today: a
+    half-open UTC time window, a lat/lon bounding box, and a minimum barometric
+    altitude in feet. Implementations may apply the bbox / altitude pre-filter
+    (as feder does, for efficiency) or yield everything and let ``load_flights``
+    do the strict per-ping filtering — both are correct, because the consumer
+    re-applies the exact radius/altitude thresholds after conversion.
+    """
+
+    def fetch(
+        self,
+        t_start: datetime.datetime,
+        t_end: datetime.datetime,
+        bbox: tuple[float, float, float, float],
+        min_altitude_ft: float,
+    ) -> Iterator[RawTrajectory]:
+        """Yield ``RawTrajectory`` objects for the window/box. ``bbox`` is
+        ``(min_lat, max_lat, min_lon, max_lon)``."""
+        ...
+
+
+class FederFlightSource:
+    """Production adapter: queries the feder per-day SQLite store.
+
+    Owns the feder coupling end-to-end: the read-only monkeypatch, the
+    ``FEDER_DATA_DIR`` environment variable, the ``FlightQuery`` chain, and the
+    mapping of feder ``Trajectory``/``Point`` objects onto ``RawTrajectory`` /
+    ``RawPoint``. Nothing outside this class imports feder.
+    """
+
+    def __init__(self, data_dir: str) -> None:
+        self._data_dir = data_dir
+
+    def fetch(
+        self,
+        t_start: datetime.datetime,
+        t_end: datetime.datetime,
+        bbox: tuple[float, float, float, float],
+        min_altitude_ft: float,
+    ) -> Iterator[RawTrajectory]:
+        import feder
+
+        _patch_feder_readonly_open()
+
+        os.environ["FEDER_DATA_DIR"] = self._data_dir
+
+        min_lat, max_lat, min_lon, max_lon = bbox
+        trajectories = (
+            feder.FlightQuery(t_start, t_end)
+            .with_bounds(
+                min_lat=min_lat,
+                max_lat=max_lat,
+                min_lon=min_lon,
+                max_lon=max_lon,
+                min_alt=min_altitude_ft,
+            )
+            .spatially_crosses()
+            .filter_waypoints()
+            .run()
+        )
+
+        for traj in trajectories:
+            yield RawTrajectory(
+                callsign=traj.callsign,
+                transponder_id=traj.transponder_id,
+                aircraft_type=traj.aircraft_type,
+                orig=traj.orig,
+                dest=traj.dest,
+                points=[
+                    RawPoint(
+                        time=pt.time,
+                        lat=pt.lat,
+                        lon=pt.lon,
+                        alt_ft=pt.alt,
+                        alt_gnss_ft=pt.alt_gnss,
+                    )
+                    for pt in traj.points
+                ],
+            )
+
+
+class RecordedFlightSource:
+    """Fake adapter: replays an in-memory list of ``RawTrajectory``.
+
+    The query window / bbox / altitude pre-filter are ignored — the recorded
+    trace is yielded verbatim and ``load_flights`` applies its strict per-ping
+    filters. Use ``from_json`` to load a committed raw trace for tests.
+    """
+
+    def __init__(self, trajectories: list[RawTrajectory]) -> None:
+        self._trajectories = list(trajectories)
+
+    @classmethod
+    def from_json(cls, path) -> "RecordedFlightSource":
+        """Build from a JSON file of raw trajectories.
+
+        Schema: a list of objects with ``callsign``, ``transponder_id``,
+        ``aircraft_type``, ``orig``, ``dest`` and a ``points`` list, each point
+        having ``time`` (ISO 8601), ``lat``, ``lon``, ``alt_ft``,
+        ``alt_gnss_ft`` (the latter two may be null).
+        """
+        with open(path) as f:
+            data = json.load(f)
+        trajectories = [
+            RawTrajectory(
+                callsign=entry["callsign"],
+                transponder_id=entry.get("transponder_id"),
+                aircraft_type=entry.get("aircraft_type"),
+                orig=entry.get("orig"),
+                dest=entry.get("dest"),
+                points=[
+                    RawPoint(
+                        time=datetime.datetime.fromisoformat(p["time"]),
+                        lat=p["lat"],
+                        lon=p["lon"],
+                        alt_ft=p.get("alt_ft"),
+                        alt_gnss_ft=p.get("alt_gnss_ft"),
+                    )
+                    for p in entry["points"]
+                ],
+            )
+            for entry in data
+        ]
+        return cls(trajectories)
+
+    def fetch(
+        self,
+        t_start: datetime.datetime,
+        t_end: datetime.datetime,
+        bbox: tuple[float, float, float, float],
+        min_altitude_ft: float,
+    ) -> Iterator[RawTrajectory]:
+        yield from self._trajectories
 
 
 @dataclass
@@ -266,6 +450,7 @@ def load_flights(
     date: datetime.date,
     config: AdsbConfig,
     timezone: str | None = None,
+    source: FlightSource | None = None,
 ) -> list[Flight]:
     """
     Load and filter ADS-B flights for a calendar day.
@@ -288,22 +473,23 @@ def load_flights(
 
     Emits a single summary log line with the count of pings where barometric
     and GNSS altitudes disagreed by more than the configured threshold.
+
+    ``source`` is the :class:`FlightSource` to pull raw trajectories from. When
+    ``None`` (the default) a :class:`FederFlightSource` is constructed for
+    ``config.data_dir`` — i.e. the production path is unchanged.
     """
-    import feder
-
-    _patch_feder_readonly_open()
-
-    os.environ["FEDER_DATA_DIR"] = config.data_dir
-
     if config.altitude_source not in _VALID_ALTITUDE_SOURCES:
         raise ValueError(
             f"altitude_source must be one of {_VALID_ALTITUDE_SOURCES}, "
             f"got {config.altitude_source!r}"
         )
 
+    if source is None:
+        source = FederFlightSource(config.data_dir)
+
     t_start, t_end = _day_window_utc(date, timezone)
 
-    min_lat, max_lat, min_lon, max_lon = _bbox_for_radius(
+    bbox = _bbox_for_radius(
         config.site_lat, config.site_lon, config.max_radius_km
     )
     # feder's altitude pre-filter operates on barometric feet; use the
@@ -312,19 +498,7 @@ def load_flights(
     # Pre-filter generously; the per-ping filter applies the strict threshold.
     min_alt_ft_prefilter = max(0.0, (config.min_altitude_m - 500.0) / _FT_TO_M)
 
-    trajectories = (
-        feder.FlightQuery(t_start, t_end)
-        .with_bounds(
-            min_lat=min_lat,
-            max_lat=max_lat,
-            min_lon=min_lon,
-            max_lon=max_lon,
-            min_alt=min_alt_ft_prefilter,
-        )
-        .spatially_crosses()
-        .filter_waypoints()
-        .run()
-    )
+    trajectories = source.fetch(t_start, t_end, bbox, min_alt_ft_prefilter)
 
     flights: list[Flight] = []
     discrepant = 0
@@ -332,10 +506,12 @@ def load_flights(
     for traj in trajectories:
         pings: list[Ping] = []
         for pt in traj.points:
-            alt_gnss_m = pt.alt_gnss * _FT_TO_M if pt.alt_gnss is not None else None
+            alt_gnss_m = (
+                pt.alt_gnss_ft * _FT_TO_M if pt.alt_gnss_ft is not None else None
+            )
             alt_baro_hae_m = (
-                pt.alt * _FT_TO_M + config.site_geoid_offset_m
-                if pt.alt is not None
+                pt.alt_ft * _FT_TO_M + config.site_geoid_offset_m
+                if pt.alt_ft is not None
                 else None
             )
 
@@ -344,7 +520,7 @@ def load_flights(
                 if abs(alt_gnss_m - alt_baro_hae_m) > config.altitude_discrepancy_threshold_m:
                     discrepant += 1
 
-            alt_m, source = _choose_altitude(alt_baro_hae_m, alt_gnss_m, config)
+            alt_m, alt_source = _choose_altitude(alt_baro_hae_m, alt_gnss_m, config)
             if alt_m is None:
                 continue
             if alt_m < config.min_altitude_m:
@@ -362,7 +538,7 @@ def load_flights(
                     alt_m=alt_m,
                     alt_gnss_m=alt_gnss_m,
                     alt_baro_m=alt_baro_hae_m,
-                    alt_source=source,
+                    alt_source=alt_source,
                 )
             )
 
