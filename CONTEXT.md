@@ -98,6 +98,44 @@ burns into the corner; reading it is a two-engine problem behind one seam.
   and midnight reading from the fallback; it now does the 12→24 conversion
   (`tests/test_ocr_fallback_clean.py` pins the truth table).
 
+## Architecture concepts (ADS-B cluster)
+
+The ADS-B loader (`concam/adsb`) keeps the `feder` dependency behind a port/adapter
+seam so the convert→filter→upsample pipeline is testable without the live store.
+
+- **`FlightSource`** (port, Protocol) — single method
+  `fetch(t_start, t_end, bbox, min_altitude_ft) -> Iterator[RawTrajectory]`,
+  exposing exactly the time-window / bounding-box / min-barometric-altitude
+  pre-filter the feder query applies.
+- **Raw types** (slotted, feder-native units) — `RawPoint(time, lat, lon, alt_ft,
+  alt_gnss_ft)` (altitudes in **feet**, mapped 1:1 from feder `Point.alt` /
+  `Point.alt_gnss`) and `RawTrajectory(callsign, transponder_id, aircraft_type,
+  orig, dest, points)`.
+- **`FederFlightSource`** (production adapter) — the only place that imports
+  `feder`; owns the version-pinned readonly monkeypatch, the `FEDER_DATA_DIR`
+  env, the `FlightQuery(...).with_bounds().spatially_crosses().filter_waypoints()
+  .run()` chain, and the feder→Raw mapping.
+- **`RecordedFlightSource`** (fake) — replays an in-memory `RawTrajectory` list or
+  a committed JSON trace (`tests/fixtures/adsb_raw_trace.json`), so the
+  conversion/altitude-policy/radius-filter/1 s-upsample logic runs without feder.
+  `load_flights(date, config, timezone=None, source=None)` defaults `source` to
+  `FederFlightSource`, so the production path is unchanged.
+
+## Architecture concepts (projection cluster)
+
+- **`Calibration`** (`concam/projection`) holds the camera intrinsics/extrinsics
+  and precomputes the ENU rotation + ECEF→ENU pyproj transform from plain arrays
+  (no file I/O in the constructor). `load_calibration` is a thin `.npz` reader
+  over it.
+- **`synthetic_calibration()`** — a module factory that builds a valid
+  `Calibration` in memory (simple pinhole at a real GPS; `cam_ecef` derived from
+  `camera_gps` via the same pyproj transform, so the two are mutually
+  consistent; identity rotation ⇒ camera frame = ENU). It exists so projection
+  geometry (`_gps_to_enu`, `project_pings`, `flight_path_vector`,
+  `project_pixel_to_meters`) is unit-testable against hand-computable geometry
+  without the real `.npz`. The 12 real-camera tests stay `.npz`-gated because
+  they assert MIT-Green-Building-specific pixel coordinates.
+
 ## Known latent inconsistencies (documented, deliberately not auto-"fixed")
 
 - `grow_contrail_length` runs the kernel with `apply_exclusion=False`, so the
