@@ -104,6 +104,90 @@ def load_calibration(config: CalibrationConfig) -> Calibration:
     )
 
 
+def synthetic_calibration(
+    *,
+    camera_gps: tuple[float, float, float] = (42.360444, -71.089238, 84.23),
+    rotation: np.ndarray | None = None,
+    fx: float = 2000.0,
+    fy: float = 2000.0,
+    cx: float = 1920.0,
+    cy: float = 1080.0,
+    resolution: tuple[int, int] = (3840, 2160),
+) -> Calibration:
+    """Build a valid in-memory Calibration without a .npz file, for testing.
+
+    This factory is the canonical way to exercise projection geometry in tests
+    that must run without the real calibration file.  It constructs a simple
+    pinhole camera at a real GPS location (defaulting to the MIT Green
+    Building roof) so that ``cam_ecef`` and ``camera_gps`` are mutually
+    consistent: ``cam_ecef`` is derived from ``camera_gps`` using the same
+    EPSG:4979→4978 pyproj transform that ``Calibration.__init__`` installs
+    as ``_transformer``.
+
+    With the default ``rotation=None`` (identity), the camera frame coincides
+    with the local ENU frame:
+
+    * +X  →  East
+    * +Y  →  North
+    * +Z  →  Up (the camera "looks" straight up)
+
+    A ping positioned directly overhead (same lat/lon, higher altitude) has
+    ENU ≈ (0, 0, Δalt) and therefore projects near the principal point
+    ``(cx, cy)``.  Because the identity rotation maps the image's +Y axis
+    directly onto ENU north, a ping displaced east maps to ``x > cx`` and a
+    ping displaced north maps to ``y > cy`` (no axis flip; ``pixel_y =
+    fy * ENU_y / ENU_z + cy``).
+
+    Parameters
+    ----------
+    camera_gps:
+        ``(lat_deg, lon_deg, alt_m)`` of the synthetic camera.  Defaults to
+        the MIT Green Building roof.
+    rotation:
+        3×3 rotation matrix (camera←ENU).  ``None`` → identity, so the
+        camera frame *is* the ENU frame.  Pass an explicit matrix when you
+        need the camera to look toward the horizon.
+    fx, fy:
+        Focal lengths in pixels.  Defaults give a 2000 px focal length
+        consistent with the real Green Building calibration order-of-magnitude.
+    cx, cy:
+        Principal point.  Defaults are the centre of a 3840×2160 sensor.
+    resolution:
+        ``(width, height)`` of the calibration resolution.
+
+    Returns
+    -------
+    Calibration
+        A fully-initialised ``Calibration`` object ready for use with
+        ``project_pings``, ``_gps_to_enu``, ``flight_path_vector``, and
+        ``project_pixel_to_meters``.
+    """
+    # Derive cam_ecef from camera_gps using the same pyproj transform that
+    # Calibration.__init__ uses (always_xy=True means lon, lat, alt order).
+    _t = Transformer.from_crs("epsg:4979", "epsg:4978", always_xy=True)
+    lat_deg, lon_deg, alt_m = camera_gps
+    ex, ey, ez = _t.transform(lon_deg, lat_deg, alt_m)
+    cam_ecef = np.array([ex, ey, ez], dtype=np.float64)
+
+    camera_matrix = np.array(
+        [[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]], dtype=np.float64
+    )
+    distortion_coefficients = np.zeros((5, 1), dtype=np.float64)
+    if rotation is None:
+        rotation = np.eye(3, dtype=np.float64)
+    translation = np.zeros((3, 1), dtype=np.float64)
+
+    return Calibration(
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+        rotation=rotation,
+        translation=translation,
+        cam_ecef=cam_ecef,
+        camera_gps=np.array([lat_deg, lon_deg, alt_m], dtype=np.float64),
+        calibration_resolution=resolution,
+    )
+
+
 def _gps_to_enu(
     lats: np.ndarray,
     lons: np.ndarray,
