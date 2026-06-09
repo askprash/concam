@@ -1,26 +1,29 @@
 #!/bin/bash
-# Daily cron wrapper: detect contrails on the most recent finished daily
-# timelapse(s), build the labeling bundle, and deploy it to the public reviewer
-# site (~/public_html/concam/<date>/).
+# Daily cron wrapper: publish the labeling bundle for the most recent day(s)
+# whose ADS-B flight data has become available.
 #
-# Designed to run from cron at 01:00 local time. It is intentionally lightweight
-# — it only checks the video and submits the heavy work to SLURM
-# (slurm/pipeline_and_publish.sh, which runs `concam run` then
-# scripts/publish_public_date.sh). Nothing CPU/RAM-heavy runs on the login node.
+# ADS-B (feder) data is NOT real-time — it lags the live date by a few days, and
+# the pipeline cannot run a day until feder has that day's flights. So the gating
+# question is "what is the latest day feder has data for?", NOT "is yesterday's
+# video done." This script:
+#   1. asks feder for the available days (scripts/feder_available_days.py),
+#   2. for each feder-available day in a lookback window (newest first), checks
+#      the daily timelapse video is present + complete, and that the date is not
+#      already deployed, then
+#   3. submits slurm/pipeline_and_publish.sh <date> (concam run -> publish), so
+#      the heavy work runs on the cluster, not the login node.
 #
-# It is IDEMPOTENT and self-healing:
-#   - skips any date already published (manifest.json present) unless --force,
-#   - skips a video that is missing, too small, or still being written, and
-#   - looks back over the last LOOKBACK_DAYS days so a slow encode (video not
-#     ready by 01:00) or a missed run is picked up on the next night.
-# In the normal case only "yesterday" is new, so only it gets submitted.
+# IDEMPOTENT + self-healing: skips dates already published (manifest.json present)
+# unless --force, skips videos that are missing/too-small/still-writing, and the
+# lookback window means a day is picked up automatically on the first night after
+# feder catches up to it. In steady state only the newest just-available day is new.
 #
 # Usage:
-#   scripts/daily_publish_cron.sh                # yesterday + lookback
-#   scripts/daily_publish_cron.sh 2026-06-07     # one explicit date
-#   scripts/daily_publish_cron.sh 2026-06-07 --force   # rebuild even if published
-#   LOOKBACK_DAYS=5 scripts/daily_publish_cron.sh
-#   DRY_RUN=1 scripts/daily_publish_cron.sh      # log decisions, submit nothing
+#   scripts/daily_publish_cron.sh                  # feder-available days in window
+#   scripts/daily_publish_cron.sh 2026-06-03       # one explicit date
+#   scripts/daily_publish_cron.sh 2026-06-03 --force   # rebuild even if published
+#   LOOKBACK_DAYS=21 scripts/daily_publish_cron.sh
+#   DRY_RUN=1 scripts/daily_publish_cron.sh        # log decisions, submit nothing
 #
 # Crontab line (01:00 daily):
 #   0 1 * * * /home/prash/contrails/mit-concam-pipeline/scripts/daily_publish_cron.sh \
@@ -32,14 +35,17 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
 # cron runs with a minimal PATH that lacks uv (~/.local/bin) and the SLURM CLI.
-# Put both on PATH so the submitted job (which SLURM seeds from this env) and the
-# sbatch call below both resolve. The SLURM script also hardens this itself.
+# Put both on PATH so the feder query, the sbatch call, and the submitted job
+# (which SLURM seeds from this env) all resolve. The SLURM script hardens uv too.
 export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
 
 SBATCH="${SBATCH:-$(command -v sbatch || echo /usr/local/bin/sbatch)}"
 VIDEO_ROOT="${VIDEO_ROOT:-/net/d16/data/contrail-camera}"
 PUBLIC_ROOT="${PUBLIC_ROOT:-$HOME/public_html/concam}"
-LOOKBACK_DAYS="${LOOKBACK_DAYS:-3}"
+LOOKBACK_DAYS="${LOOKBACK_DAYS:-14}"
+FEDER_MARGIN_DAYS="${FEDER_MARGIN_DAYS:-0}"   # hold back the newest N feder days
+                                              # (guard if the latest day's ADS-B
+                                              # is only partially ingested)
 MIN_VIDEO_BYTES="${MIN_VIDEO_BYTES:-$((100 * 1024 * 1024))}"   # 100 MB floor
 STABLE_SECS="${STABLE_SECS:-600}"                              # mtime must be >10 min old
 DRY_RUN="${DRY_RUN:-0}"
@@ -49,23 +55,38 @@ ts()  { date -u +%Y-%m-%dT%H:%M:%SZ; }
 log() { echo "[$(ts)] [daily_publish] $*"; }
 
 FORCE=0
-DATES=()
+EXPLICIT_DATES=()
 for arg in "$@"; do
   case "$arg" in
     --force) FORCE=1 ;;
-    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) DATES+=("$arg") ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) EXPLICIT_DATES+=("$arg") ;;
     *) log "WARN ignoring unrecognized arg: $arg" ;;
   esac
 done
 
-# Default set of dates: yesterday back through LOOKBACK_DAYS (most recent first).
-if [[ ${#DATES[@]} -eq 0 ]]; then
-  for ((i = 1; i <= LOOKBACK_DAYS; i++)); do
-    DATES+=("$(date -d "-${i} day" +%Y-%m-%d)")
-  done
+# Candidate dates: explicit args if given, else the feder-available days in the
+# lookback window (newest first). The latter is the normal cron path and is the
+# whole point — we never consider a day feder has no flights for.
+DATES=()
+if [[ ${#EXPLICIT_DATES[@]} -gt 0 ]]; then
+  DATES=("${EXPLICIT_DATES[@]}")
+  log "start: explicit dates=[${DATES[*]}] force=$FORCE dry_run=$DRY_RUN"
+else
+  latest=$(uv run python scripts/feder_available_days.py --latest 2>/dev/null || true)
+  if ! mapfile -t DATES < <(uv run python scripts/feder_available_days.py --within "$LOOKBACK_DAYS" 2>/dev/null) || [[ ${#DATES[@]} -eq 0 ]]; then
+    log "ERROR: could not determine feder ADS-B availability — feder store down or empty. Exiting."
+    exit 1
+  fi
+  log "start: latest feder day=${latest:-?}; ${#DATES[@]} feder-available day(s) in ${LOOKBACK_DAYS}d window; margin=${FEDER_MARGIN_DAYS}d; force=$FORCE dry_run=$DRY_RUN"
+  # Optional guard: drop the newest FEDER_MARGIN_DAYS days (latest day's ADS-B may
+  # still be ingesting). cutoff = latest - margin; keep only days <= cutoff.
+  if [[ -n "${latest:-}" && "$FEDER_MARGIN_DAYS" -gt 0 ]]; then
+    cutoff=$(date -d "$latest -${FEDER_MARGIN_DAYS} day" +%F)
+    kept=()
+    for d in "${DATES[@]}"; do [[ "$d" > "$cutoff" ]] && log "$d: within ${FEDER_MARGIN_DAYS}d feder margin — defer" || kept+=("$d"); done
+    DATES=("${kept[@]}")
+  fi
 fi
-
-log "start: dates=[${DATES[*]}] force=$FORCE dry_run=$DRY_RUN"
 
 submitted=0 skipped=0
 for DATE in "${DATES[@]}"; do
@@ -80,7 +101,7 @@ for DATE in "${DATES[@]}"; do
 
   # 2. Video present?
   if [[ ! -f "$video" ]]; then
-    log "$DATE: daily video not found ($video) — not ready, skip"; skipped=$((skipped + 1)); continue
+    log "$DATE: daily video not found ($video) — skip"; skipped=$((skipped + 1)); continue
   fi
 
   # 3. Looks complete: non-trivial size AND not modified recently (atomic-mv
@@ -96,7 +117,7 @@ for DATE in "${DATES[@]}"; do
 
   # 4. Submit the heavy pipeline+publish job to SLURM.
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    log "$DATE: [dry-run] would submit: $SBATCH slurm/pipeline_and_publish.sh $DATE (video ok, ${size} bytes)"
+    log "$DATE: [dry-run] would submit: $SBATCH slurm/pipeline_and_publish.sh $DATE (feder ok, video ${size} bytes)"
     submitted=$((submitted + 1)); continue
   fi
   jobid=$("$SBATCH" --parsable slurm/pipeline_and_publish.sh "$DATE")
