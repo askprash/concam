@@ -42,10 +42,13 @@ def _resolve_data_dir(config: str | None, data_dir: str | None) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--within", type=int, default=14,
-                    help="emit feder-available days within this many days of the "
-                         "latest available day (newest first)")
+                    help="scan this many days back from the newest day with data")
     ap.add_argument("--latest", action="store_true",
-                    help="print only the latest available day and exit")
+                    help="print only the latest COMPLETE day and exit")
+    ap.add_argument("--min-hours", type=float, default=20.0,
+                    help="a day counts as available only if its ADS-B coverage "
+                         "spans at least this many hours (guards partially-ingested "
+                         "latest days; full days are ~24h)")
     ap.add_argument("--config", default=None, help="site YAML (for the feder data dir)")
     ap.add_argument("--data-dir", default=None, help="override the feder data dir")
     args = ap.parse_args()
@@ -57,19 +60,37 @@ def main() -> int:
     if not ranges:
         print("no feder data available", file=sys.stderr)
         return 1
+    newest = max(end for _start, end in ranges)
 
-    latest = max(end for _start, end in ranges)
-    if args.latest:
-        print(latest.isoformat())
-        return 0
+    def covered_hours(day: datetime.date) -> float:
+        """Total hours of ADS-B coverage feder has for `day` (0 if none/error)."""
+        try:
+            intervals = feder.available_times(day)
+        except Exception:
+            return 0.0
+        return sum((e - s).total_seconds() for s, e in intervals) / 3600.0
 
-    def available(day: datetime.date) -> bool:
-        return any(start <= day <= end for start, end in ranges)
+    def complete(day: datetime.date) -> bool:
+        return covered_hours(day) >= args.min_hours
 
+    # Walk back from the newest day that has ANY data, emitting only days whose
+    # coverage is complete enough (newest first). The latest day is frequently
+    # mid-ingest (e.g. only the first few UTC hours), so it is excluded until full.
+    emitted = []
     for i in range(max(1, args.within)):
-        day = latest - datetime.timedelta(days=i)
-        if available(day):
-            print(day.isoformat())
+        day = newest - datetime.timedelta(days=i)
+        if complete(day):
+            emitted.append(day)
+
+    if args.latest:
+        if emitted:
+            print(emitted[0].isoformat())
+            return 0
+        print("no complete feder day in window", file=sys.stderr)
+        return 1
+
+    for day in emitted:
+        print(day.isoformat())
     return 0
 
 
