@@ -1,0 +1,2198 @@
+{
+  "schema_version": 1,
+  "date": "2026-04-09",
+  "labeler_id": "lrsand",
+  "exported_at": "2026-06-08T14:24:43.900Z",
+  "labels": [
+    {
+      "episode_id": 14,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T15:56:28.122Z"
+    },
+    {
+      "episode_id": 11,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T15:56:12.070Z"
+    },
+    {
+      "episode_id": 39,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:16:58.143Z"
+    },
+    {
+      "episode_id": 27,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T15:57:44.521Z"
+    },
+    {
+      "episode_id": 23,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T15:57:58.483Z"
+    },
+    {
+      "episode_id": 60,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T15:58:16.618Z"
+    },
+    {
+      "episode_id": 16,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T15:58:27.857Z"
+    },
+    {
+      "episode_id": 42,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T15:58:33.385Z"
+    },
+    {
+      "episode_id": 19,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-05T15:59:17.210Z"
+    },
+    {
+      "episode_id": 28,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T14:18:42.786Z"
+    },
+    {
+      "episode_id": 46,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T15:59:52.244Z"
+    },
+    {
+      "episode_id": 44,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:00:00.733Z"
+    },
+    {
+      "episode_id": 1,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:00:21.021Z"
+    },
+    {
+      "episode_id": 85,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:00:53.418Z"
+    },
+    {
+      "episode_id": 98,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T14:17:28.413Z"
+    },
+    {
+      "episode_id": 34,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:01:34.364Z"
+    },
+    {
+      "episode_id": 87,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:01:50.343Z"
+    },
+    {
+      "episode_id": 421,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:02:05.601Z"
+    },
+    {
+      "episode_id": 29,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T16:02:17.162Z"
+    },
+    {
+      "episode_id": 2,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T16:02:52.557Z"
+    },
+    {
+      "episode_id": 68,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:03:24.258Z"
+    },
+    {
+      "episode_id": 5,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T16:11:10.508Z"
+    },
+    {
+      "episode_id": 3,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T16:05:24.610Z"
+    },
+    {
+      "episode_id": 7,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:05:25.792Z"
+    },
+    {
+      "episode_id": 73,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:06:00.581Z"
+    },
+    {
+      "episode_id": 6,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-05T16:06:39.297Z"
+    },
+    {
+      "episode_id": 8,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:06:55.422Z"
+    },
+    {
+      "episode_id": 20,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:07:06.816Z"
+    },
+    {
+      "episode_id": 104,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:24:25.592Z"
+    },
+    {
+      "episode_id": 22,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:07:37.423Z"
+    },
+    {
+      "episode_id": 25,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:20:19.881Z"
+    },
+    {
+      "episode_id": 157,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:33:39.095Z"
+    },
+    {
+      "episode_id": 32,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:23:03.014Z"
+    },
+    {
+      "episode_id": 45,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T16:52:15.555Z"
+    },
+    {
+      "episode_id": 102,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:58:21.592Z"
+    },
+    {
+      "episode_id": 38,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:00:47.229Z"
+    },
+    {
+      "episode_id": 50,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:54:40.374Z"
+    },
+    {
+      "episode_id": 65,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:20:59.388Z"
+    },
+    {
+      "episode_id": 49,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T12:57:48.159Z"
+    },
+    {
+      "episode_id": 72,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:52:17.572Z"
+    },
+    {
+      "episode_id": 61,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:25:30.630Z"
+    },
+    {
+      "episode_id": 176,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:57:37.796Z"
+    },
+    {
+      "episode_id": 66,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:26:16.591Z"
+    },
+    {
+      "episode_id": 103,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-05T16:13:51.205Z"
+    },
+    {
+      "episode_id": 77,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:19:45.761Z"
+    },
+    {
+      "episode_id": 192,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:06:49.796Z"
+    },
+    {
+      "episode_id": 126,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:13:24.086Z"
+    },
+    {
+      "episode_id": 33,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:46:03.188Z"
+    },
+    {
+      "episode_id": 92,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:21:16.836Z"
+    },
+    {
+      "episode_id": 319,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:28:57.224Z"
+    },
+    {
+      "episode_id": 181,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:12:55.970Z"
+    },
+    {
+      "episode_id": 95,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:03:39.000Z"
+    },
+    {
+      "episode_id": 99,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:45:01.493Z"
+    },
+    {
+      "episode_id": 93,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:46:30.178Z"
+    },
+    {
+      "episode_id": 199,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:32:43.607Z"
+    },
+    {
+      "episode_id": 105,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:25:24.616Z"
+    },
+    {
+      "episode_id": 106,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:25:39.583Z"
+    },
+    {
+      "episode_id": 117,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:45:39.088Z"
+    },
+    {
+      "episode_id": 118,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:47:47.876Z"
+    },
+    {
+      "episode_id": 186,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:54:12.401Z"
+    },
+    {
+      "episode_id": 120,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:00:49.574Z"
+    },
+    {
+      "episode_id": 122,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:57:04.581Z"
+    },
+    {
+      "episode_id": 123,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:12:55.576Z"
+    },
+    {
+      "episode_id": 280,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:38:36.098Z"
+    },
+    {
+      "episode_id": 260,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:19:30.672Z"
+    },
+    {
+      "episode_id": 125,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:22:01.172Z"
+    },
+    {
+      "episode_id": 127,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:00:09.851Z"
+    },
+    {
+      "episode_id": 128,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:17:30.171Z"
+    },
+    {
+      "episode_id": 179,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:01:06.919Z"
+    },
+    {
+      "episode_id": 209,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:14:31.051Z"
+    },
+    {
+      "episode_id": 232,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:45:11.487Z"
+    },
+    {
+      "episode_id": 142,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:42:24.956Z"
+    },
+    {
+      "episode_id": 423,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:52:38.460Z"
+    },
+    {
+      "episode_id": 145,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:33:51.911Z"
+    },
+    {
+      "episode_id": 94,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:03:10.841Z"
+    },
+    {
+      "episode_id": 167,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:23:56.796Z"
+    },
+    {
+      "episode_id": 170,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:14:22.574Z"
+    },
+    {
+      "episode_id": 163,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:54:02.382Z"
+    },
+    {
+      "episode_id": 244,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:16:00.294Z"
+    },
+    {
+      "episode_id": 417,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:05:51.715Z"
+    },
+    {
+      "episode_id": 287,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:24:48.198Z"
+    },
+    {
+      "episode_id": 195,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:21:19.325Z"
+    },
+    {
+      "episode_id": 188,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:47:39.625Z"
+    },
+    {
+      "episode_id": 184,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:00:42.580Z"
+    },
+    {
+      "episode_id": 96,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:22:34.231Z"
+    },
+    {
+      "episode_id": 185,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:17:13.771Z"
+    },
+    {
+      "episode_id": 194,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T12:50:22.997Z"
+    },
+    {
+      "episode_id": 177,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:42:43.429Z"
+    },
+    {
+      "episode_id": 326,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:07:57.940Z"
+    },
+    {
+      "episode_id": 227,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:41:17.820Z"
+    },
+    {
+      "episode_id": 210,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:42:55.973Z"
+    },
+    {
+      "episode_id": 213,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:53:57.711Z"
+    },
+    {
+      "episode_id": 327,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:37:48.791Z"
+    },
+    {
+      "episode_id": 221,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:59:03.497Z"
+    },
+    {
+      "episode_id": 215,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:49:38.838Z"
+    },
+    {
+      "episode_id": 332,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:05:08.238Z"
+    },
+    {
+      "episode_id": 218,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T12:47:06.513Z"
+    },
+    {
+      "episode_id": 251,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:12:15.714Z"
+    },
+    {
+      "episode_id": 348,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:20:46.033Z"
+    },
+    {
+      "episode_id": 224,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:11:09.235Z"
+    },
+    {
+      "episode_id": 231,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:20:39.840Z"
+    },
+    {
+      "episode_id": 132,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:56:11.731Z"
+    },
+    {
+      "episode_id": 250,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:11:17.041Z"
+    },
+    {
+      "episode_id": 238,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:03:25.392Z"
+    },
+    {
+      "episode_id": 243,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:47:20.780Z"
+    },
+    {
+      "episode_id": 271,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-05T16:45:57.896Z"
+    },
+    {
+      "episode_id": 355,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:44:59.216Z"
+    },
+    {
+      "episode_id": 366,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:31:54.890Z"
+    },
+    {
+      "episode_id": 259,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:38:35.954Z"
+    },
+    {
+      "episode_id": 146,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:18:15.480Z"
+    },
+    {
+      "episode_id": 256,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:39:07.350Z"
+    },
+    {
+      "episode_id": 234,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:15:05.781Z"
+    },
+    {
+      "episode_id": 257,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:13:21.139Z"
+    },
+    {
+      "episode_id": 392,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:59:53.621Z"
+    },
+    {
+      "episode_id": 268,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:55:23.860Z"
+    },
+    {
+      "episode_id": 265,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:53:45.362Z"
+    },
+    {
+      "episode_id": 270,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:42:08.696Z"
+    },
+    {
+      "episode_id": 246,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:57:40.446Z"
+    },
+    {
+      "episode_id": 164,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:24:47.239Z"
+    },
+    {
+      "episode_id": 30,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:36:25.836Z"
+    },
+    {
+      "episode_id": 387,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:45:34.809Z"
+    },
+    {
+      "episode_id": 329,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-08T13:09:40.005Z"
+    },
+    {
+      "episode_id": 119,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T16:25:38.139Z"
+    },
+    {
+      "episode_id": 350,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:56:24.016Z"
+    },
+    {
+      "episode_id": 328,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:30:54.693Z"
+    },
+    {
+      "episode_id": 289,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:33:05.950Z"
+    },
+    {
+      "episode_id": 178,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:19:13.494Z"
+    },
+    {
+      "episode_id": 284,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:12:09.699Z"
+    },
+    {
+      "episode_id": 340,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:23:08.939Z"
+    },
+    {
+      "episode_id": 273,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:08:11.655Z"
+    },
+    {
+      "episode_id": 333,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:08:00.238Z"
+    },
+    {
+      "episode_id": 303,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:21:45.318Z"
+    },
+    {
+      "episode_id": 422,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:25:27.083Z"
+    },
+    {
+      "episode_id": 309,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:24:22.431Z"
+    },
+    {
+      "episode_id": 339,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:22:38.930Z"
+    },
+    {
+      "episode_id": 321,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-05T16:44:33.138Z"
+    },
+    {
+      "episode_id": 325,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:13:47.833Z"
+    },
+    {
+      "episode_id": 435,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-08T13:09:20.971Z"
+    },
+    {
+      "episode_id": 428,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:34:27.663Z"
+    },
+    {
+      "episode_id": 429,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:04:39.192Z"
+    },
+    {
+      "episode_id": 408,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:20:03.777Z"
+    },
+    {
+      "episode_id": 592,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-05T16:12:35.228Z"
+    },
+    {
+      "episode_id": 346,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:19:17.733Z"
+    },
+    {
+      "episode_id": 427,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:37:56.450Z"
+    },
+    {
+      "episode_id": 450,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:29:37.659Z"
+    },
+    {
+      "episode_id": 342,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:51:24.621Z"
+    },
+    {
+      "episode_id": 139,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:35:22.494Z"
+    },
+    {
+      "episode_id": 24,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:14:43.720Z"
+    },
+    {
+      "episode_id": 352,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T12:49:12.932Z"
+    },
+    {
+      "episode_id": 354,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:54:48.163Z"
+    },
+    {
+      "episode_id": 356,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:16:20.875Z"
+    },
+    {
+      "episode_id": 414,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:49:14.931Z"
+    },
+    {
+      "episode_id": 364,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:09:08.726Z"
+    },
+    {
+      "episode_id": 442,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:36:14.754Z"
+    },
+    {
+      "episode_id": 369,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:17:09.498Z"
+    },
+    {
+      "episode_id": 189,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:57:13.923Z"
+    },
+    {
+      "episode_id": 367,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:05:54.362Z"
+    },
+    {
+      "episode_id": 648,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:59:33.748Z"
+    },
+    {
+      "episode_id": 343,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:41:56.099Z"
+    },
+    {
+      "episode_id": 379,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:09:55.683Z"
+    },
+    {
+      "episode_id": 487,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:58:27.020Z"
+    },
+    {
+      "episode_id": 502,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:01:44.534Z"
+    },
+    {
+      "episode_id": 440,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:35:31.412Z"
+    },
+    {
+      "episode_id": 407,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:17:50.047Z"
+    },
+    {
+      "episode_id": 375,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:17:31.580Z"
+    },
+    {
+      "episode_id": 391,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:00:07.830Z"
+    },
+    {
+      "episode_id": 274,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-08T13:00:32.359Z"
+    },
+    {
+      "episode_id": 466,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:59:38.313Z"
+    },
+    {
+      "episode_id": 393,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:43:27.955Z"
+    },
+    {
+      "episode_id": 412,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:28:24.336Z"
+    },
+    {
+      "episode_id": 396,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:53:20.322Z"
+    },
+    {
+      "episode_id": 416,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:04:58.649Z"
+    },
+    {
+      "episode_id": 420,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:48:07.838Z"
+    },
+    {
+      "episode_id": 400,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:08:53.071Z"
+    },
+    {
+      "episode_id": 56,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:50:32.345Z"
+    },
+    {
+      "episode_id": 12,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-08T14:09:51.956Z"
+    },
+    {
+      "episode_id": 403,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:35:04.134Z"
+    },
+    {
+      "episode_id": 477,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:52:48.305Z"
+    },
+    {
+      "episode_id": 413,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:15:35.348Z"
+    },
+    {
+      "episode_id": 436,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:48:29.273Z"
+    },
+    {
+      "episode_id": 418,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:16:35.532Z"
+    },
+    {
+      "episode_id": 426,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:18:34.011Z"
+    },
+    {
+      "episode_id": 488,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:56:50.053Z"
+    },
+    {
+      "episode_id": 473,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:01:05.510Z"
+    },
+    {
+      "episode_id": 434,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:39:37.670Z"
+    },
+    {
+      "episode_id": 47,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:30:06.426Z"
+    },
+    {
+      "episode_id": 431,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 5,
+      "label_timestamp": "2026-06-05T16:30:58.315Z"
+    },
+    {
+      "episode_id": 552,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:50:29.823Z"
+    },
+    {
+      "episode_id": 438,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:33:22.229Z"
+    },
+    {
+      "episode_id": 198,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 5,
+      "label_timestamp": "2026-06-05T16:23:29.148Z",
+      "measurements": [
+        {
+          "p1": {
+            "x": 1794,
+            "y": 827
+          },
+          "p2": {
+            "x": 8,
+            "y": 459
+          },
+          "flight_level": 369,
+          "length_m": 26836,
+          "wall_time_utc": "2026-04-09T20:50:53.000Z",
+          "created_at": "2026-06-05T16:23:25.010Z"
+        }
+      ]
+    },
+    {
+      "episode_id": 516,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:32:38.937Z"
+    },
+    {
+      "episode_id": 451,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:01:53.197Z"
+    },
+    {
+      "episode_id": 446,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:50:48.997Z"
+    },
+    {
+      "episode_id": 40,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:33:54.663Z"
+    },
+    {
+      "episode_id": 534,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:23:24.236Z"
+    },
+    {
+      "episode_id": 149,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:58:48.168Z"
+    },
+    {
+      "episode_id": 463,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:51:56.193Z"
+    },
+    {
+      "episode_id": 175,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:28:14.683Z"
+    },
+    {
+      "episode_id": 376,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:28:57.282Z"
+    },
+    {
+      "episode_id": 216,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:31:43.977Z"
+    },
+    {
+      "episode_id": 546,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:19:05.033Z"
+    },
+    {
+      "episode_id": 478,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 5,
+      "label_timestamp": "2026-06-05T16:49:04.058Z"
+    },
+    {
+      "episode_id": 633,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:19:22.270Z",
+      "measurements": [
+        {
+          "p1": {
+            "x": 2172,
+            "y": 1163
+          },
+          "p2": {
+            "x": 2834,
+            "y": 1272
+          },
+          "flight_level": 349,
+          "length_m": 32011,
+          "wall_time_utc": "2026-04-09T21:56:52.000Z",
+          "created_at": "2026-06-05T16:18:26.220Z"
+        },
+        {
+          "p1": {
+            "x": 1297,
+            "y": 1090
+          },
+          "p2": {
+            "x": 22,
+            "y": 869
+          },
+          "flight_level": 349,
+          "length_m": 29443,
+          "wall_time_utc": "2026-04-09T21:50:53.000Z",
+          "created_at": "2026-06-05T16:19:22.270Z"
+        }
+      ]
+    },
+    {
+      "episode_id": 470,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-08T12:43:52.759Z"
+    },
+    {
+      "episode_id": 509,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:19:50.212Z"
+    },
+    {
+      "episode_id": 558,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:01:29.667Z"
+    },
+    {
+      "episode_id": 193,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:28:10.345Z"
+    },
+    {
+      "episode_id": 486,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:01:18.653Z"
+    },
+    {
+      "episode_id": 512,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T12:58:39.906Z"
+    },
+    {
+      "episode_id": 18,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:33:12.738Z"
+    },
+    {
+      "episode_id": 545,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:14:31.362Z"
+    },
+    {
+      "episode_id": 76,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:51:05.117Z"
+    },
+    {
+      "episode_id": 635,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:06:36.502Z"
+    },
+    {
+      "episode_id": 515,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:37:30.741Z"
+    },
+    {
+      "episode_id": 101,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:16:12.699Z"
+    },
+    {
+      "episode_id": 632,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:24:07.685Z"
+    },
+    {
+      "episode_id": 359,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:45:27.770Z"
+    },
+    {
+      "episode_id": 483,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:36:43.639Z"
+    },
+    {
+      "episode_id": 505,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:46:48.229Z"
+    },
+    {
+      "episode_id": 226,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:05:17.462Z"
+    },
+    {
+      "episode_id": 627,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:22:19.139Z"
+    },
+    {
+      "episode_id": 382,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:17:14.594Z"
+    },
+    {
+      "episode_id": 347,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:48:15.515Z"
+    },
+    {
+      "episode_id": 637,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 5,
+      "label_timestamp": "2026-06-05T16:48:29.918Z"
+    },
+    {
+      "episode_id": 572,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:27:58.294Z"
+    },
+    {
+      "episode_id": 508,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:18:24.470Z"
+    },
+    {
+      "episode_id": 636,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:35:38.411Z"
+    },
+    {
+      "episode_id": 519,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T12:49:45.669Z"
+    },
+    {
+      "episode_id": 549,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:11:37.726Z"
+    },
+    {
+      "episode_id": 630,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:38:12.762Z"
+    },
+    {
+      "episode_id": 526,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:16:49.825Z"
+    },
+    {
+      "episode_id": 439,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:07:53.013Z"
+    },
+    {
+      "episode_id": 522,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:00:01.577Z"
+    },
+    {
+      "episode_id": 432,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:10:38.133Z"
+    },
+    {
+      "episode_id": 518,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:55:40.806Z"
+    },
+    {
+      "episode_id": 640,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:27:29.523Z"
+    },
+    {
+      "episode_id": 532,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:16:05.170Z"
+    },
+    {
+      "episode_id": 172,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:36:11.403Z"
+    },
+    {
+      "episode_id": 638,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:08:13.628Z"
+    },
+    {
+      "episode_id": 530,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T17:06:28.953Z"
+    },
+    {
+      "episode_id": 449,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:15:15.648Z"
+    },
+    {
+      "episode_id": 531,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:43:55.172Z"
+    },
+    {
+      "episode_id": 110,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T12:45:46.490Z"
+    },
+    {
+      "episode_id": 538,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:13:31.863Z"
+    },
+    {
+      "episode_id": 535,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:05:19.788Z"
+    },
+    {
+      "episode_id": 529,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:34:02.673Z"
+    },
+    {
+      "episode_id": 642,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:35:56.480Z"
+    },
+    {
+      "episode_id": 600,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:47:22.539Z"
+    },
+    {
+      "episode_id": 539,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:23:41.366Z"
+    },
+    {
+      "episode_id": 568,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:43:17.489Z"
+    },
+    {
+      "episode_id": 204,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:38:22.362Z"
+    },
+    {
+      "episode_id": 639,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 5,
+      "label_timestamp": "2026-06-05T16:22:01.398Z"
+    },
+    {
+      "episode_id": 261,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:16:24.147Z"
+    },
+    {
+      "episode_id": 541,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:07:09.534Z"
+    },
+    {
+      "episode_id": 404,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:48:04.810Z",
+      "label_notes": "truly barely exists- just right outside the crane for a second"
+    },
+    {
+      "episode_id": 551,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:15:23.992Z"
+    },
+    {
+      "episode_id": 570,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:20:03.052Z"
+    },
+    {
+      "episode_id": 180,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-05T16:42:22.862Z"
+    },
+    {
+      "episode_id": 644,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:24:15.855Z"
+    },
+    {
+      "episode_id": 547,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:15:52.059Z"
+    },
+    {
+      "episode_id": 602,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:24:48.155Z"
+    },
+    {
+      "episode_id": 537,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:47:07.617Z"
+    },
+    {
+      "episode_id": 548,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:08:18.250Z"
+    },
+    {
+      "episode_id": 603,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:41:26.667Z"
+    },
+    {
+      "episode_id": 643,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:17:38.442Z"
+    },
+    {
+      "episode_id": 553,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:09:40.138Z"
+    },
+    {
+      "episode_id": 581,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:16:44.201Z"
+    },
+    {
+      "episode_id": 365,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:27:54.867Z"
+    },
+    {
+      "episode_id": 564,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:13:50.427Z"
+    },
+    {
+      "episode_id": 561,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:17:21.861Z"
+    },
+    {
+      "episode_id": 150,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:13:50.736Z"
+    },
+    {
+      "episode_id": 590,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:15:25.142Z"
+    },
+    {
+      "episode_id": 560,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 4,
+      "label_timestamp": "2026-06-08T13:36:47.923Z"
+    },
+    {
+      "episode_id": 69,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:14:04.562Z"
+    },
+    {
+      "episode_id": 585,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:36:32.786Z"
+    },
+    {
+      "episode_id": 647,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:49:45.949Z"
+    },
+    {
+      "episode_id": 555,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 3,
+      "label_timestamp": "2026-06-08T13:08:23.685Z"
+    },
+    {
+      "episode_id": 351,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:08:20.150Z"
+    },
+    {
+      "episode_id": 586,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:31:35.344Z"
+    },
+    {
+      "episode_id": 484,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:09:24.097Z"
+    },
+    {
+      "episode_id": 336,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:10:32.497Z"
+    },
+    {
+      "episode_id": 330,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:09:21.433Z"
+    },
+    {
+      "episode_id": 610,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:12:06.501Z"
+    },
+    {
+      "episode_id": 628,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:21:28.536Z"
+    },
+    {
+      "episode_id": 641,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:52:15.303Z"
+    },
+    {
+      "episode_id": 419,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:23:45.345Z"
+    },
+    {
+      "episode_id": 605,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:16:01.313Z"
+    },
+    {
+      "episode_id": 569,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:54:48.153Z"
+    },
+    {
+      "episode_id": 606,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T16:41:31.938Z"
+    },
+    {
+      "episode_id": 609,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:02:33.592Z"
+    },
+    {
+      "episode_id": 579,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:26:54.506Z"
+    },
+    {
+      "episode_id": 607,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:14:07.104Z"
+    },
+    {
+      "episode_id": 646,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-05T17:25:10.732Z"
+    },
+    {
+      "episode_id": 604,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:21:06.683Z"
+    },
+    {
+      "episode_id": 575,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:29:37.410Z"
+    },
+    {
+      "episode_id": 567,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:04:29.544Z"
+    },
+    {
+      "episode_id": 650,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:40:08.502Z"
+    },
+    {
+      "episode_id": 576,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:39:13.994Z"
+    },
+    {
+      "episode_id": 615,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:49:59.842Z"
+    },
+    {
+      "episode_id": 240,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:06:56.607Z"
+    },
+    {
+      "episode_id": 656,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:27:17.521Z"
+    },
+    {
+      "episode_id": 624,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:08:56.564Z"
+    },
+    {
+      "episode_id": 619,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T14:19:07.854Z"
+    },
+    {
+      "episode_id": 613,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:20:12.891Z"
+    },
+    {
+      "episode_id": 608,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:55:06.132Z"
+    },
+    {
+      "episode_id": 492,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:18:25.061Z"
+    },
+    {
+      "episode_id": 501,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:24:59.885Z"
+    },
+    {
+      "episode_id": 657,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:47:01.938Z"
+    },
+    {
+      "episode_id": 611,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:08:04.302Z"
+    },
+    {
+      "episode_id": 653,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:23:42.858Z"
+    },
+    {
+      "episode_id": 655,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:14:06.114Z"
+    },
+    {
+      "episode_id": 482,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:15:37.763Z"
+    },
+    {
+      "episode_id": 37,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:20:45.447Z"
+    },
+    {
+      "episode_id": 513,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:53:45.630Z"
+    },
+    {
+      "episode_id": 658,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:18:32.441Z"
+    },
+    {
+      "episode_id": 665,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T17:21:30.212Z"
+    },
+    {
+      "episode_id": 88,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:43:49.906Z"
+    },
+    {
+      "episode_id": 497,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:16:16.797Z"
+    },
+    {
+      "episode_id": 612,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:03:47.727Z"
+    },
+    {
+      "episode_id": 191,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:03:58.954Z"
+    },
+    {
+      "episode_id": 616,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:34:50.661Z"
+    },
+    {
+      "episode_id": 623,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-08T13:27:47.941Z"
+    },
+    {
+      "episode_id": 506,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 1,
+      "label_timestamp": "2026-06-05T17:02:39.114Z"
+    },
+    {
+      "episode_id": 651,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:46:16.767Z"
+    },
+    {
+      "episode_id": 659,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:30:15.505Z"
+    },
+    {
+      "episode_id": 663,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T12:59:08.718Z"
+    },
+    {
+      "episode_id": 536,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-05T16:14:42.612Z"
+    },
+    {
+      "episode_id": 433,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T13:16:52.001Z"
+    },
+    {
+      "episode_id": 634,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:40:44.127Z"
+    },
+    {
+      "episode_id": 661,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:20:21.677Z"
+    },
+    {
+      "episode_id": 542,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "persistence_rating": 2,
+      "label_timestamp": "2026-06-08T12:58:58.244Z"
+    },
+    {
+      "episode_id": 499,
+      "label": "unsure",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:10:44.204Z"
+    },
+    {
+      "episode_id": 577,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:12:24.709Z"
+    },
+    {
+      "episode_id": 626,
+      "label": "no_contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T14:04:13.120Z"
+    },
+    {
+      "episode_id": 662,
+      "label": "contrail",
+      "labeler_id": "lrsand",
+      "label_timestamp": "2026-06-08T13:10:01.893Z"
+    }
+  ]
+}
