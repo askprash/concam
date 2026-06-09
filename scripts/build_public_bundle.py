@@ -29,6 +29,7 @@ import json
 import shutil
 from pathlib import Path
 
+from concam.adsb import _haversine_km
 from concam.bundle import calibration_block
 from concam.config import load_config
 from concam.projection import load_calibration
@@ -64,13 +65,21 @@ def _split_on_gap(frames: list[dict], max_gap_seconds: float) -> list[list[dict]
     return runs
 
 
-def _build_flight_tracks_with_altitude(projections_path: Path) -> dict[str, dict]:
-    """Like concam.bundle._build_flight_tracks but carries per-ping altitude.
+def _build_flight_tracks_with_altitude(
+    projections_path: Path,
+    site_lat: float,
+    site_lon: float,
+) -> dict[str, dict]:
+    """Like concam.bundle._build_flight_tracks but carries per-ping altitude and distance.
 
     The labeler uses ``alt_baro_m`` to render the flight level on the on-screen
     dot label (FL = round(alt_baro_ft / 100)). ``alt_m`` is the effective
     altitude used for projection and is kept as a fallback when barometric is
     missing.
+
+    ``dist_km`` is the great-circle distance from the camera site to the ping's
+    lat/lon position, rounded to 2 decimal places. It is ``None`` when the
+    projection record lacks ``lat``/``lon`` (older pipeline data).
     """
     tracks: dict[str, dict] = {}
     for rec in _iter_jsonl(projections_path):
@@ -83,6 +92,12 @@ def _build_flight_tracks_with_altitude(projections_path: Path) -> dict[str, dict
                 "pings": [],
             },
         )
+        lat = rec.get("lat")
+        lon = rec.get("lon")
+        if lat is not None and lon is not None:
+            dist_km = round(_haversine_km(site_lat, site_lon, lat, lon), 2)
+        else:
+            dist_km = None
         entry["pings"].append(
             {
                 "wall_time_utc": rec["wall_time_utc"],
@@ -90,6 +105,7 @@ def _build_flight_tracks_with_altitude(projections_path: Path) -> dict[str, dict
                 "pixel_y": rec["pixel_y"],
                 "alt_m": rec.get("alt_m"),
                 "alt_baro_m": rec.get("alt_baro_m"),
+                "dist_km": dist_km,
             }
         )
     for entry in tracks.values():
@@ -103,21 +119,36 @@ def build_manifest(
     detections_path: Path,
     max_gap_seconds: float,
     detection_threshold: float,
+    site_lat: float = 42.360444,
+    site_lon: float = -71.089238,
 ) -> dict:
     per_tid_frames: dict[str, list[dict]] = {}
     per_tid_callsign: dict[str, str] = {}
+    # Per-transponder list of (wall_time_utc, dist_km) for closest-approach
+    # computation. dist_km may be None when lat/lon is absent in older data.
+    per_tid_dist: dict[str, list[tuple[dt.datetime, float | None]]] = {}
 
     for rec in _iter_jsonl(projections_path):
         tid = rec["transponder_id"]
         per_tid_callsign.setdefault(tid, rec.get("callsign") or tid)
+        t = _parse_iso(rec["wall_time_utc"])
         per_tid_frames.setdefault(tid, []).append(
             {
-                "t": _parse_iso(rec["wall_time_utc"]),
+                "t": t,
                 "wall_time_utc": rec["wall_time_utc"],
                 "score": 0.0,
                 "pixel_line": None,
             }
         )
+        lat = rec.get("lat")
+        lon = rec.get("lon")
+        if lat is not None and lon is not None:
+            dist_km: float | None = round(
+                _haversine_km(site_lat, site_lon, lat, lon), 2
+            )
+        else:
+            dist_km = None
+        per_tid_dist.setdefault(tid, []).append((t, dist_km))
 
     # Overlay detection scores/lines onto the frame dicts, keyed by
     # (transponder_id, wall_time_utc).
@@ -140,6 +171,17 @@ def build_manifest(
             peak = max(run, key=lambda f: f["score"])
             onset = run[0]["t"]
             end = run[-1]["t"]
+            # Closest-approach: minimum dist_km over this flight's pings whose
+            # wall_time_utc falls within [onset, end]. Skips pings with None
+            # dist_km (older data missing lat/lon). None when no pings qualify.
+            in_window_dists = [
+                d
+                for t, d in per_tid_dist.get(tid, [])
+                if onset <= t <= end and d is not None
+            ]
+            closest_approach_km: float | None = (
+                round(min(in_window_dists), 2) if in_window_dists else None
+            )
             episodes_out.append(
                 {
                     "episode_id": next_eid,
@@ -152,6 +194,7 @@ def build_manifest(
                     "peak_pixel_line": peak["pixel_line"],
                     "peak_contrail_length_m": None,
                     "is_overlap": False,
+                    "closest_approach_km": closest_approach_km,
                     "frames": [
                         {
                             "wall_time_utc": f["wall_time_utc"],
@@ -228,12 +271,18 @@ def main() -> None:
         detections_path=detections,
         max_gap_seconds=site.aggregation.max_gap_seconds,
         detection_threshold=site.aggregation.detection_threshold,
+        site_lat=site.adsb.site_lat,
+        site_lon=site.adsb.site_lon,
     )
     # Rebuild flight_tracks from the current projections.jsonl rather than
     # trusting the source bundle's snapshot — the pipeline may have been
     # re-run since the bundle was generated, in which case the source manifest
     # misses any flights added by the rerun.
-    manifest["flight_tracks"] = _build_flight_tracks_with_altitude(projections)
+    manifest["flight_tracks"] = _build_flight_tracks_with_altitude(
+        projections,
+        site_lat=site.adsb.site_lat,
+        site_lon=site.adsb.site_lon,
+    )
     manifest["calibration"] = calibration_block(load_calibration(site.calibration))
 
     args.out_dir.mkdir(parents=True, exist_ok=True)

@@ -136,6 +136,25 @@ seam so the convert→filter→upsample pipeline is testable without the live st
   without the real `.npz`. The 12 real-camera tests stay `.npz`-gated because
   they assert MIT-Green-Building-specific pixel coordinates.
 
+## Architecture concepts (bundle / labeler cluster)
+
+- **Public bundle manifest** (`scripts/build_public_bundle.py` → `manifest.json`,
+  consumed by `concam/bundle/templates/labeler.html`) carries `episodes[]` and
+  `flight_tracks[tid].pings[]`. The builder reads `projections.jsonl` (which has
+  per-ping `lat`/`lon`) and `detections.jsonl`.
+- **`flight_tracks[tid].pings[].dist_km`** — great-circle (haversine) distance in
+  km from the camera site to each ADS-B ping, rounded to 2 dp (`None`/`null` for
+  older projections that predate lat/lon logging). Computed at build time with
+  the shared `_haversine_km` (`concam/adsb`) and `site.adsb.site_lat/site_lon`.
+- **`episodes[].closest_approach_km`** — the minimum `dist_km` over that flight's
+  pings within the episode's `[onset, end]` window (matched by `transponder_id`);
+  `null` if none. Computed once alongside the per-ping distances.
+- **Distance slider** (labeler front-end) filters the overlay per-point (pings
+  with `dist_km > maxDistKm` vanish) and the sidebar per-episode (hidden when
+  `closest_approach_km > maxDistKm`). Both treat `null`/absent distance as
+  always-visible, and the slider self-hides when a manifest carries no distance
+  data (graceful degradation for old/private bundles).
+
 ## Known latent inconsistencies (documented, deliberately not auto-"fixed")
 
 - `grow_contrail_length` runs the kernel with `apply_exclusion=False`, so the

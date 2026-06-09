@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,6 +22,23 @@ from concam.bundle import (
 from concam.bundle import calibration_block
 from concam.cli import main as cli_main
 from concam.storage import Database
+
+# ---------------------------------------------------------------------------
+# Import build_public_bundle script helpers
+# ---------------------------------------------------------------------------
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_SCRIPTS = _REPO_ROOT / "scripts"
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+from build_public_bundle import (  # noqa: E402
+    _build_flight_tracks_with_altitude,
+    build_manifest,
+)
+
+# Camera site defaults (mirrors AdsbConfig defaults)
+_SITE_LAT = 42.360444
+_SITE_LON = -71.089238
 
 
 # ---------- Assignment ----------
@@ -153,6 +171,14 @@ def synthetic_pipeline_outputs(tmp_path: Path) -> dict:
     db_path = tmp_path / "pipeline.duckdb"
     _populate_duckdb(db_path, date, episodes)
 
+    # Assign per-flight lat/lon so that distances are meaningfully different:
+    #   TID0 (i=0,3): near ~30 km north of camera site
+    #   TID1 (i=1,4): far ~189 km west of camera site
+    #   TID2 (i=2):   medium ~14 km northwest of camera site
+    # Camera site: lat=42.360444, lon=-71.089238
+    _flight_lat = {0: 42.630444, 1: 42.360444, 2: 42.460444, 3: 42.630444, 4: 42.360444}
+    _flight_lon = {0: -71.089238, 1: -73.389238, 2: -71.189238, 3: -71.089238, 4: -73.389238}
+
     # Projections: 10 pings per flight across the day.
     projections: list[dict] = []
     for i in range(5):
@@ -168,6 +194,8 @@ def synthetic_pipeline_outputs(tmp_path: Path) -> dict:
                     "path_dx": 1.0,
                     "path_dy": 0.0,
                     "roi": {"x": 400, "y": 500, "w": 200, "h": 200},
+                    "lat": _flight_lat[i],
+                    "lon": _flight_lon[i],
                 }
             )
     proj_path = tmp_path / "projections.jsonl"
@@ -713,3 +741,147 @@ def test_cli_bundle_end_to_end(
         m = json.load(f)
     assert m["video"]["start_utc"] == synthetic_pipeline_outputs["video_start_utc"]
     assert "detection_threshold" in m
+
+
+# ---------- Public bundle distance fields ----------
+
+
+def test_flight_tracks_pings_have_dist_km(
+    synthetic_pipeline_outputs: dict,
+) -> None:
+    """Every ping in flight_tracks must have a numeric dist_km >= 0."""
+    tracks = _build_flight_tracks_with_altitude(
+        synthetic_pipeline_outputs["projections"],
+        site_lat=_SITE_LAT,
+        site_lon=_SITE_LON,
+    )
+    for tid, track in tracks.items():
+        for ping in track["pings"]:
+            assert "dist_km" in ping, f"TID {tid}: ping missing dist_km"
+            assert ping["dist_km"] is not None, f"TID {tid}: dist_km is None"
+            assert isinstance(ping["dist_km"], float), f"TID {tid}: dist_km not float"
+            assert ping["dist_km"] >= 0.0, f"TID {tid}: dist_km < 0"
+
+
+def test_flight_tracks_dist_km_values(
+    synthetic_pipeline_outputs: dict,
+) -> None:
+    """TID0 (near ~30 km) and TID1 (far ~189 km) have clearly different dist_km."""
+    tracks = _build_flight_tracks_with_altitude(
+        synthetic_pipeline_outputs["projections"],
+        site_lat=_SITE_LAT,
+        site_lon=_SITE_LON,
+    )
+    tid0_dists = [p["dist_km"] for p in tracks["TID0"]["pings"]]
+    tid1_dists = [p["dist_km"] for p in tracks["TID1"]["pings"]]
+    # All TID0 pings share the same lat/lon, so all distances are equal.
+    assert all(d == tid0_dists[0] for d in tid0_dists)
+    assert all(d == tid1_dists[0] for d in tid1_dists)
+    # Near flight clearly closer than far flight.
+    assert tid0_dists[0] < 50.0, f"TID0 dist unexpectedly large: {tid0_dists[0]}"
+    assert tid1_dists[0] > 100.0, f"TID1 dist unexpectedly small: {tid1_dists[0]}"
+    # Exact rounded values from fixture coords (verified by hand).
+    assert tid0_dists[0] == pytest.approx(30.02), f"TID0 dist_km={tid0_dists[0]}"
+    assert tid1_dists[0] == pytest.approx(188.97), f"TID1 dist_km={tid1_dists[0]}"
+
+
+def test_episodes_have_closest_approach_km(
+    synthetic_pipeline_outputs: dict,
+) -> None:
+    """Every episode in the public bundle must have closest_approach_km (float or None)."""
+    source_manifest = {
+        "schema_version": 1,
+        "date": "2026-04-08",
+        "video": {"path": "video.mp4"},
+        "image_size": [3840, 2160],
+        "flight_tracks": {},
+    }
+    manifest = build_manifest(
+        source_manifest=source_manifest,
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        max_gap_seconds=30.0,
+        detection_threshold=0.45,
+        site_lat=_SITE_LAT,
+        site_lon=_SITE_LON,
+    )
+    for ep in manifest["episodes"]:
+        assert "closest_approach_km" in ep, f"episode {ep['episode_id']} missing field"
+        val = ep["closest_approach_km"]
+        assert val is None or isinstance(val, float), (
+            f"episode {ep['episode_id']} closest_approach_km has wrong type: {type(val)}"
+        )
+        if val is not None:
+            assert val >= 0.0
+
+
+def test_episode_closest_approach_km_value(
+    synthetic_pipeline_outputs: dict,
+) -> None:
+    """Episode for TID0 (near flight) must have closest_approach_km == 30.02.
+
+    Episode i=0 has transponder_id=TID0, onset=base_ts, end=base_ts+5s.
+    TID0 pings for i=0 span base_ts+0s..base_ts+9s; those with t in [onset,end]
+    are k=0..5 (6 pings), all at the same lat/lon -> dist_km=30.02 for all.
+    So min == 30.02.
+    """
+    source_manifest = {
+        "schema_version": 1,
+        "date": "2026-04-08",
+        "video": {"path": "video.mp4"},
+        "image_size": [3840, 2160],
+        "flight_tracks": {},
+    }
+    manifest = build_manifest(
+        source_manifest=source_manifest,
+        projections_path=synthetic_pipeline_outputs["projections"],
+        detections_path=synthetic_pipeline_outputs["detections"],
+        max_gap_seconds=30.0,
+        detection_threshold=0.45,
+        site_lat=_SITE_LAT,
+        site_lon=_SITE_LON,
+    )
+    # Find TID0 episodes (there may be multiple runs if pings are gapped).
+    tid0_eps = [ep for ep in manifest["episodes"] if ep["transponder_id"] == "TID0"]
+    assert len(tid0_eps) > 0, "No TID0 episodes found"
+    # All TID0 pings are at the same near location, so every TID0 episode
+    # that has in-window pings gets closest_approach_km == 30.02.
+    for ep in tid0_eps:
+        assert ep["closest_approach_km"] == pytest.approx(30.02), (
+            f"TID0 episode {ep['episode_id']} closest_approach_km="
+            f"{ep['closest_approach_km']!r}"
+        )
+
+    # TID1 episodes must be at the far distance.
+    tid1_eps = [ep for ep in manifest["episodes"] if ep["transponder_id"] == "TID1"]
+    for ep in tid1_eps:
+        assert ep["closest_approach_km"] == pytest.approx(188.97), (
+            f"TID1 episode {ep['episode_id']} closest_approach_km="
+            f"{ep['closest_approach_km']!r}"
+        )
+
+
+def test_dist_km_none_for_missing_lat_lon(tmp_path: Path) -> None:
+    """Pings with missing lat/lon must have dist_km=None (older data robustness)."""
+    proj_path = tmp_path / "proj.jsonl"
+    base_ts = datetime.datetime(2026, 4, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    records = [
+        {
+            "wall_time_utc": (base_ts + datetime.timedelta(seconds=k)).isoformat(),
+            "callsign": "FL0",
+            "transponder_id": "TID0",
+            "pixel_x": 500.0,
+            "pixel_y": 600.0,
+            # No lat/lon fields
+        }
+        for k in range(3)
+    ]
+    with open(proj_path, "w") as f:
+        for r in records:
+            f.write(json.dumps(r) + "\n")
+
+    tracks = _build_flight_tracks_with_altitude(
+        proj_path, site_lat=_SITE_LAT, site_lon=_SITE_LON
+    )
+    for ping in tracks["TID0"]["pings"]:
+        assert ping["dist_km"] is None, "Expected None for ping without lat/lon"

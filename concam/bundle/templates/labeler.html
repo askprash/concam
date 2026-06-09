@@ -151,6 +151,10 @@
     </select>
   </label>
   <label style="margin-left:0.5rem"><input type="checkbox" id="filter-detected"> detected only</label>
+  <label id="dist-slider-label" style="margin-left:0.75rem">Max dist:
+    <input type="range" id="dist-slider" min="0" max="200" value="200" step="1" style="vertical-align:middle;width:90px">
+    <output id="dist-slider-out" for="dist-slider" style="font-size:0.88em;min-width:5em;display:inline-block">&#x2264;&nbsp;200&nbsp;km</output>
+  </label>
   <span class="legend">
     <span class="swatch" style="background:#a855f7"></span>contrail coming
     <span class="swatch" style="background:#f5c542; margin-left:0.5rem"></span>contrail forming now
@@ -496,9 +500,51 @@
         // Barometric (pressure) altitude in metres — canonical source for
         // flight level display. Falls back to effective alt_m if missing.
         alt_baro_m: p.alt_baro_m != null ? p.alt_baro_m : (p.alt_m != null ? p.alt_m : null),
+        // Great-circle distance from camera (km). Null/absent for older bundles.
+        dist_km: (p.dist_km != null) ? p.dist_km : null,
       })),
     })
   );
+
+  // --- Distance slider state ---------------------------------------------
+  // Detect whether any ping or episode carries numeric distance data.
+  // If none does (old bundle), the slider is hidden and no filtering applied.
+  function _hasDistData() {
+    for (const track of flightTracks) {
+      for (const p of track.pings) {
+        if (typeof p.dist_km === "number" && isFinite(p.dist_km)) return true;
+      }
+    }
+    for (const ep of manifest.episodes) {
+      if (typeof ep.closest_approach_km === "number" && isFinite(ep.closest_approach_km)) return true;
+    }
+    return false;
+  }
+  const _distDataPresent = _hasDistData();
+
+  // Compute the natural maximum across all numeric dist_km / closest_approach_km values.
+  // Falls back to 200 if nothing numeric is available (defensive; _distDataPresent
+  // guards the slider being shown, but the variable must still be initialised).
+  function _computeDistMax() {
+    let mx = 0;
+    for (const track of flightTracks) {
+      for (const p of track.pings) {
+        if (typeof p.dist_km === "number" && isFinite(p.dist_km)) mx = Math.max(mx, p.dist_km);
+      }
+    }
+    for (const ep of manifest.episodes) {
+      if (typeof ep.closest_approach_km === "number" && isFinite(ep.closest_approach_km)) {
+        mx = Math.max(mx, ep.closest_approach_km);
+      }
+    }
+    return mx > 0 ? Math.ceil(mx) : 200;
+  }
+  const _distSliderMax = _computeDistMax();
+
+  // Module-scoped filter state. Initialised to the max so nothing is filtered
+  // at startup. Overlay (drawTrack) and sidebar (renderEpisodeList) both read
+  // this variable; the slider handler updates it and re-renders both.
+  let maxDistKm = _distSliderMax;
 
   function flightLevel(altMetres) {
     if (altMetres == null || !isFinite(altMetres)) return null;
@@ -564,6 +610,26 @@
   dotStyleRing.addEventListener("change", draw);
   toggleZoom.addEventListener("change", draw);
 
+  // --- Distance slider wiring -------------------------------------------
+  const distSliderLabel = document.getElementById("dist-slider-label");
+  const distSliderEl    = document.getElementById("dist-slider");
+  const distSliderOut   = document.getElementById("dist-slider-out");
+  if (!_distDataPresent) {
+    // Old bundle: hide the slider entirely so it doesn't confuse reviewers.
+    distSliderLabel.hidden = true;
+  } else {
+    // Configure range bounds from the data and set initial state.
+    distSliderEl.max   = String(_distSliderMax);
+    distSliderEl.value = String(_distSliderMax);
+    distSliderOut.textContent = "≤ " + _distSliderMax + " km";
+    distSliderEl.addEventListener("input", () => {
+      maxDistKm = Number(distSliderEl.value);
+      distSliderOut.textContent = "≤ " + maxDistKm + " km";
+      draw();
+      renderEpisodeList();
+    });
+  }
+
   // Hit-zones registered during draw() so canvas clicks can map back to the
   // right episode and scroll the sidebar to it. Cleared at the start of every
   // draw. Each entry is a (axis-aligned) bounding rect in image-pixel coords
@@ -600,7 +666,8 @@
     // forecast. Pings at t > wallMs are suppressed so the rendered trail
     // matches what the human sees in the video at this moment.
     const inWindow = track.pings.filter(
-      (p) => p.t <= wallMs && (wallMs - p.t) <= TRACK_WINDOW_MS
+      (p) => p.t <= wallMs && (wallMs - p.t) <= TRACK_WINDOW_MS &&
+             (p.dist_km == null || p.dist_km <= maxDistKm)
     );
     if (inWindow.length === 0) return;
 
@@ -1955,6 +2022,11 @@
     let list = manifest.episodes.slice();
     if (onlyDetected) {
       list = list.filter((ep) => ep.peak_score >= detectionThreshold);
+    }
+    if (_distDataPresent) {
+      list = list.filter(
+        (ep) => ep.closest_approach_km == null || ep.closest_approach_km <= maxDistKm
+      );
     }
     if (mode === "score") {
       list.sort((a, b) => b.peak_score - a.peak_score ||
