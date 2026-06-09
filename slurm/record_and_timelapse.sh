@@ -273,6 +273,7 @@ process_full_day() {
         -max_muxing_queue_size 9999 \
         -an \
         -avoid_negative_ts make_zero \
+        -movflags +faststart \
         "$temp_file"; then
 
         # Move to final location
