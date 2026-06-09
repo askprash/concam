@@ -19,6 +19,10 @@
 
 set -euo pipefail
 
+# Ensure uv is found even when submitted from a minimal environment (e.g. cron,
+# which does not load the login profile). uv lives in ~/.local/bin.
+export PATH="$HOME/.local/bin:$PATH"
+
 DATE="${1:?Usage: sbatch pipeline_and_publish.sh YYYY-MM-DD [from_stage] [output_dir]}"
 FROM_STAGE="${2:-}"
 OUTPUT_DIR="${3:-output}"
