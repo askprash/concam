@@ -1,4 +1,3 @@
-.ralph/progress.txt
 .venv/
 __pycache__/
 *.pyc
@@ -16,3 +15,26 @@ scratch/
 output-profile/
 *.bak
 .claude/settings.local.json
+
+# Media — never commit video/image captures (a single day's timelapse is ~GBs)
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+
+# Large binary data arrays (calibration, numpy dumps). The OCR templates are the
+# one tracked .npz — keep it.
+*.npz
+!concam/ocr/templates.npz
+
+# Tabular dumps that scripts emit into the working tree
+*.csv
+
+# Credentials — must never be committed (managed on the server, see docs/public_labeler.md)
+credentials.txt
+.htpasswd
+
+# Internal AI-agent harness (kept on disk for local use, not shared)
+.ralph/
+ralph-once.sh

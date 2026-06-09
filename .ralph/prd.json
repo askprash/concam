@@ -411,7 +411,7 @@
   },
   {
     "category": "functional",
-    "description": "Labeler UX: make the flight-callsign labels more legible and add flight-level (FLxxx) next to the callsign. During the 2026-04-09 labeling session the callsigns were hard to read against bright-sky and low-contrast cloud backgrounds, and the lack of altitude info made it hard to reason about whether a contrail was plausible (persistent contrails need cruise altitudes, whereas low-flying regional traffic never produces them). Both gripes are UI-only and live in concam/bundle/templates/labeler.html around line 270.",
+    "description": "Labeler UX: make the flight-callsign labels more legible and add flight-level (FLxxx) next to the callsign. During the 2026-04-09 labeling session the callsigns were hard to read against bright-sky and low-contrast cloud backgrounds, and the lack of altitude info made it hard to reason about whether a contrail was plausible (persistent contrails need cruise altitudes, whereas low-flying regional traffic never produces them). Both gripes are UI-only and live in concam/bundle/templates/labeler.html around line 270. STATUS: FL display landed during the public-labeler deployment session (callsign FL{nnn} now drawn next to every dot, per-ping alt_baro_m piped through the manifest via scripts/build_public_bundle.py). Font bump (22->28px) and semi-transparent dark pill backdrop are still not done; leave passes=false until those land too.",
     "steps": [
       "concam/bundle/templates/labeler.html (drawLabel, ~line 270): bump font from 'bold 22px' to 'bold 28px', keep the drop-shadow, and add a semi-transparent dark pill (rounded rect, ~rgba(0,0,0,0.55)) as a backdrop behind the text. Padding ~6px horizontal, ~3px vertical. The callsign text itself stays white for max contrast against the dark pill; this gives consistent legibility regardless of day / night / cloud background without needing day/night logic.",
       "Add flight-level display next to the callsign: 'CALLSIGN FL340'. Compute FL from the nearest ping's alt_baro_m (preferred, since FL is by definition a barometric construct) falling back to alt_m if alt_baro_m is null. Formula: FL = round(alt_baro_m / 30.48 / 10). Show as 'FL{nnn}' with a 3-digit zero-padded number (e.g. FL034 for a low-altitude commuter). If no altitude is available at all, show the callsign alone.",
@@ -419,6 +419,46 @@
       "Update tests/test_bundle.py (if it asserts the manifest shape) to include the new alt_m array. Add a smoke test that generates a bundle and checks the labeler.html text output contains 'FL' near a known callsign for a flight at a known altitude.",
       "Regenerate bundles/labeler.html in the April-9 label_batch directory (re-run scripts/build_april9_label_batch.py) and spot-check visually that the labels are larger, have the dark pill backdrop, and show FLxxx next to each callsign.",
       "HUMAN REVIEW REQUIRED: user opens the regenerated labeler.html and confirms (a) callsigns are easier to read, (b) FL values match their expectations for the top few flights they recognize."
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Public reviewer website on hex.mit.edu. Stand up an Apache-served labeler at https://hex.mit.edu/~prash/concam/ so external collaborators (without MIT-server access) can review daily ConCam output. Every in-scene ADS-B pass is a sidebar entry (not just detector-positive episodes) so reviewers can catch detector false negatives. BasicAuth gates access; per-reviewer tagged download filenames so emailed label JSON is distinguishable. Date dropdown lets reviewers hop between dates without going back to the landing page.",
+    "steps": [
+      "scripts/build_public_bundle.py (new): synthesize manifest.json for a given date that (a) lists ONE sidebar entry per in-scene flight pass (from projections.jsonl) split on max_gap_seconds, each entry carrying every frame's detection score/line rather than only above-threshold frames, and (b) rebuilds flight_tracks from the current projections.jsonl with per-ping alt_m + alt_baro_m so the labeler can draw FL alongside the callsign. Copies labeler.html from the canonical template (concam/bundle/templates/labeler.html) so future UI edits propagate without a full bundle regen.",
+      "concam/bundle/templates/labeler.html: CSS fix so the video fits the viewport height (max-width/max-height 100% + aspect-ratio CSS var from manifest.image_size); sort dropdown (time asc / score desc) + 'detected only' filter in toolbar; username + live 'N contrails found' counter as header pills; FL{nnn} appended to the on-screen callsign via flightLevel(alt_baro_m); reviewer identity resolved from ?user= query -> localStorage -> prompt; tagged download filename so emailed JSON is per-reviewer; date dropdown populated from ../dates.json that navigates cross-date while preserving ?user=.",
+      "~/public_html/concam/.htaccess + .htpasswd for BasicAuth (realm 'ConCam reviewer'); scripts/manage_public_reviewers.py with add/remove/list/reset subcommands so the user can issue random or chosen passwords without clobbering existing users. credentials.txt is a human-readable record (mode 0600) of the most recent passwords — the hash is in .htpasswd.",
+      "scripts/publish_public_date.sh (new): wrapper that runs concam bundle, build_public_bundle.py, symlinks /net/d16/data/contrail-camera/YYYY_MM_DD_0000_2359.mp4 into ~/public_html/concam/<date>/video.mp4 (no copies — SymLinksIfOwnerMatch in userdir config follows owner-matching symlinks, so zero quota burn), and regenerates dates.json + landing page from whatever subdirs have valid manifest.json.",
+      "Shipped dates: 2026-04-08, 2026-04-09. SLURM queue for 2026-04-15/17/19 submitted as jobs 572191-3; 2025-10-19 from-stage detect as job 572194. Each date is pushed to the public site by running scripts/publish_public_date.sh once its pipeline finishes.",
+      "Deferred: server-side label upload (PHP/CGI are disabled in userdir on hex and cannot be enabled from .htaccess). For now reviewers email their tagged JSON files and the user runs concam ingest-labels on them — see item 35.",
+      "HUMAN REVIEW REQUIRED: at least one external reviewer has to confirm they can access the site off-MIT, navigate the dropdown, label at least one episode, and hand back a correctly-named labels JSON. Only mark passes=true after that."
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "EXPLICIT FOLLOW-UP to item 29 (filter playground): wire the user-picked transform chain into the live detector so the public labeler's auto-detections reflect the improved preprocessing rather than the legacy Canny+Hough baseline. Item 29 deliberately scoped out the wiring; this item does it. Expanded label set from the public-reviewer submissions (item 33) materially improves the signal available for picking the winning chain, so this item should wait until at least a couple of reviewers return labels.",
+    "steps": [
+      "Add transform_chain: list[str] and transform_params: dict[str, dict] fields to DetectionConfig with backward-compat defaults (empty list = current legacy behaviour, which is the preprocessing: cross_grad single-step pipeline baked into _prepare_base today).",
+      "In concam.detection._prepare_base, replace the hardcoded local_contrast/cross_grad branch with a call to apply_chain(base_gray, config.transform_chain, config.transform_params). Keep the legacy branch reachable when transform_chain is empty so old configs don't change behaviour silently.",
+      "Re-run the April-8 determinism check (existing regression baseline in output/validation/regression/2026-04-08/metrics.json) with transform_chain empty; the numbers must match exactly. Confirms backward-compat.",
+      "Re-run April-9 regression with the user-picked chain from filter_playground. Retune aggregation.detection_threshold to the Youden-J value reported by the notebook (or whatever operating point the user decides is right).",
+      "Update configs/mit_green_building.yaml with the chosen transform_chain block and the new detection_threshold.",
+      "Re-run scripts/publish_public_date.sh on each already-published date (2026-04-08, 2026-04-09, 2026-04-15/17/19 once those SLURM jobs finish) so the public manifests pick up the retuned detector scores.",
+      "HUMAN REVIEW REQUIRED: user eyeballs the top-10 detector-positive episodes in the refreshed public labeler and confirms the new chain hasn't introduced a new FP class (e.g. contrail_length saturation, timestamp-strip bleed-through that the earlier mask fixed)."
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Label ingestion + reviewer-agreement reporting for the public reviewer submissions. Item 33 stands up the website and hands each reviewer a correctly-named <date>_<user>_labels.json on Export; this item closes the loop by pulling those files into the DuckDB labels store and reporting per-date agreement across reviewers so the item-34 retuning has a solid ground-truth set.",
+    "steps": [
+      "Store emailed reviewer submissions under labels/public_reviewers/<date>/<user>.json (follow the feedback_ground_truth_labels memory: human labels go under labels/, not output/).",
+      "Run uv run concam ingest-labels --date YYYY-MM-DD --labels labels/public_reviewers/YYYY-MM-DD/*.json to populate contrail_episodes with labeler_id, label, persistence_rating, and label_timestamp. The ingest-labels CLI already handles overlap correctly (item 16); verify that by SQL-joining two reviewers' submissions on the same date.",
+      "Re-use the existing agreement stage (item 17, concam agreement --date YYYY-MM-DD) to compute per-pair Cohen's kappa + confusion matrix across reviewers. Write the output to output/<date>/agreement.md so it is checked-in-adjacent evidence for item-34 retuning decisions.",
+      "Flag marginal cases: episodes where at least two reviewers disagree (contrail vs no_contrail) or where any reviewer labelled unsure. These are the ones worth re-examining in detection_canny_review.ipynb before changing detector defaults in item 34.",
+      "HUMAN REVIEW REQUIRED: user spot-checks the top-5 disagreement cases per date, confirms the labels make physical sense, and decides whether majority-vote or require-all-agree should be the source-of-truth when the ground-truth set is used for item-34 AUC tuning."
     ],
     "passes": false
   }
