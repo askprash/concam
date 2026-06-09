@@ -24,6 +24,7 @@
   #episodes { flex: 1; overflow-y: auto; padding: 0.25rem; }
   .episode { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; }
   .episode.labeled { background: #f0fdf4; }
+  .episode.zoom-selected { outline: 2px solid #7c3aed; outline-offset: -2px; }
   .episode-header { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; cursor: pointer; font-size: 0.88em; }
   .episode-header:hover { background: #f5f5f5; }
   .episode .badge { display: inline-block; padding: 0 0.35em; border-radius: 3px; font-size: 0.78em; }
@@ -142,7 +143,7 @@
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-filled" value="filled" checked> filled</label>
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-ring" value="ring"> ring</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
-  <label style="margin-left:1rem"><input type="checkbox" id="toggle-zoom"> Zoom box</label>
+  <label style="margin-left:1rem" title="Click a flight in the sidebar to zoom on it"><input type="checkbox" id="toggle-zoom" checked> Zoom selected flight</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-measure"> Measure</label>
   <label style="margin-left:1rem">Sort:
     <select id="sort-mode">
@@ -546,6 +547,11 @@
   // this variable; the slider handler updates it and re-renders both.
   let maxDistKm = _distSliderMax;
 
+  // Zoom-on-select: the transponder_id of the sidebar-selected flight, or null.
+  // When set, the zoom magnifier is drawn ONLY for this flight (any colour) and
+  // for no others — keeps multiple in-frame planes from stacking zoom boxes.
+  let selectedTid = null;
+
   function flightLevel(altMetres) {
     if (altMetres == null || !isFinite(altMetres)) return null;
     const fl = Math.round((altMetres * 3.28084) / 100);
@@ -773,11 +779,12 @@
     });
 
     // Zoom box: floating 2.5x-zoomed magnifier of a ROI-sized region around
-    // the ping, for violet/yellow flights only. One GPU blit per flight — so
-    // essentially free. Placed AHEAD of the plane along its flight vector so
+    // the ping, drawn ONLY for the flight the reviewer selected in the sidebar
+    // (any colour) — so multiple in-frame planes never stack overlapping zoom
+    // boxes. One GPU blit. Placed AHEAD of the plane along its flight vector so
     // the zoom never covers the contrail trailing behind; clamps to frame
     // bounds if that would overflow.
-    if (toggleZoom.checked && (formingNow || willBeDetected)) {
+    if (toggleZoom.checked && selectedTid !== null && track.tid === selectedTid) {
       const srcSize = 180;  // matches roi_along_px — same crop the detector sees
       const zoom = 2.5;
       const dstSize = srcSize * zoom;
@@ -1878,6 +1885,17 @@
     dom.statusBadge.textContent = formatLabelStatus(entry);
   }
 
+  // Reflect the zoom selection in the sidebar: outline every row of the
+  // selected flight (episodes share a transponder_id when a plane has multiple
+  // passes). Safe to call after renderEpisodeList() rebuilds episodeDom.
+  function updateSelectedHighlight() {
+    for (const dom of episodeDom.values()) {
+      dom.wrapper.classList.toggle(
+        "zoom-selected", selectedTid !== null && dom.tid === selectedTid
+      );
+    }
+  }
+
   function updateProgress() {
     const total = manifest.episodes.length;
     let done = 0;
@@ -1930,6 +1948,10 @@
     header.addEventListener("click", (evt) => {
       // Ignore clicks that originate on a control inside the row.
       if (evt.target.closest(".label-controls")) return;
+      // Toggle zoom selection for this flight (re-click the same row to clear).
+      selectedTid = (selectedTid === ep.transponder_id) ? null : ep.transponder_id;
+      updateSelectedHighlight();
+      draw();
       const sec = wallMsToVideoTime(Date.parse(ep.onset));
       if (isFinite(sec) && sec >= 0) {
         video.currentTime = sec;
@@ -2007,7 +2029,7 @@
       updateLabel(ep.episode_id, { label_notes: notes.value });
     });
 
-    episodeDom.set(String(ep.episode_id), { wrapper, statusBadge });
+    episodeDom.set(String(ep.episode_id), { wrapper, statusBadge, tid: ep.transponder_id });
     return wrapper;
   }
 
@@ -2036,6 +2058,7 @@
     }
     for (const ep of list) panel.appendChild(buildEpisodeRow(ep));
     for (const ep of list) refreshEpisodeDom(ep.episode_id);
+    updateSelectedHighlight();
   }
 
   sortModeEl.addEventListener("change", renderEpisodeList);

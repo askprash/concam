@@ -619,6 +619,13 @@ def test_labeler_html_has_overlay_controls_and_logic(
     assert "drawTrack" in html
     assert "drawDetections" in html
 
+    # Zoom-on-select: the zoom magnifier is gated on a sidebar-selected flight
+    # (selectedTid) rather than auto-showing for every detected flight, so
+    # multiple in-frame planes don't stack overlapping zoom boxes.
+    assert 'id="toggle-zoom"' in html
+    assert "selectedTid" in html
+    assert "zoom-selected" in html
+
 
 def test_labeler_html_has_label_controls_and_export(
     synthetic_pipeline_outputs: dict, tmp_path: Path
