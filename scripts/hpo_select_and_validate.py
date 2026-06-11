@@ -34,9 +34,16 @@ from concam.config import load_config
 _TOL = 1e-6
 
 
+def _variant(row: dict) -> str:
+    """Preprocessing-variant key. New sweeps carry an explicit "variant"
+    string; pre-June-2026 results files (cross_grad-only grid) fall back to
+    the gain, which was the only preprocessing knob swept back then."""
+    return row.get("variant") or f"cross_grad(g={row['cross_grad_gain']:g})"
+
+
 def _same_combo(a: dict, b: dict) -> bool:
     return (
-        abs(a["cross_grad_gain"] - b["cross_grad_gain"]) < _TOL
+        _variant(a) == _variant(b)
         and abs(a["canny_percentile_high"] - b["canny_percentile_high"]) < _TOL
         and int(a["roi_along_px"]) == int(b["roi_along_px"])
     )
@@ -47,7 +54,7 @@ def _row_for_combo(results: list[dict], combo: dict) -> dict:
         if _same_combo(r, combo):
             return r
     raise SystemExit(
-        f"combo {combo['cross_grad_gain']}/{combo['canny_percentile_high']}/"
+        f"combo {_variant(combo)}/{combo['canny_percentile_high']}/"
         f"{combo['roi_along_px']} not found in the other sweep — were the grids "
         f"identical across dates?"
     )
@@ -81,7 +88,7 @@ def _scorecard(label: str, row: dict, threshold: float) -> dict:
     pt = _pt_at(row, threshold)
     return {
         "label": label,
-        "gain": row["cross_grad_gain"],
+        "variant": _variant(row),
         "pct": row["canny_percentile_high"],
         "roi": int(row["roi_along_px"]),
         "thr": threshold,
@@ -96,7 +103,7 @@ def _scorecard(label: str, row: dict, threshold: float) -> dict:
 
 def _md_row(s: dict) -> str:
     return (
-        f"| {s['label']} | {s['gain']}/{s['pct']}/{s['roi']} | {s['thr']} | "
+        f"| {s['label']} | {s['variant']}/{s['pct']}/{s['roi']} | {s['thr']} | "
         f"{s['auc']:.3f} | {s['recall']:.2f} ({s['tp']}/{s['tp'] + s['fn']}) | "
         f"{s['fpr']:.2f} ({s['fp']}/{s['fp'] + s['tn']}) | {s['precision']:.2f} | "
         f"{s['youden_j']:.3f} |"
@@ -149,12 +156,12 @@ def main() -> int:
         f"- **Validated on (held out):** {val['date']}  ({val['n_pos']} contrail / "
         f"{val['n_neg']} no_contrail; labels: "
         f"{', '.join(Path(p).name for p in val['labels_merged_from'])})",
-        f"- **Chosen config:** cross_grad_gain={winner['cross_grad_gain']}, "
+        f"- **Chosen config:** {_variant(winner)}, "
         f"canny_percentile_high={winner['canny_percentile_high']}, "
         f"roi_along_px={int(winner['roi_along_px'])}, detection_threshold={win_thr}",
         f"- **Production threshold (for baseline rows):** {prod_thr}",
         "",
-        "| config | gain/pct/roi | thr | AUC | recall (TP/P) | FPR (FP/N) | prec | YoudenJ |",
+        "| config | variant/pct/roi | thr | AUC | recall (TP/P) | FPR (FP/N) | prec | YoudenJ |",
         "|---|---|---:|---:|---|---|---:|---:|",
     ]
     lines += [_md_row(s) for s in cards]

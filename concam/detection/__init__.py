@@ -85,6 +85,7 @@ def detect(
     polygon: np.ndarray | None = None,
     path_vec: tuple[float, float] | None = None,
     prev_frame: np.ndarray | None = None,
+    frame_origin: tuple[int, int] = (0, 0),
 ) -> DetectionResult:
     """Run contrail detection within an oriented ROI.
 
@@ -101,6 +102,11 @@ def detect(
             of this direction.
         prev_frame: Optional prior frame for temporal-diff preprocessing. Must
             share the full frame's shape; otherwise silently ignored.
+        frame_origin: True full-frame coordinates of ``frame``'s (0, 0).
+            (0, 0) for the real full frame (production). Crop-replay callers
+            that pass a cached crop "as if it were the full frame" must supply
+            the crop's full-frame top-left so the timestamp exclusion and the
+            static-scene mask are anchored at the pixels they really cover.
 
     Returns:
         DetectionResult with score in [0, 1], pixel_line in full-frame coords
@@ -113,6 +119,7 @@ def detect(
         path_vec=path_vec,
         prev_frame=prev_frame,
         apply_exclusion=True,
+        frame_origin=frame_origin,
     )
 
     if not p.aligned:
@@ -163,6 +170,7 @@ def explain(
     path_vec: tuple[float, float] | None = None,
     prev_frame: np.ndarray | None = None,
     apply_exclusion: bool = True,
+    frame_origin: tuple[int, int] = (0, 0),
 ) -> DetectionPass:
     """Return the full :class:`DetectionPass` the detector produced for an ROI.
 
@@ -178,6 +186,7 @@ def explain(
         path_vec=path_vec,
         prev_frame=prev_frame,
         apply_exclusion=apply_exclusion,
+        frame_origin=frame_origin,
     )
 
 

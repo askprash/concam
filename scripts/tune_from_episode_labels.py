@@ -227,6 +227,13 @@ def score_target(
     (i.e. ``args.crop_pad_px``; default 40).  It is forwarded to
     :func:`~concam.detection.geometry.candidate_geometry` so that the
     crop-local coordinates are computed consistently with the crop boundary.
+
+    The crop's full-frame top-left (``g.frame_origin``) is forwarded to
+    ``detect`` so the full-frame-anchored exclusions — the timestamp region
+    and the static-scene mask — are applied at the pixels the crop really
+    covers.  Without it a mask-enabled replay would slice the building mask
+    at crop-local coordinates, suppressing arbitrary sky pixels instead of
+    building edges.
     """
     g = candidate_geometry(
         target, crop.shape[:2],
@@ -234,7 +241,8 @@ def score_target(
         roi_cross_px=config.roi_cross_px,
         extract_pad=extract_pad,
     )
-    result = detect(crop, g.rect, config, polygon=g.polygon, path_vec=g.path_vec)
+    result = detect(crop, g.rect, config, polygon=g.polygon, path_vec=g.path_vec,
+                    frame_origin=g.frame_origin)
     return float(result.score)
 
 

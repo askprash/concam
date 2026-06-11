@@ -202,7 +202,7 @@ def _sweep(
             prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
             result = detect(
                 crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec,
-                prev_frame=prev_frame,
+                prev_frame=prev_frame, frame_origin=g.frame_origin,
             )
             if label == "positive":
                 pos_scores.append(result.score)
@@ -256,7 +256,8 @@ def _score_combo_on_rois(
     neg_scores: list[float] = []
     for meta, crop, label, g in roi_geoms:
         prev_frame = prev_crops.get(meta["idx"]) if prev_crops else None
-        result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
+        result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec,
+                        prev_frame=prev_frame, frame_origin=g.frame_origin)
         if label == "positive":
             pos_scores.append(result.score)
         elif label == "negative":
@@ -443,8 +444,10 @@ def _visualise_best_combo(
 
         # Obtain the exact DetectionPass the detector used so our panels show
         # what the detector actually saw (not a hand-rolled re-implementation).
-        passed = explain(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
-        result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec, prev_frame=prev_frame)
+        passed = explain(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec,
+                         prev_frame=prev_frame, frame_origin=g.frame_origin)
+        result = detect(crop, g.rect, cfg, polygon=g.polygon, path_vec=g.path_vec,
+                        prev_frame=prev_frame, frame_origin=g.frame_origin)
 
         vis_crop = crop if crop.ndim == 3 else cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
         # Draw the rotated polygon on the crop preview.

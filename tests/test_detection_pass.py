@@ -333,3 +333,84 @@ class TestStaticMaskExclusion:
         passed = explain(frame, roi, config, polygon=poly, path_vec=pv,
                          apply_exclusion=False)
         assert len(passed.long_aligned) > 0
+
+
+class TestFrameOriginAnchoring:
+    """Crop-replay anchoring of full-frame exclusions (``frame_origin``).
+
+    The HPO/tune harness hands ``detect`` a padded crop *as if it were the
+    full frame*. The timestamp-exclusion region and the static-scene mask are
+    defined in true full-frame coordinates, so the kernel must offset its
+    lookups by the crop's full-frame top-left (``frame_origin``) — otherwise a
+    mask-enabled replay slices the building mask at crop-local coordinates and
+    suppresses arbitrary sky instead of buildings.
+    """
+
+    FULL_SHAPE = (800, 1200)   # (H, W) of the conceptual full frame
+    CROP_TL = (600, 300)       # (x, y) full-frame top-left of the crop
+
+    def _crop_setup(self, tmp_path, mask_at_true_location: bool):
+        from concam.detection.static_mask import save_static_mask
+
+        config = _clean_config()
+        # The "crop": a 360x240 patch with a horizontal streak, treated as a
+        # standalone frame by the caller (crop-local geometry).
+        crop = _draw_streak(_noisy_sky(13), (180, 120), 0.0, length=170)
+        pv = (1.0, 0.0)
+        poly, roi = _roi_for(PixelPoint(x=180, y=120), pv, config)
+
+        fx, fy = self.CROP_TL
+        mask = np.zeros(self.FULL_SHAPE, dtype=bool)
+        if mask_at_true_location:
+            # Cover the streak's TRUE full-frame location.
+            mask[fy + 95:fy + 145, fx + 75:fx + 285] = True
+        else:
+            # Cover the crop-local coordinates instead — where a misanchored
+            # (offset-less) lookup would land.
+            mask[95:145, 75:285] = True
+        mask_path = tmp_path / "static_mask.npz"
+        save_static_mask(mask, mask_path)
+        config = _clean_config(static_mask_path=str(mask_path))
+        return crop, roi, poly, pv, config
+
+    def test_static_mask_applied_at_true_location(self, tmp_path):
+        crop, roi, poly, pv, config = self._crop_setup(tmp_path, True)
+        r = detect(crop, roi, config, polygon=poly, path_vec=pv,
+                   frame_origin=self.CROP_TL)
+        assert r.score == 0.0
+
+    def test_static_mask_not_applied_at_crop_local_coords(self, tmp_path):
+        # The mask covers crop-local (not true) coordinates; an anchored
+        # lookup must NOT suppress the streak. (Without frame_origin this is
+        # exactly the misanchoring bug: the same call with the default origin
+        # zeroes the streak.)
+        crop, roi, poly, pv, config = self._crop_setup(tmp_path, False)
+        r = detect(crop, roi, config, polygon=poly, path_vec=pv,
+                   frame_origin=self.CROP_TL)
+        assert r.score > 0.0
+        r_misanchored = detect(crop, roi, config, polygon=poly, path_vec=pv)
+        assert r_misanchored.score == 0.0
+
+    def test_default_origin_preserves_production_behaviour(self, tmp_path):
+        # frame_origin defaults to (0, 0): full-frame callers are unchanged.
+        crop, roi, poly, pv, config = self._crop_setup(tmp_path, True)
+        r_default = detect(crop, roi, config, polygon=poly, path_vec=pv)
+        r_zero = detect(crop, roi, config, polygon=poly, path_vec=pv,
+                        frame_origin=(0, 0))
+        assert r_default.score == r_zero.score
+
+    def test_timestamp_exclusion_anchored(self, tmp_path):
+        config = _clean_config()
+        crop = _draw_streak(_noisy_sky(13), (180, 120), 0.0, length=170)
+        pv = (1.0, 0.0)
+        poly, roi = _roi_for(PixelPoint(x=180, y=120), pv, config)
+        fx, fy = self.CROP_TL
+        # Exclusion region (full-frame coords) blankets the whole crop area.
+        excl = [fy, fy + crop.shape[0], fx, fx + crop.shape[1]]
+        config = _clean_config(timestamp_exclusion_region=excl)
+        r_anchored = detect(crop, roi, config, polygon=poly, path_vec=pv,
+                            frame_origin=(fx, fy))
+        assert r_anchored.score == 0.0
+        # Misanchored (default origin): the region lands outside the crop.
+        r_misanchored = detect(crop, roi, config, polygon=poly, path_vec=pv)
+        assert r_misanchored.score > 0.0

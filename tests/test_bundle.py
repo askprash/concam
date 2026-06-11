@@ -619,6 +619,14 @@ def test_labeler_html_has_overlay_controls_and_logic(
     assert "drawTrack" in html
     assert "drawDetections" in html
 
+    # Growing contrail box: oriented bounding box accumulated over all
+    # detection lines seen so far in an episode, behind its own toggle
+    # (independent of the per-frame red detection lines).
+    assert 'id="toggle-contrail-box"' in html
+    assert "drawContrailBox" in html
+    assert "orientedBoxFromLines" in html
+    assert "CONTRAIL_BOX_MARGIN_PX" in html
+
     # Zoom-on-select: the zoom magnifier is gated on a sidebar-selected flight
     # (selectedTid) rather than auto-showing for every detected flight, so
     # multiple in-frame planes don't stack overlapping zoom boxes.

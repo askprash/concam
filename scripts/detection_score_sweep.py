@@ -195,7 +195,8 @@ def main() -> None:
             roi_along_px=det_cfg.roi_along_px,
             roi_cross_px=det_cfg.roi_cross_px,
         )
-        r = detect(crop, g.rect, det_cfg, polygon=g.polygon, path_vec=g.path_vec)
+        r = detect(crop, g.rect, det_cfg, polygon=g.polygon, path_vec=g.path_vec,
+                   frame_origin=g.frame_origin)
         records.append(
             {
                 "idx": meta["idx"],

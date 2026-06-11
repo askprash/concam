@@ -81,11 +81,13 @@ def _render_panel(
         crop, g.rect, cfg,
         polygon=g.polygon, path_vec=g.path_vec,
         prev_frame=prev_crop,
+        frame_origin=g.frame_origin,
     )
     result = detect(
         crop, g.rect, cfg,
         polygon=g.polygon, path_vec=g.path_vec,
         prev_frame=prev_crop,
+        frame_origin=g.frame_origin,
     )
     panels_named = render_detection_panels(passed, labels=True)
     panel_dict = {name: img for name, img in panels_named}

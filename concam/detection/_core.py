@@ -227,6 +227,7 @@ def _pass_on_base(
     path_vec: tuple[float, float] | None,
     use_mask: bool,
     apply_exclusion: bool,
+    frame_origin: tuple[int, int] = (0, 0),
 ) -> DetectionPass:
     """Run the edge+Hough kernel on an already-prepared base crop.
 
@@ -234,8 +235,19 @@ def _pass_on_base(
     full-frame coords.  ``polygon`` is in full-frame coords (translated to
     crop-local internally).  This is the *only* implementation of the detector's
     masking / adaptive-Canny / floor / Hough / angle-filter pipeline.
+
+    ``frame_origin`` is the true full-frame position of the *input image's*
+    (0, 0).  Production passes operate on the real full frame, so it stays
+    (0, 0); crop-replay harnesses (which hand ``detect`` a padded crop "as if
+    it were the full frame") must pass the crop's full-frame top-left so the
+    full-frame-anchored exclusions — the timestamp region and the static-scene
+    mask — are sliced at the pixels they actually cover.
     """
     x1, y1 = crop_origin
+    # Absolute full-frame top-left of this base crop (for full-frame-anchored
+    # exclusion lookups only; all other geometry stays input-image-relative).
+    ax1 = x1 + int(frame_origin[0])
+    ay1 = y1 + int(frame_origin[1])
     if base.size == 0:
         return _empty_pass(method, crop_origin)
 
@@ -283,10 +295,10 @@ def _pass_on_base(
         excl = getattr(config, "timestamp_exclusion_region", None)
         if excl is not None and len(excl) == 4:
             ey0, ey1, ex0, ex1 = int(excl[0]), int(excl[1]), int(excl[2]), int(excl[3])
-            ry0 = max(0, ey0 - y1)
-            ry1 = min(ch, ey1 - y1)
-            cx0 = max(0, ex0 - x1)
-            cx1 = min(cw, ex1 - x1)
+            ry0 = max(0, ey0 - ay1)
+            ry1 = min(ch, ey1 - ay1)
+            cx0 = max(0, ex0 - ax1)
+            cx1 = min(cw, ex1 - ax1)
             if ry1 > ry0 and cx1 > cx0:
                 if crop_for_canny is base:
                     crop_for_canny = crop_for_canny.copy()
@@ -309,7 +321,7 @@ def _pass_on_base(
             from concam.detection.static_mask import load_static_mask
 
             static = load_static_mask(mask_path)
-            sub = static[y1 : y1 + ch, x1 : x1 + cw]
+            sub = static[ay1 : ay1 + ch, ax1 : ax1 + cw]
             if sub.any():
                 # Pad to the crop shape in case the mask is smaller than the
                 # frame (resolution mismatch) or the crop clips the frame edge.
@@ -378,6 +390,7 @@ def run_detection_pass(
     path_vec: tuple[float, float] | None = None,
     prev_frame: np.ndarray | None = None,
     apply_exclusion: bool = True,
+    frame_origin: tuple[int, int] = (0, 0),
 ) -> DetectionPass:
     """Run the canonical detection kernel over one oriented ROI.
 
@@ -385,6 +398,12 @@ def run_detection_pass(
     clipped to the ROI AABB) and runs the edge+Hough kernel.  It is the single
     source of truth for what the detector "sees"; ``detect``, ``explain``, and
     (per-iteration) ``grow_contrail_length`` all route through this kernel.
+
+    ``frame_origin``: true full-frame coordinates of ``frame``'s (0, 0).
+    Leave at (0, 0) when ``frame`` is the real full frame; crop-replay callers
+    that pass a cached crop as the "frame" must supply the crop's full-frame
+    top-left so the timestamp-exclusion region and the static-scene mask are
+    anchored at the correct pixels (see ``_pass_on_base``).
     """
     use_mask = polygon is not None and config.use_rotated_mask
     method = ("rotated_hough" if use_mask else "aabb_hough")
@@ -415,4 +434,5 @@ def run_detection_pass(
         path_vec=path_vec,
         use_mask=use_mask,
         apply_exclusion=apply_exclusion,
+        frame_origin=frame_origin,
     )

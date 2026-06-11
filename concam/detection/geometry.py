@@ -47,12 +47,19 @@ class CandidateGeometry:
         path_vec: Flight-path unit vector ``(vx, vy)``; passed through from the
             candidate's ``path_dx`` / ``path_dy`` fields.
         center: Projected pixel point in crop-local coordinates.
+        frame_origin: True full-frame pixel coordinates ``(x, y)`` of the
+            crop's top-left.  Forward this to ``detect()`` / ``explain()`` as
+            ``frame_origin=`` so the full-frame-anchored exclusions (timestamp
+            region, static-scene mask) are applied at the pixels the crop
+            really covers — a crop-replay without it slices those masks at
+            crop-local coordinates.
     """
 
     rect: Rect
     polygon: np.ndarray
     path_vec: tuple[float, float]
     center: PixelPoint
+    frame_origin: tuple[int, int]
 
 
 def candidate_geometry(
@@ -114,4 +121,6 @@ def candidate_geometry(
     # clips it via the mask.
     rect = Rect(x=0, y=0, w=cw, h=ch)
 
-    return CandidateGeometry(rect=rect, polygon=poly, path_vec=path_vec, center=center_local)
+    return CandidateGeometry(rect=rect, polygon=poly, path_vec=path_vec,
+                             center=center_local,
+                             frame_origin=(full_tl_x, full_tl_y))

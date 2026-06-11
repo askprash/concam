@@ -152,6 +152,7 @@
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-filled" value="filled" checked> filled</label>
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-ring" value="ring"> ring</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
+  <label style="margin-left:0.25rem" title="Oriented box around everything the detector has seen of this contrail so far; grows with the contrail and persists while it is still visible"><input type="checkbox" id="toggle-contrail-box" checked> Contrail box</label>
   <label style="margin-left:1rem" id="toggle-mask-label" hidden
          title="Hatched areas (buildings, timestamp) are ignored by the contrail detector"><input type="checkbox" id="toggle-mask" checked> Masked areas</label>
   <label style="margin-left:1rem" title="Click a flight in the sidebar to zoom on it"><input type="checkbox" id="toggle-zoom" checked> Zoom selected flight</label>
@@ -629,11 +630,15 @@
       onset: Date.parse(ep.onset),
       end: Date.parse(ep.end),
       peak_score: ep.peak_score,
-      frames: (ep.frames || []).map((f) => ({
-        t: Date.parse(f.wall_time_utc),
-        score: f.score,
-        line: f.pixel_line,
-      })),
+      // Sorted by t once here so per-draw accumulation (drawContrailBox) can
+      // stop at the first future frame instead of rescanning.
+      frames: (ep.frames || [])
+        .map((f) => ({
+          t: Date.parse(f.wall_time_utc),
+          score: f.score,
+          line: f.pixel_line,
+        }))
+        .sort((a, b) => a.t - b.t),
     });
     episodesByTid.set(ep.transponder_id, list);
   });
@@ -665,6 +670,7 @@
   // --- Drawing -----------------------------------------------------------
   const toggleTracks = document.getElementById("toggle-tracks");
   const toggleDetections = document.getElementById("toggle-detections");
+  const toggleContrailBox = document.getElementById("toggle-contrail-box");
   const trackModeDot = document.getElementById("track-mode-dot");
   const trackModeTrack = document.getElementById("track-mode-track");
   const dotStyleFilled = document.getElementById("dot-style-filled");
@@ -672,6 +678,7 @@
   const toggleZoom = document.getElementById("toggle-zoom");
   toggleTracks.addEventListener("change", draw);
   toggleDetections.addEventListener("change", draw);
+  toggleContrailBox.addEventListener("change", draw);
   trackModeDot.addEventListener("change", draw);
   trackModeTrack.addEventListener("change", draw);
   dotStyleFilled.addEventListener("change", draw);
@@ -1001,6 +1008,82 @@
     }
   }
 
+  // --- Growing contrail box ----------------------------------------------
+  // Oriented bounding box around every detection line the detector has seen
+  // of an episode SO FAR (frames with t <= wallMs), inflated by a fixed
+  // margin. The box grows monotonically during playback as new detections
+  // extend the contrail, and shrinks correctly when seeking backward because
+  // it is recomputed from scratch on every draw (no cumulative state).
+  const CONTRAIL_BOX_MARGIN_PX = 25;
+
+  function orientedBoxFromLines(lines, marginPx) {
+    // Dominant axis: the direction of the longest accumulated line. All line
+    // endpoints are projected onto that axis and its perpendicular; min/max
+    // extents along both give the rotated rectangle.
+    let dx = 1, dy = 0, bestLen2 = -1;
+    for (const [x1, y1, x2, y2] of lines) {
+      const ldx = x2 - x1, ldy = y2 - y1;
+      const len2 = ldx * ldx + ldy * ldy;
+      if (len2 > bestLen2) { bestLen2 = len2; dx = ldx; dy = ldy; }
+    }
+    const norm = Math.hypot(dx, dy);
+    const ux = norm > 0 ? dx / norm : 1;
+    const uy = norm > 0 ? dy / norm : 0;
+    const px = -uy, py = ux; // perpendicular
+    let uMin = Infinity, uMax = -Infinity, vMin = Infinity, vMax = -Infinity;
+    for (const [x1, y1, x2, y2] of lines) {
+      for (const [x, y] of [[x1, y1], [x2, y2]]) {
+        const u = x * ux + y * uy;
+        const v = x * px + y * py;
+        if (u < uMin) uMin = u;
+        if (u > uMax) uMax = u;
+        if (v < vMin) vMin = v;
+        if (v > vMax) vMax = v;
+      }
+    }
+    uMin -= marginPx; uMax += marginPx;
+    vMin -= marginPx; vMax += marginPx;
+    return [
+      [ux * uMin + px * vMin, uy * uMin + py * vMin],
+      [ux * uMax + px * vMin, uy * uMax + py * vMin],
+      [ux * uMax + px * vMax, uy * uMax + py * vMax],
+      [ux * uMin + px * vMax, uy * uMin + py * vMax],
+    ];
+  }
+
+  function drawContrailBox(wallMs) {
+    ctx.save();
+    ctx.strokeStyle = "#ff9f43";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([12, 8]);
+    ctx.globalAlpha = 0.9;
+    for (const eps of episodesByTid.values()) {
+      for (const ep of eps) {
+        // Only while the detector still sees the contrail: stop drawing past
+        // end + FRAME_MATCH_MS, same active window as the red lines.
+        if (wallMs < ep.onset - FRAME_MATCH_MS || wallMs > ep.end + FRAME_MATCH_MS) {
+          continue;
+        }
+        // Frames are pre-sorted by t, so bail at the first future frame.
+        const lines = [];
+        for (const f of ep.frames) {
+          if (f.t > wallMs) break;
+          if (f.line) lines.push(f.line);
+        }
+        if (lines.length === 0) continue;
+        const corners = orientedBoxFromLines(lines, CONTRAIL_BOX_MARGIN_PX);
+        ctx.beginPath();
+        ctx.moveTo(corners[0][0], corners[0][1]);
+        for (let i = 1; i < corners.length; i++) {
+          ctx.lineTo(corners[i][0], corners[i][1]);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     hitZones = [];
@@ -1009,6 +1092,10 @@
     if (toggleTracks.checked) {
       ctx.globalAlpha = 0.85;
       for (const track of flightTracks) drawTrack(track, wallMs);
+    }
+    // Box before lines so the current frame's red segment stays on top.
+    if (toggleContrailBox.checked) {
+      drawContrailBox(wallMs);
     }
     if (toggleDetections.checked) {
       drawDetections(wallMs);

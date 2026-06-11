@@ -156,6 +156,85 @@ def _build_flight_tracks_with_altitude(
     return tracks
 
 
+# A per-frame detection line is suppressed when MORE than this fraction of its
+# sampled points fall inside the static-scene mask. Provenance: slurm job
+# 587404 kernel-level rescore (docs/adr/0002-static-scene-mask.md, "Measured
+# impact") — on 2026-04-09 the masked kernel killed 42/81 labeled FPs and every
+# line at the tower died outright under the mask, i.e. majority-on-building
+# lines are detections the masked detector would never have produced. 0.5
+# keeps lines that merely clip the mask edge while crossing real sky.
+MASKED_LINE_FRACTION_THRESHOLD = 0.5
+
+# Sample density along the line segment for the masked-fraction estimate.
+LINE_MASK_SAMPLES = 50
+
+
+def line_masked_fraction(line, mask, *, n_samples: int = LINE_MASK_SAMPLES) -> float:
+    """Fraction of points sampled evenly along ``line`` that are mask-True.
+
+    ``line`` is ``[x1, y1, x2, y2]`` in full-frame pixel coords; ``mask`` is a
+    boolean (H, W) array. ``n_samples`` points (endpoints included) are placed
+    evenly along the segment. Points falling outside the frame count as
+    **unmasked** — the static mask only describes in-frame structure, so an
+    out-of-bounds sample cannot be on the building and must not push a line
+    over the suppression threshold.
+    """
+    x1, y1, x2, y2 = (float(v) for v in line)
+    h, w = mask.shape
+    inside = 0
+    denom = max(n_samples - 1, 1)
+    for k in range(n_samples):
+        f = k / denom
+        x = int(round(x1 + f * (x2 - x1)))
+        y = int(round(y1 + f * (y2 - y1)))
+        if 0 <= x < w and 0 <= y < h and mask[y, x]:
+            inside += 1
+    return inside / n_samples
+
+
+def apply_static_mask_filter(episodes: list[dict], mask) -> int:
+    """Suppress per-frame detections whose line lies mostly on the static mask.
+
+    Archived ``detections.jsonl`` for most days predates the static-scene mask
+    (ADR-0002), so building-edge lines still carry nonzero scores there.
+    Re-running detection for ~100 days is expensive; instead this post-pass
+    treats a majority-masked line as "the detector would not have fired":
+    the frame's score is zeroed and its line nulled, the now-signal-free frame
+    is dropped from the episode's ``frames`` list (keeping it consistent with
+    build_manifest's score>0-or-line filter), and ``peak_score`` /
+    ``peak_pixel_line`` are recomputed over the surviving frames
+    (0.0 / ``None`` when none survive — the episode then naturally drops out
+    of the detector-positive count in dates.json).
+
+    Mutates ``episodes`` in place; returns the number of suppressed frames.
+    """
+    suppressed = 0
+    for ep in episodes:
+        changed = False
+        for f in ep["frames"]:
+            line = f.get("pixel_line")
+            if not line:
+                continue
+            if line_masked_fraction(line, mask) > MASKED_LINE_FRACTION_THRESHOLD:
+                f["score"] = 0.0
+                f["pixel_line"] = None
+                suppressed += 1
+                changed = True
+        if not changed:
+            continue
+        ep["frames"] = [
+            f for f in ep["frames"] if f["score"] > 0.0 or f["pixel_line"]
+        ]
+        if ep["frames"]:
+            peak = max(ep["frames"], key=lambda f: f["score"])
+            ep["peak_score"] = float(peak["score"])
+            ep["peak_pixel_line"] = peak["pixel_line"]
+        else:
+            ep["peak_score"] = 0.0
+            ep["peak_pixel_line"] = None
+    return suppressed
+
+
 def sustained_overlap_ids(
     episodes: list[dict],
     flight_tracks: dict[str, dict],
@@ -420,6 +499,18 @@ def main() -> None:
         site_lat=site.adsb.site_lat,
         site_lon=site.adsb.site_lon,
     )
+    # Suppress detections on the static-scene mask BEFORE overlap flagging and
+    # ping compaction: detections.jsonl for archived days was computed without
+    # the mask (ADR-0002), so building-edge lines still score there. Opt-in by
+    # data presence — no mask file, no change.
+    mask_path = getattr(site.detection, "static_mask_path", None)
+    if mask_path and Path(mask_path).exists():
+        from concam.detection.static_mask import load_static_mask
+
+        n_suppressed = apply_static_mask_filter(
+            manifest["episodes"], load_static_mask(mask_path)
+        )
+        print(f"  static-mask filter: suppressed {n_suppressed} frame detections")
     # Flag sustained pixel-track overlaps so reviewers see when two flights
     # could be claiming the same physical contrail. Keyed on pixel separation,
     # not 3D km — closest_approach_km misses line-of-sight coincidence (two

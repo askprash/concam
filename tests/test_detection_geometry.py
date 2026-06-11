@@ -157,6 +157,14 @@ def test_extract_pad_clamping(
         # Clamp fires: full_tl_x == 0, so center.x == pixel_x.
         assert g.center.x == float(base["pixel_x"])
 
+    # frame_origin is the crop's true full-frame top-left — the offset that
+    # detect(frame_origin=...) needs to anchor the timestamp exclusion and the
+    # static-scene mask. It must be exactly the clamped crop top-left, i.e.
+    # center (crop-local) + frame_origin recovers the full-frame pixel point.
+    assert g.frame_origin == (expected_tl_x, expected_tl_y)
+    assert g.center.x + g.frame_origin[0] == pytest.approx(float(base["pixel_x"]))
+    assert g.center.y + g.frame_origin[1] == pytest.approx(float(base["pixel_y"]))
+
 
 # ---------------------------------------------------------------------------
 # Property 4: Translation equivariance
