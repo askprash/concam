@@ -113,6 +113,93 @@ def _build_flight_tracks_with_altitude(
     return tracks
 
 
+def sustained_overlap_ids(
+    episodes: list[dict],
+    flight_tracks: dict[str, dict],
+    *,
+    sep_px: float = 100.0,
+    sample_step_s: float = 5.0,
+    min_overlap_s: float = 10.0,
+) -> set:
+    """Episode ids whose pixel tracks run sustained-parallel to another's.
+
+    Two flights tens of km apart in 3D can project onto near-identical pixel
+    tracks, so one physical contrail gets credited to both. A pair is flagged
+    when the *median* pixel separation over their temporal overlap is
+    <= ``sep_px`` — the median keeps transient crossings (perpendicular
+    tracks) unflagged. Same-transponder pairs are skipped.
+
+    sep_px=100 provenance: 2026-04-09 sensitivity sweep flagged 8/17/30/40% of
+    665 episodes at 60/100/150/200 px; the eval-phase attribution analysis put
+    per-frame two-flight ambiguity at 1.9% within 100 px and confirmed
+    double-credited detections at <=150 px midpoint separation. 100 px flags
+    genuinely confusable pairs without drowning the sidebar in badges; not yet
+    verified against adjudicated double-credit ground truth.
+    """
+    import statistics
+
+    def _positions(tid):
+        track = flight_tracks.get(tid)
+        if not track:
+            return [], []
+        times, xs, ys = [], [], []
+        for p in track["pings"]:
+            times.append(_parse_iso(p["wall_time_utc"]).timestamp())
+            xs.append(float(p["pixel_x"]))
+            ys.append(float(p["pixel_y"]))
+        return times, list(zip(xs, ys))
+
+    def _at(times, pos, t):
+        # Linear interpolation along the ping list (times are sorted).
+        import bisect
+        i = bisect.bisect_left(times, t)
+        if i <= 0:
+            return pos[0]
+        if i >= len(times):
+            return pos[-1]
+        t0, t1 = times[i - 1], times[i]
+        f = 0.0 if t1 == t0 else (t - t0) / (t1 - t0)
+        return (pos[i - 1][0] + f * (pos[i][0] - pos[i - 1][0]),
+                pos[i - 1][1] + f * (pos[i][1] - pos[i - 1][1]))
+
+    spans = []
+    for ep in episodes:
+        t0 = _parse_iso(ep["onset"]).timestamp()
+        t1 = _parse_iso(ep["end"]).timestamp()
+        spans.append((t0, t1, ep))
+    spans.sort(key=lambda s: s[0])
+
+    cache: dict[str, tuple] = {}
+    flagged: set = set()
+    for i, (a0, a1, ea) in enumerate(spans):
+        for b0, b1, eb in spans[i + 1:]:
+            if b0 > a1:
+                break  # sorted by onset — no later episode overlaps either
+            if ea["transponder_id"] == eb["transponder_id"]:
+                continue
+            lo, hi = max(a0, b0), min(a1, b1)
+            if hi - lo < min_overlap_s:
+                continue
+            for tid in (ea["transponder_id"], eb["transponder_id"]):
+                if tid not in cache:
+                    cache[tid] = _positions(tid)
+            ta, pa = cache[ea["transponder_id"]]
+            tb, pb = cache[eb["transponder_id"]]
+            if not pa or not pb:
+                continue
+            n = max(3, int((hi - lo) / sample_step_s))
+            seps = []
+            for k in range(n + 1):
+                t = lo + (hi - lo) * k / n
+                xa, ya = _at(ta, pa, t)
+                xb, yb = _at(tb, pb, t)
+                seps.append(((xa - xb) ** 2 + (ya - yb) ** 2) ** 0.5)
+            if statistics.median(seps) <= sep_px:
+                flagged.add(ea["episode_id"])
+                flagged.add(eb["episode_id"])
+    return flagged
+
+
 def build_manifest(
     source_manifest: dict,
     projections_path: Path,
@@ -285,6 +372,16 @@ def main() -> None:
         site_lat=site.adsb.site_lat,
         site_lon=site.adsb.site_lon,
     )
+    # Flag sustained pixel-track overlaps so reviewers see when two flights
+    # could be claiming the same physical contrail. Keyed on pixel separation,
+    # not 3D km — closest_approach_km misses line-of-sight coincidence (two
+    # flights 80 km apart can project onto near-identical pixel tracks).
+    overlap_ids = sustained_overlap_ids(
+        manifest["episodes"], manifest["flight_tracks"]
+    )
+    for ep in manifest["episodes"]:
+        ep["is_overlap"] = ep["episode_id"] in overlap_ids
+    manifest["overlap_episode_ids"] = sorted(overlap_ids)
     manifest["calibration"] = calibration_block(load_calibration(site.calibration))
     excl = exclusion_regions_block(site.detection)
     if excl is not None:

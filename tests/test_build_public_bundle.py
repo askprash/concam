@@ -61,3 +61,66 @@ def test_missing_mask_file_ignored(tmp_path):
                 timestamp_exclusion_region=[0, 95, 2950, 3840])
     )
     assert block is not None and block["polygons"] == []
+
+
+# ---------------------------------------------------------------------------
+# Pixel-space sustained-overlap flagging
+# ---------------------------------------------------------------------------
+
+sustained_overlap_ids = _module.sustained_overlap_ids
+
+
+def _ep(eid, tid, t0, t1):
+    return {"episode_id": eid, "transponder_id": tid,
+            "onset": f"2026-04-09T{t0}+00:00", "end": f"2026-04-09T{t1}+00:00"}
+
+
+def _track(pings):
+    return {"pings": [
+        {"wall_time_utc": f"2026-04-09T{t}+00:00", "pixel_x": x, "pixel_y": y}
+        for t, x, y in pings
+    ]}
+
+
+def test_sustained_parallel_tracks_flagged():
+    eps = [_ep(1, "A", "12:00:00", "12:02:00"), _ep(2, "B", "12:00:00", "12:02:00")]
+    tracks = {
+        # Two flights 100 px apart for the whole window.
+        "A": _track([("12:00:00", 1000, 500), ("12:02:00", 1600, 500)]),
+        "B": _track([("12:00:00", 1000, 600), ("12:02:00", 1600, 600)]),
+    }
+    assert sustained_overlap_ids(eps, tracks, sep_px=200) == {1, 2}
+
+
+def test_distant_tracks_not_flagged():
+    eps = [_ep(1, "A", "12:00:00", "12:02:00"), _ep(2, "B", "12:00:00", "12:02:00")]
+    tracks = {
+        "A": _track([("12:00:00", 1000, 500), ("12:02:00", 1600, 500)]),
+        "B": _track([("12:00:00", 1000, 1500), ("12:02:00", 1600, 1500)]),
+    }
+    assert sustained_overlap_ids(eps, tracks, sep_px=200) == set()
+
+
+def test_transient_crossing_not_flagged():
+    # Perpendicular crossing: close only for an instant, median far apart.
+    eps = [_ep(1, "A", "12:00:00", "12:02:00"), _ep(2, "B", "12:00:00", "12:02:00")]
+    tracks = {
+        "A": _track([("12:00:00", 0, 1000), ("12:02:00", 2000, 1000)]),
+        "B": _track([("12:00:00", 1000, 0), ("12:02:00", 1000, 2000)]),
+    }
+    assert sustained_overlap_ids(eps, tracks, sep_px=200) == set()
+
+
+def test_no_time_overlap_not_flagged():
+    eps = [_ep(1, "A", "12:00:00", "12:01:00"), _ep(2, "B", "13:00:00", "13:01:00")]
+    tracks = {
+        "A": _track([("12:00:00", 1000, 500), ("12:01:00", 1600, 500)]),
+        "B": _track([("13:00:00", 1000, 520), ("13:01:00", 1600, 520)]),
+    }
+    assert sustained_overlap_ids(eps, tracks, sep_px=200) == set()
+
+
+def test_same_flight_multiple_passes_not_self_compared():
+    eps = [_ep(1, "A", "12:00:00", "12:01:00"), _ep(2, "A", "12:00:00", "12:01:00")]
+    tracks = {"A": _track([("12:00:00", 1000, 500), ("12:01:00", 1600, 500)])}
+    assert sustained_overlap_ids(eps, tracks, sep_px=200) == set()

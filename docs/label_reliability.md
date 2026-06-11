@@ -60,6 +60,26 @@ it cannot be remapped — 19 labels lost).
 conflicting definite votes exclude the episode and are listed under
 `conflicts`.
 
+## 2026-04-19 quarantine (detector evaluation only)
+
+The eval-phase OCR audit (2026-06-11) found 64,502 of 86,401 frames on
+2026-04-19 have `tracker_status: anomaly_projected` — the OCR mostly failed
+and the tracker dead-reckoned, with forward jumps of up to 19,797 s and a
+final wall time 6 h past the day's end. The production detect stage joins
+projections to frames by those wall times, so **2026-04-19's detection scores
+are misattributed** (flights matched to frames up to hours off). This explains
+the day's anomalous metrics (AUC 0.604; median *negative* peak score 0.145 vs
+0.000 on other days).
+
+The **human labels for 04-19 remain valid**: the labeler UI places ADS-B
+overlays by linear video-time mapping (`video.start_utc` + frame index), not
+by the broken OCR walls, so reviewers judged correctly-positioned tracks.
+Keep the labels; exclude the *day* from detector evaluation/tuning until the
+pipeline is re-run with a fixed OCR timeline (and archive the current manifest
+skeleton first, per ADR-0003). Root-causing why OCR failed for most of that
+day (lighting? overlay rendering? template drift) is an open follow-up —
+`output/2026-04-19/ocr.jsonl` has the evidence.
+
 ## Process fix going forward
 
 The June-8/9 near-miss (thendo exported hours before a mass manifest
