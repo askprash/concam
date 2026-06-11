@@ -39,13 +39,18 @@ CREATE TABLE IF NOT EXISTS contrail_episodes (
 
     -- Label fields (nullable — filled by ingest-labels)
     label            VARCHAR,           -- 'contrail' | 'no_contrail' | 'unsure'
-    persistence_rating INTEGER,         -- 1-5
+    persistence_rating INTEGER,         -- legacy 1-5 slider
+    persistence      VARCHAR,           -- 'short' | 'potentially_persistent'
+    measurement_km   DOUBLE,            -- labeler-entered contrail length
     labeler_id       VARCHAR,
     label_timestamp  TIMESTAMP WITH TIME ZONE,
     label_notes      VARCHAR
 );
 -- Migration: add peak_contrail_length_m to databases created before this column existed.
 ALTER TABLE contrail_episodes ADD COLUMN IF NOT EXISTS peak_contrail_length_m DOUBLE;
+-- Migration: categorical persistence + labeler measurement (replaced 1-5 slider).
+ALTER TABLE contrail_episodes ADD COLUMN IF NOT EXISTS persistence VARCHAR;
+ALTER TABLE contrail_episodes ADD COLUMN IF NOT EXISTS measurement_km DOUBLE;
 """
 
 _INSERT_EPISODE_SQL = """
@@ -59,7 +64,8 @@ INSERT INTO contrail_episodes (
 
 _UPDATE_LABEL_SQL = """
 UPDATE contrail_episodes
-SET label = ?, persistence_rating = ?, labeler_id = ?, label_timestamp = ?, label_notes = ?
+SET label = ?, persistence_rating = ?, persistence = ?, measurement_km = ?,
+    labeler_id = ?, label_timestamp = ?, label_notes = ?
 WHERE episode_id = ? AND (labeler_id IS NULL OR labeler_id = ?);
 """
 
@@ -68,13 +74,14 @@ INSERT INTO contrail_episodes (
     episode_id, date, callsign, transponder_id,
     onset, end_time, frame_count,
     peak_score, peak_line_x1, peak_line_y1, peak_line_x2, peak_line_y2,
-    label, persistence_rating, labeler_id, label_timestamp, label_notes
+    label, persistence_rating, persistence, measurement_km,
+    labeler_id, label_timestamp, label_notes
 )
 SELECT
     episode_id, date, callsign, transponder_id,
     onset, end_time, frame_count,
     peak_score, peak_line_x1, peak_line_y1, peak_line_x2, peak_line_y2,
-    ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?
 FROM contrail_episodes
 WHERE episode_id = ?
 LIMIT 1;
@@ -144,7 +151,8 @@ class Database:
         """Insert label records into the database.
 
         Each label dict must have: episode_id, label, labeler_id.
-        Optional: persistence_rating, label_timestamp, label_notes.
+        Optional: persistence_rating (legacy), persistence, measurement_km,
+        label_timestamp, label_notes.
 
         If the episode's row is unlabeled or already labeled by the same labeler,
         the row is updated in place. If a different labeler already claimed the
@@ -156,6 +164,8 @@ class Database:
             label = lbl["label"]
             labeler = lbl["labeler_id"]
             rating = lbl.get("persistence_rating")
+            persistence = lbl.get("persistence")
+            measurement_km = lbl.get("measurement_km")
             ts = lbl.get("label_timestamp")
             notes = lbl.get("label_notes")
 
@@ -167,23 +177,19 @@ class Database:
 
             labelers = {r[0] for r in rows if r[0] is not None}
 
-            if labeler in labelers:
-                # Re-label by same labeler: update their row
+            if labeler in labelers or any(r[0] is None for r in rows):
+                # Re-label by same labeler, or unlabeled row exists: update it
                 self.con.execute(
                     _UPDATE_LABEL_SQL,
-                    [label, rating, labeler, ts, notes, eid, labeler],
-                )
-            elif any(r[0] is None for r in rows):
-                # Unlabeled row exists: fill it in
-                self.con.execute(
-                    _UPDATE_LABEL_SQL,
-                    [label, rating, labeler, ts, notes, eid, labeler],
+                    [label, rating, persistence, measurement_km,
+                     labeler, ts, notes, eid, labeler],
                 )
             else:
                 # All rows already labeled by other labelers: insert new row
                 self.con.execute(
                     _INSERT_LABEL_ROW_SQL,
-                    [label, rating, labeler, ts, notes, eid],
+                    [label, rating, persistence, measurement_km,
+                     labeler, ts, notes, eid],
                 )
             count += 1
         return count

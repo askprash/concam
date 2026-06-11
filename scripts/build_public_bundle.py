@@ -224,6 +224,34 @@ def build_manifest(
     return manifest
 
 
+def exclusion_regions_block(detection_config) -> dict | None:
+    """Manifest block describing pixels the detector ignores.
+
+    ``polygons`` are [[x, y], ...] vertex lists (full-frame coords) — the
+    static-scene mask (buildings) simplified for overlay rendering — and
+    ``timestamp_region`` is the [y0, y1, x0, x1] OSD exclusion rect. The
+    labeler hatches both so reviewers can see what is *not* being considered.
+    Returns None when neither exclusion is configured.
+    """
+    polygons: list = []
+    mask_path = getattr(detection_config, "static_mask_path", None)
+    if mask_path and Path(mask_path).exists():
+        from concam.detection.static_mask import load_static_mask, mask_to_polygons
+
+        # min_area trims visual noise: regions under ~30x30 px are invisible
+        # at overlay scale but would bloat the manifest (278 raw regions).
+        polygons = mask_to_polygons(
+            load_static_mask(mask_path), min_area_px=900.0
+        )
+    ts_region = getattr(detection_config, "timestamp_exclusion_region", None)
+    if not polygons and not ts_region:
+        return None
+    return {
+        "polygons": polygons,
+        "timestamp_region": list(ts_region) if ts_region else None,
+    }
+
+
 def _merge_altitudes_into_flight_tracks(
     flight_tracks: dict[str, dict],
     projections_path: Path,
@@ -284,6 +312,9 @@ def main() -> None:
         site_lon=site.adsb.site_lon,
     )
     manifest["calibration"] = calibration_block(load_calibration(site.calibration))
+    excl = exclusion_regions_block(site.detection)
+    if excl is not None:
+        manifest["exclusion_regions"] = excl
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "manifest.json").write_text(json.dumps(manifest))

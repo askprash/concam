@@ -284,3 +284,52 @@ def test_blank_pass_is_empty():
     # No long aligned streak -> zero score, zero measured length.
     assert r.num_long_lines == len(passed.long_aligned)
     assert r.contrail_length_px == pytest.approx(passed.length_px)
+
+
+# ---------------------------------------------------------------------------
+# Static-scene mask: building edges must not produce detections
+# ---------------------------------------------------------------------------
+
+class TestStaticMaskExclusion:
+    """A streak inside the static mask (building edge) must be suppressed,
+    exactly like the timestamp exclusion; outside the mask detection is
+    unaffected."""
+
+    def _setup(self, tmp_path, mask_covers_streak: bool):
+        from concam.detection.static_mask import save_static_mask
+
+        config = _clean_config()
+        frame = _draw_streak(_noisy_sky(11), (180, 120), 0.0, length=170)
+        pv = (1.0, 0.0)
+        poly, roi = _roi_for(PixelPoint(x=180, y=120), pv, config)
+
+        mask = np.zeros(frame.shape[:2], dtype=bool)
+        if mask_covers_streak:
+            # Blankets the streak's ROI with margin — mirrors the dilate_px
+            # safety margin a real building mask carries.
+            mask[95:145, 75:285] = True
+        else:
+            mask[0:20, 0:20] = True       # far corner — irrelevant
+        mask_path = tmp_path / "static_mask.npz"
+        save_static_mask(mask, mask_path)
+        config = _clean_config(static_mask_path=str(mask_path))
+        return frame, roi, poly, pv, config
+
+    def test_streak_inside_mask_suppressed(self, tmp_path):
+        frame, roi, poly, pv, config = self._setup(tmp_path, True)
+        result = detect(frame, roi, config, polygon=poly, path_vec=pv)
+        assert result.score == 0.0
+        assert result.contrail_length_px == 0.0
+
+    def test_streak_outside_mask_detected(self, tmp_path):
+        frame, roi, poly, pv, config = self._setup(tmp_path, False)
+        result = detect(frame, roi, config, polygon=poly, path_vec=pv)
+        assert result.score > 0.0
+
+    def test_mask_respects_apply_exclusion_flag(self, tmp_path):
+        # grow_contrail_length runs with apply_exclusion=False; the static mask
+        # must follow the same switch so growth isn't silently masked.
+        frame, roi, poly, pv, config = self._setup(tmp_path, True)
+        passed = explain(frame, roi, config, polygon=poly, path_vec=pv,
+                         apply_exclusion=False)
+        assert len(passed.long_aligned) > 0

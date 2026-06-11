@@ -126,6 +126,13 @@ class DetectionConfig:
     # For the MIT Green Building camera the timestamp occupies the top-right
     # corner; set this in the site YAML to mask it with a safety pad.
     timestamp_exclusion_region: list | None = None
+    # Path to a static-scene mask npz (see concam.detection.static_mask): a
+    # boolean full-frame mask of persistently-edgy pixels (buildings and other
+    # fixed structure).  Masked pixels are zeroed before Canny, alongside the
+    # timestamp exclusion, so static building edges cannot produce aligned
+    # Hough lines.  Build with scripts/build_static_mask.py; set in the site
+    # YAML.  None = disabled.
+    static_mask_path: str | None = None
     # Pre-processing applied to the (possibly temporal-diffed) grayscale frame
     # before Canny edge detection.  Options:
     #   "none"            – raw grayscale (default, current behaviour)

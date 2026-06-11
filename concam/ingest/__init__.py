@@ -36,6 +36,9 @@ from concam.storage import Database
 
 SUPPORTED_SCHEMA_VERSION = 1
 VALID_LABELS = frozenset({"contrail", "no_contrail", "unsure"})
+# Categorical persistence judgement (replaced the 1-5 slider; the numeric
+# persistence_rating is still accepted from legacy exports).
+VALID_PERSISTENCE = frozenset({"short", "potentially_persistent"})
 
 
 class LabelValidationError(ValueError):
@@ -144,6 +147,23 @@ def validate_payload(payload: dict, *, expected_date: datetime.date) -> dict:
                 f"{ctx}.persistence_rating: expected int in [1,5], got {rating!r}",
             )
             normalised["persistence_rating"] = rating
+
+        persistence = record.get("persistence")
+        if persistence is not None:
+            _require(
+                persistence in VALID_PERSISTENCE,
+                f"{ctx}.persistence: expected one of {sorted(VALID_PERSISTENCE)},"
+                f" got {persistence!r}",
+            )
+            normalised["persistence"] = persistence
+
+        measurement = record.get("measurement_km")
+        if measurement is not None:
+            _require(
+                isinstance(measurement, (int, float)) and not isinstance(measurement, bool),
+                f"{ctx}.measurement_km: expected number, got {measurement!r}",
+            )
+            normalised["measurement_km"] = float(measurement)
 
         ts = record.get("label_timestamp")
         if ts is not None:

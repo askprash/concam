@@ -162,6 +162,7 @@ def explain(
     polygon: np.ndarray | None = None,
     path_vec: tuple[float, float] | None = None,
     prev_frame: np.ndarray | None = None,
+    apply_exclusion: bool = True,
 ) -> DetectionPass:
     """Return the full :class:`DetectionPass` the detector produced for an ROI.
 
@@ -176,7 +177,7 @@ def explain(
         polygon=polygon,
         path_vec=path_vec,
         prev_frame=prev_frame,
-        apply_exclusion=True,
+        apply_exclusion=apply_exclusion,
     )
 
 

@@ -38,7 +38,11 @@
   .label-controls { display: flex; gap: 0.5rem; margin-top: 0.3rem; align-items: center; flex-wrap: wrap; font-size: 0.85em; }
   .label-controls .group { display: flex; gap: 0.2rem; align-items: center; }
   .label-controls input[type="radio"] { margin: 0 0.1rem 0 0.3rem; }
-  .label-controls input[type="range"] { vertical-align: middle; width: 70px; }
+  .label-controls input[type="text"] { font-family: inherit; font-size: 0.95em; padding: 0.1rem 0.2rem; }
+  /* Persistence options gray out until a contrail is visible (auto-detected
+     or human-labeled) — see persistenceAllowed(). */
+  .label-controls .persist-group.gated { opacity: 0.4; }
+  .label-controls .persist-group.gated label { cursor: not-allowed; }
   .label-controls textarea { flex: 1 1 100%; min-height: 1.6em; font-family: inherit; font-size: 0.85em; padding: 0.15rem; }
   .error { color: #b00; background: #fee; padding: 0.5rem 0.75rem; border: 1px solid #f99; border-radius: 4px; margin: 0.5rem; }
   .legend { font-size: 0.8em; color: #555; }
@@ -110,8 +114,13 @@
   .cal-month-title { font-size: 0.85em; font-weight: 600; color: #333; margin-bottom: 0.25rem; text-align: center; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .cal-dow { font-size: 0.62em; color: #999; text-align: center; padding-bottom: 2px; }
-  .cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.72em; border-radius: 3px; color: #c4c4c4; background: transparent; }
+  .cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.72em; border-radius: 3px; color: #c4c4c4; background: transparent; position: relative; }
   .cal-cell.blank { visibility: hidden; }
+  /* Labeler dots: one per human with committed labels for that day. */
+  .cal-dots { position: absolute; bottom: 1px; left: 0; right: 0; display: flex; justify-content: center; gap: 1.5px; pointer-events: none; }
+  .cal-dots .cal-dot { width: 4.5px; height: 4.5px; border-radius: 50%; outline: 0.5px solid rgba(255, 255, 255, 0.85); }
+  #calendar-labeler-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.4rem; font-size: 0.75em; color: #555; }
+  #calendar-labeler-legend .cal-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
   .cal-cell.has-data { cursor: pointer; color: #1a1a1a; outline: 1px solid rgba(0, 0, 0, 0.08); }
   .cal-cell.has-data:hover { outline: 2px solid #1f2937; }
   .cal-cell.current { outline: 2px solid #2563eb; font-weight: 700; }
@@ -143,6 +152,8 @@
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-filled" value="filled" checked> filled</label>
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-ring" value="ring"> ring</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
+  <label style="margin-left:1rem" id="toggle-mask-label" hidden
+         title="Hatched areas (buildings, timestamp) are ignored by the contrail detector"><input type="checkbox" id="toggle-mask" checked> Masked areas</label>
   <label style="margin-left:1rem" title="Click a flight in the sidebar to zoom on it"><input type="checkbox" id="toggle-zoom" checked> Zoom selected flight</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-measure"> Measure</label>
   <label style="margin-left:1rem">Sort:
@@ -227,9 +238,11 @@
     <h2 id="calendar-modal-title">Pick a date <span class="subtitle">shaded by flights with detected contrails</span></h2>
     <div id="calendar-months"></div>
     <div id="calendar-legend"></div>
+    <div id="calendar-labeler-legend" hidden></div>
     <div id="calendar-hint">
       Shaded days have a published timelapse; darker green = more flight passes that
       crossed the detector threshold. Faint days had a timelapse but no detections.
+      Dots under a day mark humans who have labeled it (one color per labeler).
       Blank days were not processed. Click any shaded day to open it. Press Esc or click outside to close.
     </div>
   </div>
@@ -342,6 +355,18 @@
     }
     if (byDate.size === 0) return;
 
+    // Stable labeler → dot-color assignment across the whole published range.
+    // Palette avoids greens (cell background is a green ramp). Wraps if more
+    // labelers than colors — acceptable for a handful of reviewers.
+    const LABELER_PALETTE = ["#e11d48", "#2563eb", "#f59e0b", "#7c3aed",
+                             "#0d9488", "#db2777", "#854d0e", "#475569"];
+    const allLabelers = [...new Set(
+      [...byDate.values()].flatMap((e) => e.labelers || [])
+    )].sort();
+    const labelerColor = new Map(
+      allLabelers.map((id, i) => [id, LABELER_PALETTE[i % LABELER_PALETTE.length]])
+    );
+
     const maxDetected = Math.max(1, ...[...byDate.values()].map((e) => e.detected || 0));
 
     // Pale → deep green ramp; days with data but zero detections still read as
@@ -405,9 +430,22 @@
         if (entry) {
           cell.classList.add("has-data");
           cell.style.background = shadeFor(entry.detected);
-          cell.title = `${iso}\n${entry.episodes} flight passes · ${entry.detected} with detected contrails`;
+          const labelers = entry.labelers || [];
+          cell.title = `${iso}\n${entry.episodes} flight passes · ${entry.detected} with detected contrails`
+            + (labelers.length ? `\nlabeled by: ${labelers.join(", ")}` : "");
           if (iso === manifest.date) cell.classList.add("current");
           cell.addEventListener("click", () => navigateToDate(iso));
+          if (labelers.length) {
+            const dots = document.createElement("div");
+            dots.className = "cal-dots";
+            for (const id of labelers) {
+              const dot = document.createElement("span");
+              dot.className = "cal-dot";
+              dot.style.background = labelerColor.get(id);
+              dots.appendChild(dot);
+            }
+            cell.appendChild(dots);
+          }
         }
         grid.appendChild(cell);
       }
@@ -429,6 +467,27 @@
       legend.appendChild(sw);
     }
     legend.appendChild(hi);
+
+    // Labeler dot legend — only shown when at least one day carries labels.
+    const labelerLegend = document.getElementById("calendar-labeler-legend");
+    labelerLegend.textContent = "";
+    if (allLabelers.length > 0) {
+      const cap = mk("span");
+      cap.textContent = "labels by:";
+      labelerLegend.appendChild(cap);
+      for (const id of allLabelers) {
+        const item = mk("span");
+        const dot = mk("span");
+        dot.className = "cal-dot";
+        dot.style.background = labelerColor.get(id);
+        item.appendChild(dot);
+        item.appendChild(document.createTextNode(id));
+        labelerLegend.appendChild(item);
+      }
+      labelerLegend.hidden = false;
+    } else {
+      labelerLegend.hidden = true;
+    }
 
     // Open/close wiring.
     const modal = document.getElementById("calendar-modal");
@@ -867,6 +926,58 @@
     }
   }
 
+  // --- Exclusion-region overlay ------------------------------------------
+  // Hatched tint over areas the detector ignores (static building mask +
+  // timestamp OSD region), so reviewers can see that nothing is detected or
+  // attributed there. Polygons arrive in manifest.exclusion_regions, written
+  // by build_public_bundle.py from the site's static_mask npz.
+  const exclusionRegions = manifest.exclusion_regions || null;
+  const toggleMask = document.getElementById("toggle-mask");
+  const toggleMaskLabel = document.getElementById("toggle-mask-label");
+  let _hatchPattern = null;
+  if (exclusionRegions &&
+      ((exclusionRegions.polygons || []).length > 0 || exclusionRegions.timestamp_region)) {
+    toggleMaskLabel.hidden = false;
+    toggleMask.addEventListener("change", draw);
+    // Diagonal-hash tile, built once: subtle red lines on transparent ground.
+    const tile = document.createElement("canvas");
+    tile.width = tile.height = 24;
+    const tctx = tile.getContext("2d");
+    tctx.strokeStyle = "rgba(220, 50, 50, 0.55)";
+    tctx.lineWidth = 3;
+    tctx.beginPath();
+    tctx.moveTo(-6, 30); tctx.lineTo(30, -6);
+    tctx.moveTo(-6, 6);  tctx.lineTo(6, -6);
+    tctx.moveTo(18, 30); tctx.lineTo(30, 18);
+    tctx.stroke();
+    _hatchPattern = ctx.createPattern(tile, "repeat");
+  }
+
+  function drawExclusionRegions() {
+    if (!_hatchPattern || !toggleMask.checked) return;
+    ctx.save();
+    ctx.beginPath();
+    for (const poly of exclusionRegions.polygons || []) {
+      if (!poly || poly.length < 3) continue;
+      ctx.moveTo(poly[0][0], poly[0][1]);
+      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+      ctx.closePath();
+    }
+    const ts = exclusionRegions.timestamp_region;
+    if (ts && ts.length === 4) {
+      // [y0, y1, x0, x1] numpy-slice convention (matches DetectionConfig).
+      ctx.rect(ts[2], ts[0], ts[3] - ts[2], ts[1] - ts[0]);
+    }
+    // Faint solid tint + hatch, one fill each — cheap enough per frame.
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = "#dc3232";
+    ctx.fill();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = _hatchPattern;
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawDetections(wallMs) {
     ctx.strokeStyle = "#ff3b3b";
     ctx.lineWidth = 5;
@@ -891,6 +1002,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     hitZones = [];
     const wallMs = currentWallMs(video.currentTime);
+    drawExclusionRegions();
     if (toggleTracks.checked) {
       ctx.globalAlpha = 0.85;
       for (const track of flightTracks) drawTrack(track, wallMs);
@@ -1198,7 +1310,11 @@
         wall_time_utc: new Date(currentWallMs(video.currentTime)).toISOString(),
         created_at: new Date().toISOString(),
       });
-      updateLabel(measureActive.episodeId, { measurements });
+      // Autofill the episode's measurement box with the latest measurement.
+      updateLabel(measureActive.episodeId, {
+        measurements,
+        measurement_km: Math.round(measureActive.lengthM / 10) / 100,
+      });
     }
     measureActive = null;
     measurePopup.classList.remove("open");
@@ -1313,6 +1429,15 @@
   const STORAGE_KEY =
     "concam-labels:" + manifest.date + ":" + manifest.labeler_id;
   const VALID_LABELS = ["contrail", "no_contrail", "unsure"];
+  const PERSISTENCE_VALUES = ["short", "potentially_persistent"];
+
+  // Persistence options only make sense once a contrail is visible: either
+  // the auto-detection pipeline crossed threshold for this episode, or the
+  // human marked it "contrail". Everything else stays grayed out.
+  function persistenceAllowed(peakScore, entry) {
+    return peakScore >= detectionThreshold ||
+      !!(entry && entry.label === "contrail");
+  }
 
   function loadLabels() {
     try {
@@ -1367,8 +1492,19 @@
         label: entry.label,
         labeler_id: manifest.labeler_id,
       };
+      // New-style persistence category — exported only while its gate holds
+      // (detector-positive or human "contrail"), so a stale choice from a
+      // since-changed label can't leak into the dataset.
+      if (PERSISTENCE_VALUES.includes(entry.persistence) &&
+          persistenceAllowed(ep.peak_score, entry)) {
+        record.persistence = entry.persistence;
+      }
+      // Legacy 1-5 slider value from older sessions, kept for back-compat.
       if (typeof entry.persistence_rating === "number") {
         record.persistence_rating = entry.persistence_rating;
+      }
+      if (typeof entry.measurement_km === "number" && isFinite(entry.measurement_km)) {
+        record.measurement_km = entry.measurement_km;
       }
       if (entry.label_timestamp) {
         record.label_timestamp = entry.label_timestamp;
@@ -1883,6 +2019,25 @@
     const cls = VALID_LABELS.includes(entry.label) ? entry.label : "";
     dom.statusBadge.className = "badge label-status " + cls;
     dom.statusBadge.textContent = formatLabelStatus(entry);
+    applyPersistenceGate(episodeId);
+    // Sync the measurement box (e.g. after the Measure tool autofills it),
+    // but never clobber the field while the user is typing in it.
+    if (dom.measurementInput && document.activeElement !== dom.measurementInput) {
+      dom.measurementInput.value =
+        (typeof entry.measurement_km === "number" && isFinite(entry.measurement_km))
+          ? String(entry.measurement_km) : "";
+    }
+  }
+
+  function applyPersistenceGate(episodeId) {
+    const dom = episodeDom.get(String(episodeId));
+    if (!dom || !dom.persistGroup) return;
+    const entry = labelState[String(episodeId)] || {};
+    const allowed = persistenceAllowed(dom.peakScore, entry);
+    dom.persistGroup.classList.toggle("gated", !allowed);
+    dom.persistGroup.title = allowed ? "" :
+      "Enabled when the detector flags this pass or you label it “contrail”";
+    dom.persistRadios.forEach((r) => { r.disabled = !allowed; });
   }
 
   // Reflect the zoom selection in the sidebar: outline every row of the
@@ -1978,14 +2133,36 @@
     });
     controls.appendChild(labelGroup);
 
-    // Persistence slider 1-5.
-    const rating = document.createElement("span");
-    rating.className = "group";
-    rating.innerHTML =
-      '<label>persistence ' +
-      '<input type="range" min="1" max="5" step="1" data-role="rating">' +
-      ' <output data-role="rating-output">—</output></label>';
-    controls.appendChild(rating);
+    // Persistence: two options, only interactable once a contrail is visible
+    // (auto-detected by the pipeline OR human-labeled "contrail"); otherwise
+    // grayed out — persistence of a non-existent contrail is meaningless.
+    const persist = document.createElement("span");
+    persist.className = "group persist-group";
+    const pName = "persist-" + ep.episode_id;
+    persist.innerHTML =
+      '<input type="radio" name="' + pName + '" id="' + pName + '-short"' +
+        ' value="short" data-role="persist-radio">' +
+      '<label for="' + pName + '-short"' +
+        ' title="You can see the contrail dissipating behind the airplane">' +
+        'short contrail</label>' +
+      '<input type="radio" name="' + pName + '" id="' + pName + '-persistent"' +
+        ' value="potentially_persistent" data-role="persist-radio">' +
+      '<label for="' + pName + '-persistent"' +
+        ' title="The end of the contrail is outside the frame">' +
+        'potentially-persistent</label>';
+    controls.appendChild(persist);
+
+    // Contrail length (km): autosaves as you type; the Measure tool fills it
+    // in automatically when a measurement is saved with this episode.
+    const meas = document.createElement("span");
+    meas.className = "group";
+    meas.innerHTML =
+      '<label title="Contrail length in km. Type a value, or use the Measure' +
+      ' toolbar tool — measurements saved with this episode fill this' +
+      ' automatically.">length km ' +
+      '<input type="text" data-role="measurement" inputmode="decimal"' +
+      ' style="width:4.5em" placeholder="—"></label>';
+    controls.appendChild(meas);
 
     // Free-text notes.
     const notes = document.createElement("textarea");
@@ -2002,14 +2179,14 @@
       const r = labelGroup.querySelector('input[value="' + entry.label + '"]');
       if (r) r.checked = true;
     }
-    const ratingInput = rating.querySelector('[data-role="rating"]');
-    const ratingOutput = rating.querySelector('[data-role="rating-output"]');
-    if (typeof entry.persistence_rating === "number") {
-      ratingInput.value = String(entry.persistence_rating);
-      ratingOutput.textContent = String(entry.persistence_rating);
-    } else {
-      // Range inputs default mid-range; show an em dash until user interacts.
-      ratingInput.value = "3";
+    const persistRadios = persist.querySelectorAll('input[data-role="persist-radio"]');
+    if (PERSISTENCE_VALUES.includes(entry.persistence)) {
+      const r = persist.querySelector('input[value="' + entry.persistence + '"]');
+      if (r) r.checked = true;
+    }
+    const measurementInput = meas.querySelector('[data-role="measurement"]');
+    if (typeof entry.measurement_km === "number" && isFinite(entry.measurement_km)) {
+      measurementInput.value = String(entry.measurement_km);
     }
     notes.value = entry.label_notes || "";
 
@@ -2019,17 +2196,27 @@
         if (r.checked) updateLabel(ep.episode_id, { label: r.value });
       });
     });
-    ratingInput.addEventListener("input", () => {
-      ratingOutput.textContent = ratingInput.value;
+    persistRadios.forEach((r) => {
+      r.addEventListener("change", () => {
+        if (r.checked) updateLabel(ep.episode_id, { persistence: r.value });
+      });
+    });
+    measurementInput.addEventListener("input", () => {
+      const v = parseFloat(measurementInput.value);
       updateLabel(ep.episode_id, {
-        persistence_rating: parseInt(ratingInput.value, 10),
+        measurement_km: isFinite(v) ? v : null,
       });
     });
     notes.addEventListener("input", () => {
       updateLabel(ep.episode_id, { label_notes: notes.value });
     });
 
-    episodeDom.set(String(ep.episode_id), { wrapper, statusBadge, tid: ep.transponder_id });
+    episodeDom.set(String(ep.episode_id), {
+      wrapper, statusBadge, tid: ep.transponder_id,
+      persistGroup: persist, persistRadios, measurementInput,
+      peakScore: ep.peak_score,
+    });
+    applyPersistenceGate(ep.episode_id);
     return wrapper;
   }
 

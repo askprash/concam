@@ -655,9 +655,15 @@ def test_labeler_html_has_label_controls_and_export(
     assert "VALID_LABELS" in html
     assert 'type="radio"' in html
 
-    # Persistence slider.
-    assert 'type="range"' in html
-    assert 'min="1"' in html and 'max="5"' in html
+    # Persistence: two gated categorical options with hover guidance, plus a
+    # measurement text box autofilled by the Measure tool.
+    assert 'value="short"' in html
+    assert 'value="potentially_persistent"' in html
+    assert "You can see the contrail dissipating behind the airplane" in html
+    assert "The end of the contrail is outside the frame" in html
+    assert "persistenceAllowed" in html
+    assert 'data-role="measurement"' in html
+    assert "measurement_km" in html
 
     # Notes textarea (constructed dynamically; test the hooks instead).
     assert 'createElement("textarea")' in html

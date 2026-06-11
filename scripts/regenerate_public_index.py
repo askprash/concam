@@ -2,63 +2,115 @@
 """Regenerate ~/public_html/concam/dates.json + index.html from the published
 date subdirectories.
 
-This is the same logic embedded in the tail of scripts/publish_public_date.sh,
-extracted so it can be run once as a finalizer after a batch backfill (where
-many concurrent publish jobs would otherwise race on dates.json).
+Called by scripts/publish_public_date.sh after each publish, and runnable
+standalone as a finalizer after a batch backfill (where many concurrent
+publish jobs would otherwise race on dates.json).
 
-Usage: regenerate_public_index.py <public_root>
-       (default public_root: ~/public_html/concam)
+Each dates.json entry carries a ``labelers`` list — the human reviewers with a
+committed label export for that date under the repo ``labels/`` directory —
+so the labeler calendar can render one colored dot per labeler per day.
+
+Usage: regenerate_public_index.py [<public_root>] [--labels-dir DIR]
+       (default public_root: ~/public_html/concam; labels-dir: <repo>/labels)
+
+Runs under the system python3 (3.8+) — publish_public_date.sh invokes it
+outside the uv venv — so keep it stdlib-only and 3.8-compatible.
 """
+from __future__ import annotations
+
+import argparse
 import json
 import os
 import re
 import sys
 from pathlib import Path
 
-public_root = Path(
-    sys.argv[1] if len(sys.argv) > 1
-    else os.path.expanduser("~/public_html/concam")
-)
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
-dates = []
-for child in sorted(public_root.iterdir()):
-    if not child.is_dir():
-        continue
-    # Accept YYYY-MM-DD plus optional `-suffix` for A/B variants
-    # (e.g. 2026-04-09-tuned alongside 2026-04-09).
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+)?", child.name):
-        continue
-    manifest_path = child / "manifest.json"
-    if not manifest_path.exists():
-        continue
-    try:
-        data = json.loads(manifest_path.read_text())
-    except Exception:
-        continue
-    ep_total = len(data.get("episodes", []))
-    thr = data.get("detection_threshold", 0.0)
-    ep_detected = sum(
-        1 for e in data["episodes"]
-        if e.get("peak_score", 0.0) >= thr
+# Published dirs: YYYY-MM-DD plus optional `-suffix` for A/B variants
+# (e.g. 2026-04-09-tuned alongside 2026-04-09).
+_DATE_DIR_RE = re.compile(r"(\d{4}-\d{2}-\d{2})(?:-[a-z0-9]+)?")
+# Label exports: YYYY-MM-DD_<labeler>.json or YYYY-MM-DD_<labeler>_labels.json.
+_LABEL_FILE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})_(.+?)(?:_labels)?\.json")
+
+
+def scan_labelers(labels_dir: Path) -> dict[str, list[str]]:
+    """Map YYYY-MM-DD -> sorted unique labeler ids with a label export.
+
+    Prefers the ``date`` / ``labeler_id`` fields inside each JSON file and
+    falls back to parsing the filename for legacy exports without metadata.
+    Malformed or non-matching files are skipped.
+    """
+    out: dict[str, set[str]] = {}
+    if not labels_dir.is_dir():
+        return {}
+    for path in sorted(labels_dir.glob("*.json")):
+        m = _LABEL_FILE_RE.fullmatch(path.name)
+        try:
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        date = data.get("date") or (m.group(1) if m else None)
+        labeler = data.get("labeler_id") or (m.group(2) if m else None)
+        if not date or not labeler:
+            continue
+        out.setdefault(date, set()).add(labeler)
+    return {date: sorted(ids) for date, ids in out.items()}
+
+
+def build_dates(
+    public_root: Path, labelers_by_date: dict[str, list[str]]
+) -> list[dict]:
+    """One entry per published date dir with a readable manifest, newest first.
+
+    A/B variant dirs (2026-04-09-tuned) inherit the base date's labelers —
+    the human labels apply to the day, not the detector variant.
+    """
+    dates = []
+    for child in sorted(public_root.iterdir()):
+        if not child.is_dir():
+            continue
+        m = _DATE_DIR_RE.fullmatch(child.name)
+        if not m:
+            continue
+        manifest_path = child / "manifest.json"
+        if not manifest_path.exists():
+            continue
+        try:
+            data = json.loads(manifest_path.read_text())
+        except Exception:
+            continue
+        ep_total = len(data.get("episodes", []))
+        thr = data.get("detection_threshold", 0.0)
+        ep_detected = sum(
+            1 for e in data["episodes"]
+            if e.get("peak_score", 0.0) >= thr
+        )
+        dates.append({
+            "date": child.name,
+            "episodes": ep_total,
+            "detected": ep_detected,
+            "labelers": labelers_by_date.get(m.group(1), []),
+        })
+
+    # Newest first in the dropdown and landing page.
+    dates.sort(key=lambda d: d["date"], reverse=True)
+    return dates
+
+
+def render_index_html(dates: list[dict]) -> str:
+    rows = "\n".join(
+        f'  <li><a href="{d["date"]}/labeler.html">{d["date"]}</a>'
+        f' <span class="note">&mdash; {d["episodes"]} flight passes,'
+        f' {d["detected"]} above detector threshold'
+        + (f' &middot; labeled by {", ".join(d["labelers"])}'
+           if d.get("labelers") else "")
+        + '</span></li>'
+        for d in dates
     )
-    dates.append({
-        "date": child.name,
-        "episodes": ep_total,
-        "detected": ep_detected,
-    })
-
-# Newest first in the dropdown and landing page.
-dates.sort(key=lambda d: d["date"], reverse=True)
-(public_root / "dates.json").write_text(json.dumps({"dates": dates}, indent=2) + "\n")
-
-# Landing page.
-rows = "\n".join(
-    f'  <li><a href="{d["date"]}/labeler.html">{d["date"]}</a>'
-    f' <span class="note">&mdash; {d["episodes"]} flight passes,'
-    f' {d["detected"]} above detector threshold</span></li>'
-    for d in dates
-)
-html = f"""<!doctype html>
+    return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -103,5 +155,26 @@ html = f"""<!doctype html>
 </body>
 </html>
 """
-(public_root / "index.html").write_text(html)
-print(f"  wrote dates.json with {len(dates)} dates")
+
+
+def regenerate(public_root: Path, labels_dir: Path) -> list[dict]:
+    dates = build_dates(public_root, scan_labelers(labels_dir))
+    (public_root / "dates.json").write_text(
+        json.dumps({"dates": dates}, indent=2) + "\n"
+    )
+    (public_root / "index.html").write_text(render_index_html(dates))
+    return dates
+
+
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("public_root", nargs="?",
+                    default=os.path.expanduser("~/public_html/concam"))
+    ap.add_argument("--labels-dir", type=Path, default=REPO_ROOT / "labels")
+    args = ap.parse_args(argv)
+    dates = regenerate(Path(args.public_root), args.labels_dir)
+    print(f"  wrote dates.json with {len(dates)} dates")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

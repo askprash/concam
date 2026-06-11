@@ -139,6 +139,11 @@ detection:
   # Format: [y0, y1, x0, x1] — numpy-style row/col slice in full-frame pixels.
   # y0=0 (top edge), y1=95 (80+15 pad), x0=2950 (3840-875-15), x1=3840
   timestamp_exclusion_region: [0, 95, 2950, 3840]
+  # Static-scene mask: persistent building/skyline edges (the foreground
+  # tower is the dominant false-positive source). Built by
+  # scripts/build_static_mask.py from 2026-06-08 + 2026-05-25 daylight samples;
+  # masked pixels are suppressed in the post-Canny edge map.
+  static_mask_path: /home/prash/contrails/mit-concam-pipeline/configs/static_mask_mit_green_building.npz
   # Adaptive contrail length measurement: grow the along-track ROI by
   # growth_step_px (each direction) until the aligned-long-line count stops
   # increasing or the total along-track dimension hits roi_max_along_px.

@@ -296,6 +296,27 @@ def _pass_on_base(
     if mask is not None:
         edges = cv2.bitwise_and(edges, edges, mask=mask)
 
+    # Suppress static-scene structure (buildings): persistent building edges
+    # are the dominant false-positive source. Unlike the timestamp exclusion,
+    # this is applied to the *edge map after Canny* — zeroing the input pixels
+    # would manufacture fresh edges along the mask boundary, which are exactly
+    # the aligned straight lines we are trying to remove. The mask is a
+    # full-frame boolean npz built offline (scripts/build_static_mask.py) and
+    # cached per-path, so this is a slice + assignment per pass.
+    if apply_exclusion:
+        mask_path = getattr(config, "static_mask_path", None)
+        if mask_path:
+            from concam.detection.static_mask import load_static_mask
+
+            static = load_static_mask(mask_path)
+            sub = static[y1 : y1 + ch, x1 : x1 + cw]
+            if sub.any():
+                # Pad to the crop shape in case the mask is smaller than the
+                # frame (resolution mismatch) or the crop clips the frame edge.
+                sm = np.zeros((ch, cw), dtype=bool)
+                sm[: sub.shape[0], : sub.shape[1]] = sub
+                edges[sm] = 0
+
     result = DetectionPass(
         method=method,
         crop_origin=crop_origin,

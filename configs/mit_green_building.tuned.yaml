@@ -56,6 +56,7 @@ detection:
   - 95
   - 2950
   - 3840
+  static_mask_path: /home/prash/contrails/mit-concam-pipeline/configs/static_mask_mit_green_building.npz
   growth_step_px: 20
   roi_max_along_px: 600
 aggregation:

@@ -1,0 +1,4287 @@
+{
+ "note": "Episode skeleton of the public 2026-04-09 manifest as generated 2026-04-21 (535 episodes) - the ID space reviewer-1 and thendo labeled in April. The pipeline re-ran 2026-05-01 (665 episodes), renumbering episodes; keep this to remap April labels onto the current ID space by (transponder_id, onset).",
+ "generated_at": "2026-04-21T22:08:13.706018+00:00",
+ "date": "2026-04-09",
+ "episodes": [
+  {
+   "episode_id": 5,
+   "transponder_id": "ADB35C",
+   "callsign": "JBU333",
+   "onset": "2026-04-09T00:00:00+00:00",
+   "end": "2026-04-09T00:00:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 6,
+   "transponder_id": "A9B9E3",
+   "callsign": "AAL141",
+   "onset": "2026-04-09T00:00:00+00:00",
+   "end": "2026-04-09T00:08:40+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 12,
+   "transponder_id": "C01AA6",
+   "callsign": "CJT619",
+   "onset": "2026-04-09T00:00:00+00:00",
+   "end": "2026-04-09T00:15:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 14,
+   "transponder_id": "C051CC",
+   "callsign": "TSC594",
+   "onset": "2026-04-09T00:00:01+00:00",
+   "end": "2026-04-09T00:03:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 81,
+   "transponder_id": "AB3856",
+   "callsign": "AAL204",
+   "onset": "2026-04-09T00:00:01+00:00",
+   "end": "2026-04-09T00:01:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 87,
+   "transponder_id": "A120FE",
+   "callsign": "DAL208",
+   "onset": "2026-04-09T00:00:01+00:00",
+   "end": "2026-04-09T00:06:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 51,
+   "transponder_id": "710121",
+   "callsign": "SVA020",
+   "onset": "2026-04-09T00:00:52+00:00",
+   "end": "2026-04-09T00:10:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 76,
+   "transponder_id": "AA7439",
+   "callsign": "AAL786",
+   "onset": "2026-04-09T00:04:47+00:00",
+   "end": "2026-04-09T00:09:24+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 22,
+   "transponder_id": "AB398A",
+   "callsign": "DAL128",
+   "onset": "2026-04-09T00:06:42+00:00",
+   "end": "2026-04-09T00:18:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 85,
+   "transponder_id": "ABB775",
+   "callsign": "DAL106",
+   "onset": "2026-04-09T00:09:41+00:00",
+   "end": "2026-04-09T00:12:48+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 24,
+   "transponder_id": "A8B75F",
+   "callsign": "UAL170",
+   "onset": "2026-04-09T00:10:09+00:00",
+   "end": "2026-04-09T00:21:03+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 4,
+   "transponder_id": "A35949",
+   "callsign": "JBU993",
+   "onset": "2026-04-09T00:17:00+00:00",
+   "end": "2026-04-09T00:21:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 7,
+   "transponder_id": "424B97",
+   "callsign": "MJSTA",
+   "onset": "2026-04-09T00:18:31+00:00",
+   "end": "2026-04-09T00:21:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 13,
+   "transponder_id": "AE146C",
+   "callsign": "RCH254",
+   "onset": "2026-04-09T00:18:32+00:00",
+   "end": "2026-04-09T00:29:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 89,
+   "transponder_id": "AC3448",
+   "callsign": "AAL278",
+   "onset": "2026-04-09T00:18:36+00:00",
+   "end": "2026-04-09T00:22:37+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 38,
+   "transponder_id": "A4EACB",
+   "callsign": "DAL230",
+   "onset": "2026-04-09T00:21:01+00:00",
+   "end": "2026-04-09T00:32:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 37,
+   "transponder_id": "AA1DCD",
+   "callsign": "AAL720",
+   "onset": "2026-04-09T00:22:28+00:00",
+   "end": "2026-04-09T00:26:59+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 95,
+   "transponder_id": "A07FA6",
+   "callsign": "RPA4702",
+   "onset": "2026-04-09T00:23:31+00:00",
+   "end": "2026-04-09T00:30:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 28,
+   "transponder_id": "AC0196",
+   "callsign": "AAL714",
+   "onset": "2026-04-09T00:23:44+00:00",
+   "end": "2026-04-09T00:24:15+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 26,
+   "transponder_id": "AB8FD0",
+   "callsign": "DAL174",
+   "onset": "2026-04-09T00:24:58+00:00",
+   "end": "2026-04-09T00:33:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 86,
+   "transponder_id": "AB9D9E",
+   "callsign": "AAL728",
+   "onset": "2026-04-09T00:26:56+00:00",
+   "end": "2026-04-09T00:37:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 8,
+   "transponder_id": "394A08",
+   "callsign": "AFR010",
+   "onset": "2026-04-09T00:27:32+00:00",
+   "end": "2026-04-09T00:37:49+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 21,
+   "transponder_id": "3C66C3",
+   "callsign": "DLH4W",
+   "onset": "2026-04-09T00:27:50+00:00",
+   "end": "2026-04-09T00:31:35+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 148,
+   "transponder_id": "345318",
+   "callsign": "IBE03CY",
+   "onset": "2026-04-09T00:30:17+00:00",
+   "end": "2026-04-09T00:31:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 11,
+   "transponder_id": "AB2115",
+   "callsign": "EJA816",
+   "onset": "2026-04-09T00:31:01+00:00",
+   "end": "2026-04-09T00:33:25+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 27,
+   "transponder_id": "A89234",
+   "callsign": "UAL748",
+   "onset": "2026-04-09T00:31:30+00:00",
+   "end": "2026-04-09T00:35:47+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 10,
+   "transponder_id": "407E21",
+   "callsign": "VIR137Y",
+   "onset": "2026-04-09T00:31:31+00:00",
+   "end": "2026-04-09T00:41:21+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 94,
+   "transponder_id": "A38082",
+   "callsign": "JBU303",
+   "onset": "2026-04-09T00:32:00+00:00",
+   "end": "2026-04-09T00:35:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 80,
+   "transponder_id": "3C4A11",
+   "callsign": "DLH469",
+   "onset": "2026-04-09T00:38:31+00:00",
+   "end": "2026-04-09T00:39:53+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 60,
+   "transponder_id": "A8DEE0",
+   "callsign": "UAL510",
+   "onset": "2026-04-09T00:40:55+00:00",
+   "end": "2026-04-09T00:52:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 93,
+   "transponder_id": "A00645",
+   "callsign": "N100SA",
+   "onset": "2026-04-09T00:43:19+00:00",
+   "end": "2026-04-09T00:44:38+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 83,
+   "transponder_id": "AA92FF",
+   "callsign": "UAL23",
+   "onset": "2026-04-09T00:45:20+00:00",
+   "end": "2026-04-09T00:56:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 97,
+   "transponder_id": "A8D6BD",
+   "callsign": "PDT6050",
+   "onset": "2026-04-09T00:49:17+00:00",
+   "end": "2026-04-09T00:58:07+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 117,
+   "transponder_id": "A1F46B",
+   "callsign": "RPA5858",
+   "onset": "2026-04-09T00:52:02+00:00",
+   "end": "2026-04-09T00:52:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 114,
+   "transponder_id": "A64AC6",
+   "callsign": "N504WF",
+   "onset": "2026-04-09T00:56:32+00:00",
+   "end": "2026-04-09T00:58:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 25,
+   "transponder_id": "A8C121",
+   "callsign": "UAL904",
+   "onset": "2026-04-09T00:57:57+00:00",
+   "end": "2026-04-09T01:10:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 84,
+   "transponder_id": "A0A91E",
+   "callsign": "UAL310",
+   "onset": "2026-04-09T00:58:55+00:00",
+   "end": "2026-04-09T00:59:33+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 1,
+   "transponder_id": "4CA9BC",
+   "callsign": "EIN109",
+   "onset": "2026-04-09T01:02:00+00:00",
+   "end": "2026-04-09T01:12:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 147,
+   "transponder_id": "AB72B3",
+   "callsign": "DAL2896",
+   "onset": "2026-04-09T01:06:31+00:00",
+   "end": "2026-04-09T01:13:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 77,
+   "transponder_id": "406814",
+   "callsign": "VIR128K",
+   "onset": "2026-04-09T01:09:29+00:00",
+   "end": "2026-04-09T01:09:52+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 112,
+   "transponder_id": "A09E70",
+   "callsign": "UPS1057",
+   "onset": "2026-04-09T01:12:30+00:00",
+   "end": "2026-04-09T01:13:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 113,
+   "transponder_id": "A2B991",
+   "callsign": "FDX1212",
+   "onset": "2026-04-09T01:12:30+00:00",
+   "end": "2026-04-09T01:13:26+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 91,
+   "transponder_id": "4CC52E",
+   "callsign": "ICE622",
+   "onset": "2026-04-09T01:12:59+00:00",
+   "end": "2026-04-09T01:13:29+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 166,
+   "transponder_id": "ADBE91",
+   "callsign": "JBU1077",
+   "onset": "2026-04-09T01:14:01+00:00",
+   "end": "2026-04-09T01:18:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 165,
+   "transponder_id": "A0A8DF",
+   "callsign": "UAL36",
+   "onset": "2026-04-09T01:14:19+00:00",
+   "end": "2026-04-09T01:26:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 170,
+   "transponder_id": "4BA950",
+   "callsign": "THY2",
+   "onset": "2026-04-09T01:14:23+00:00",
+   "end": "2026-04-09T01:19:09+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 17,
+   "transponder_id": "4005B9",
+   "callsign": "BAW183",
+   "onset": "2026-04-09T01:17:31+00:00",
+   "end": "2026-04-09T01:26:55+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 23,
+   "transponder_id": "ABB3BE",
+   "callsign": "DAL1",
+   "onset": "2026-04-09T01:18:33+00:00",
+   "end": "2026-04-09T01:18:54+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 34,
+   "transponder_id": "4ACA65",
+   "callsign": "SAS926",
+   "onset": "2026-04-09T01:20:18+00:00",
+   "end": "2026-04-09T01:21:42+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 74,
+   "transponder_id": "AD002B",
+   "callsign": "FDX1291",
+   "onset": "2026-04-09T01:22:30+00:00",
+   "end": "2026-04-09T01:30:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 31,
+   "transponder_id": "A32BBA",
+   "callsign": "AAL82",
+   "onset": "2026-04-09T01:26:17+00:00",
+   "end": "2026-04-09T01:38:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 35,
+   "transponder_id": "AD646E",
+   "callsign": "JBU733",
+   "onset": "2026-04-09T01:32:00+00:00",
+   "end": "2026-04-09T01:34:41+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 75,
+   "transponder_id": "A1B98E",
+   "callsign": "EJM210",
+   "onset": "2026-04-09T01:34:30+00:00",
+   "end": "2026-04-09T01:41:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 52,
+   "transponder_id": "3C6719",
+   "callsign": "DLH413",
+   "onset": "2026-04-09T01:35:47+00:00",
+   "end": "2026-04-09T01:44:20+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 102,
+   "transponder_id": "A18CBB",
+   "callsign": "UAL82",
+   "onset": "2026-04-09T01:39:29+00:00",
+   "end": "2026-04-09T01:50:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 53,
+   "transponder_id": "A635DA",
+   "callsign": "KPO5",
+   "onset": "2026-04-09T01:42:28+00:00",
+   "end": "2026-04-09T01:42:39+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 15,
+   "transponder_id": "4BB199",
+   "callsign": "THY11",
+   "onset": "2026-04-09T01:43:01+00:00",
+   "end": "2026-04-09T01:52:53+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 61,
+   "transponder_id": "AB4840",
+   "callsign": "DAL52",
+   "onset": "2026-04-09T01:44:46+00:00",
+   "end": "2026-04-09T01:45:06+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 18,
+   "transponder_id": "39D2A5",
+   "callsign": "AFR012",
+   "onset": "2026-04-09T01:44:56+00:00",
+   "end": "2026-04-09T01:56:19+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 167,
+   "transponder_id": "4075B4",
+   "callsign": "VIR154",
+   "onset": "2026-04-09T01:47:35+00:00",
+   "end": "2026-04-09T01:50:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 29,
+   "transponder_id": "4CAE31",
+   "callsign": "EIN118",
+   "onset": "2026-04-09T01:50:28+00:00",
+   "end": "2026-04-09T01:51:55+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 58,
+   "transponder_id": "A8D3B4",
+   "callsign": "UAL54",
+   "onset": "2026-04-09T01:52:06+00:00",
+   "end": "2026-04-09T02:04:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 79,
+   "transponder_id": "4CC53B",
+   "callsign": "ICE42P",
+   "onset": "2026-04-09T01:52:16+00:00",
+   "end": "2026-04-09T01:56:18+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 153,
+   "transponder_id": "A9B275",
+   "callsign": "AAL730",
+   "onset": "2026-04-09T01:54:07+00:00",
+   "end": "2026-04-09T01:56:18+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 152,
+   "transponder_id": "4CA9CB",
+   "callsign": "EIN106",
+   "onset": "2026-04-09T01:54:12+00:00",
+   "end": "2026-04-09T02:06:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 44,
+   "transponder_id": "AE20C3",
+   "callsign": "RCH3270",
+   "onset": "2026-04-09T01:54:54+00:00",
+   "end": "2026-04-09T02:05:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 59,
+   "transponder_id": "A9178D",
+   "callsign": "UAL940",
+   "onset": "2026-04-09T01:59:37+00:00",
+   "end": "2026-04-09T02:11:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 57,
+   "transponder_id": "A4C5D8",
+   "callsign": "JBU7",
+   "onset": "2026-04-09T02:01:57+00:00",
+   "end": "2026-04-09T02:13:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 151,
+   "transponder_id": "A29A6D",
+   "callsign": "N267QS",
+   "onset": "2026-04-09T02:03:24+00:00",
+   "end": "2026-04-09T02:08:04+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 68,
+   "transponder_id": "AB80F4",
+   "callsign": "DAL288",
+   "onset": "2026-04-09T02:07:30+00:00",
+   "end": "2026-04-09T02:18:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 65,
+   "transponder_id": "A9A750",
+   "callsign": "AAL100",
+   "onset": "2026-04-09T02:08:49+00:00",
+   "end": "2026-04-09T02:18:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 33,
+   "transponder_id": "A14104",
+   "callsign": "DAL44",
+   "onset": "2026-04-09T02:12:03+00:00",
+   "end": "2026-04-09T02:23:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 67,
+   "transponder_id": "4CAE80",
+   "callsign": "ITY6KC",
+   "onset": "2026-04-09T02:12:03+00:00",
+   "end": "2026-04-09T02:15:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 118,
+   "transponder_id": "AB53E4",
+   "callsign": "EDV5396",
+   "onset": "2026-04-09T02:25:49+00:00",
+   "end": "2026-04-09T02:36:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 47,
+   "transponder_id": "AAB202",
+   "callsign": "AAL174",
+   "onset": "2026-04-09T02:29:39+00:00",
+   "end": "2026-04-09T02:34:03+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 169,
+   "transponder_id": "AA8A83",
+   "callsign": "AAL732",
+   "onset": "2026-04-09T02:31:17+00:00",
+   "end": "2026-04-09T02:35:28+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 42,
+   "transponder_id": "A9C508",
+   "callsign": "AAL38",
+   "onset": "2026-04-09T02:37:44+00:00",
+   "end": "2026-04-09T02:41:43+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 63,
+   "transponder_id": "A539C9",
+   "callsign": "DAL66",
+   "onset": "2026-04-09T02:41:00+00:00",
+   "end": "2026-04-09T02:49:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 123,
+   "transponder_id": "A075DF",
+   "callsign": "RPA4627",
+   "onset": "2026-04-09T02:42:02+00:00",
+   "end": "2026-04-09T02:50:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 138,
+   "transponder_id": "AAF968",
+   "callsign": "DAL184",
+   "onset": "2026-04-09T02:42:38+00:00",
+   "end": "2026-04-09T02:48:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 120,
+   "transponder_id": "A3711A",
+   "callsign": "JBU845",
+   "onset": "2026-04-09T02:43:01+00:00",
+   "end": "2026-04-09T02:47:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 159,
+   "transponder_id": "A8F77C",
+   "callsign": "UAL146",
+   "onset": "2026-04-09T02:44:18+00:00",
+   "end": "2026-04-09T02:56:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 30,
+   "transponder_id": "495269",
+   "callsign": "RZO322",
+   "onset": "2026-04-09T02:46:30+00:00",
+   "end": "2026-04-09T02:57:07+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 66,
+   "transponder_id": "AB8B0B",
+   "callsign": "AAL736",
+   "onset": "2026-04-09T02:48:20+00:00",
+   "end": "2026-04-09T02:54:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 121,
+   "transponder_id": "A01F73",
+   "callsign": "RPA4534",
+   "onset": "2026-04-09T02:53:10+00:00",
+   "end": "2026-04-09T03:03:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 19,
+   "transponder_id": "406D7B",
+   "callsign": "BAW37J",
+   "onset": "2026-04-09T02:57:32+00:00",
+   "end": "2026-04-09T03:06:46+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 54,
+   "transponder_id": "AC0906",
+   "callsign": "AAL132",
+   "onset": "2026-04-09T02:58:29+00:00",
+   "end": "2026-04-09T03:10:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 132,
+   "transponder_id": "AB1FA7",
+   "callsign": "AAL754",
+   "onset": "2026-04-09T02:59:31+00:00",
+   "end": "2026-04-09T03:09:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 46,
+   "transponder_id": "4CABEC",
+   "callsign": "EIN12G",
+   "onset": "2026-04-09T03:04:27+00:00",
+   "end": "2026-04-09T03:05:48+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 156,
+   "transponder_id": "AAA326",
+   "callsign": "AAL724",
+   "onset": "2026-04-09T03:06:57+00:00",
+   "end": "2026-04-09T03:08:17+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 158,
+   "transponder_id": "4CABD2",
+   "callsign": "EIN1XG",
+   "onset": "2026-04-09T03:09:08+00:00",
+   "end": "2026-04-09T03:11:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 127,
+   "transponder_id": "A16EBC",
+   "callsign": "UAL270",
+   "onset": "2026-04-09T03:11:44+00:00",
+   "end": "2026-04-09T03:20:17+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 125,
+   "transponder_id": "AC857B",
+   "callsign": "PDT5914",
+   "onset": "2026-04-09T03:13:54+00:00",
+   "end": "2026-04-09T03:23:11+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 137,
+   "transponder_id": "AB6FBF",
+   "callsign": "DAL264",
+   "onset": "2026-04-09T03:16:55+00:00",
+   "end": "2026-04-09T03:17:10+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 136,
+   "transponder_id": "A544EE",
+   "callsign": "DAL3",
+   "onset": "2026-04-09T03:24:37+00:00",
+   "end": "2026-04-09T03:24:46+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 71,
+   "transponder_id": "461F08",
+   "callsign": "FIN16",
+   "onset": "2026-04-09T03:33:49+00:00",
+   "end": "2026-04-09T03:43:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 72,
+   "transponder_id": "3481D5",
+   "callsign": "LOT5N",
+   "onset": "2026-04-09T03:35:16+00:00",
+   "end": "2026-04-09T03:45:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 134,
+   "transponder_id": "A146F9",
+   "callsign": "UAL228",
+   "onset": "2026-04-09T03:51:09+00:00",
+   "end": "2026-04-09T03:54:46+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 164,
+   "transponder_id": "A36994",
+   "callsign": "EDV5411",
+   "onset": "2026-04-09T03:53:39+00:00",
+   "end": "2026-04-09T03:54:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 160,
+   "transponder_id": "AACC5B",
+   "callsign": "UAL924",
+   "onset": "2026-04-09T03:56:17+00:00",
+   "end": "2026-04-09T03:56:59+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 171,
+   "transponder_id": "AB4BF7",
+   "callsign": "DAL32",
+   "onset": "2026-04-09T04:01:31+00:00",
+   "end": "2026-04-09T04:14:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 149,
+   "transponder_id": "A8E24D",
+   "callsign": "UAL317",
+   "onset": "2026-04-09T04:02:53+00:00",
+   "end": "2026-04-09T04:09:38+00:00",
+   "peak_score": 0.48310596570712416
+  },
+  {
+   "episode_id": 176,
+   "transponder_id": "AA5F41",
+   "callsign": "AAL198",
+   "onset": "2026-04-09T04:04:38+00:00",
+   "end": "2026-04-09T04:09:58+00:00",
+   "peak_score": 0.5979276648022654
+  },
+  {
+   "episode_id": 9,
+   "transponder_id": "394A08",
+   "callsign": "AFR010",
+   "onset": "2026-04-09T04:28:56+00:00",
+   "end": "2026-04-09T04:29:17+00:00",
+   "peak_score": 0.2801662084739886
+  },
+  {
+   "episode_id": 161,
+   "transponder_id": "AACE5C",
+   "callsign": "AAL56",
+   "onset": "2026-04-09T04:29:51+00:00",
+   "end": "2026-04-09T04:30:44+00:00",
+   "peak_score": 0.3370778739490281
+  },
+  {
+   "episode_id": 128,
+   "transponder_id": "4BA956",
+   "callsign": "THY32G",
+   "onset": "2026-04-09T04:31:42+00:00",
+   "end": "2026-04-09T04:31:53+00:00",
+   "peak_score": 0.2492851663442602
+  },
+  {
+   "episode_id": 2,
+   "transponder_id": "4CA9BC",
+   "callsign": "EIN109",
+   "onset": "2026-04-09T04:33:55+00:00",
+   "end": "2026-04-09T04:38:01+00:00",
+   "peak_score": 0.5526324271295502
+  },
+  {
+   "episode_id": 142,
+   "transponder_id": "3C458B",
+   "callsign": "BOX457",
+   "onset": "2026-04-09T04:45:53+00:00",
+   "end": "2026-04-09T04:48:29+00:00",
+   "peak_score": 0.5897012933260473
+  },
+  {
+   "episode_id": 140,
+   "transponder_id": "A0E59F",
+   "callsign": "N157QS",
+   "onset": "2026-04-09T04:57:37+00:00",
+   "end": "2026-04-09T05:03:47+00:00",
+   "peak_score": 0.7719375177183145
+  },
+  {
+   "episode_id": 50,
+   "transponder_id": "4CA615",
+   "callsign": "EIN142",
+   "onset": "2026-04-09T05:17:03+00:00",
+   "end": "2026-04-09T05:18:36+00:00",
+   "peak_score": 0.3710811574276809
+  },
+  {
+   "episode_id": 145,
+   "transponder_id": "AA9BB8",
+   "callsign": "AAL734",
+   "onset": "2026-04-09T05:18:59+00:00",
+   "end": "2026-04-09T05:27:30+00:00",
+   "peak_score": 0.9194298013606402
+  },
+  {
+   "episode_id": 143,
+   "transponder_id": "AB034D",
+   "callsign": "AAL126",
+   "onset": "2026-04-09T05:24:02+00:00",
+   "end": "2026-04-09T05:33:15+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 16,
+   "transponder_id": "4BB199",
+   "callsign": "THY11",
+   "onset": "2026-04-09T05:25:24+00:00",
+   "end": "2026-04-09T05:31:11+00:00",
+   "peak_score": 0.5179797064874387
+  },
+  {
+   "episode_id": 104,
+   "transponder_id": "7380CA",
+   "callsign": "ELY1026",
+   "onset": "2026-04-09T05:26:10+00:00",
+   "end": "2026-04-09T05:26:35+00:00",
+   "peak_score": 0.4774835357524423
+  },
+  {
+   "episode_id": 163,
+   "transponder_id": "4BCE8E",
+   "callsign": "TCSTN",
+   "onset": "2026-04-09T05:35:34+00:00",
+   "end": "2026-04-09T05:36:56+00:00",
+   "peak_score": 0.496530224073051
+  },
+  {
+   "episode_id": 69,
+   "transponder_id": "A0F46F",
+   "callsign": "DAL246",
+   "onset": "2026-04-09T06:16:31+00:00",
+   "end": "2026-04-09T06:17:04+00:00",
+   "peak_score": 0.3631478760886659
+  },
+  {
+   "episode_id": 155,
+   "transponder_id": "ADFEBA",
+   "callsign": "AF2",
+   "onset": "2026-04-09T06:31:05+00:00",
+   "end": "2026-04-09T06:41:26+00:00",
+   "peak_score": 0.6686981734961941
+  },
+  {
+   "episode_id": 200,
+   "transponder_id": "AB9387",
+   "callsign": "DAL36",
+   "onset": "2026-04-09T07:10:31+00:00",
+   "end": "2026-04-09T07:19:00+00:00",
+   "peak_score": 0.38460398088997444
+  },
+  {
+   "episode_id": 49,
+   "transponder_id": "ADFEB8",
+   "callsign": "SAM335",
+   "onset": "2026-04-09T07:11:05+00:00",
+   "end": "2026-04-09T07:21:10+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 55,
+   "transponder_id": "4067A3",
+   "callsign": "DHK368",
+   "onset": "2026-04-09T07:24:30+00:00",
+   "end": "2026-04-09T07:34:13+00:00",
+   "peak_score": 0.44437872318744315
+  },
+  {
+   "episode_id": 189,
+   "transponder_id": "4D012D",
+   "callsign": "CLX97C",
+   "onset": "2026-04-09T08:10:32+00:00",
+   "end": "2026-04-09T08:20:01+00:00",
+   "peak_score": 0.5072511892689171
+  },
+  {
+   "episode_id": 45,
+   "transponder_id": "738C06",
+   "callsign": "ICL983",
+   "onset": "2026-04-09T08:20:31+00:00",
+   "end": "2026-04-09T08:31:22+00:00",
+   "peak_score": 0.6011605783034711
+  },
+  {
+   "episode_id": 150,
+   "transponder_id": "A093F7",
+   "callsign": "ABX3106",
+   "onset": "2026-04-09T08:24:54+00:00",
+   "end": "2026-04-09T08:28:01+00:00",
+   "peak_score": 0.7458843273223622
+  },
+  {
+   "episode_id": 129,
+   "transponder_id": "A826E9",
+   "callsign": "UPS223",
+   "onset": "2026-04-09T08:39:02+00:00",
+   "end": "2026-04-09T08:48:30+00:00",
+   "peak_score": 0.4755510318752473
+  },
+  {
+   "episode_id": 178,
+   "transponder_id": "C05190",
+   "callsign": "TSC615",
+   "onset": "2026-04-09T08:45:01+00:00",
+   "end": "2026-04-09T08:51:30+00:00",
+   "peak_score": 0.42165522274380446
+  },
+  {
+   "episode_id": 99,
+   "transponder_id": "407EA1",
+   "callsign": "DHK815",
+   "onset": "2026-04-09T09:13:01+00:00",
+   "end": "2026-04-09T09:24:05+00:00",
+   "peak_score": 0.5984609379668128
+  },
+  {
+   "episode_id": 64,
+   "transponder_id": "C00B35",
+   "callsign": "ACA97",
+   "onset": "2026-04-09T09:27:09+00:00",
+   "end": "2026-04-09T09:29:30+00:00",
+   "peak_score": 0.5667698860488827
+  },
+  {
+   "episode_id": 20,
+   "transponder_id": "AB79CA",
+   "callsign": "AAL293",
+   "onset": "2026-04-09T09:34:30+00:00",
+   "end": "2026-04-09T09:43:56+00:00",
+   "peak_score": 0.7443487876976003
+  },
+  {
+   "episode_id": 141,
+   "transponder_id": "A5D87A",
+   "callsign": "THY6044",
+   "onset": "2026-04-09T09:36:31+00:00",
+   "end": "2026-04-09T09:46:52+00:00",
+   "peak_score": 0.2252454634824027
+  },
+  {
+   "episode_id": 172,
+   "transponder_id": "4CC4F1",
+   "callsign": "ICE721",
+   "onset": "2026-04-09T09:46:00+00:00",
+   "end": "2026-04-09T09:47:25+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 181,
+   "transponder_id": "A34119",
+   "callsign": "DAL1019",
+   "onset": "2026-04-09T09:51:35+00:00",
+   "end": "2026-04-09T09:56:34+00:00",
+   "peak_score": 0.9907800828650593
+  },
+  {
+   "episode_id": 180,
+   "transponder_id": "AC27CF",
+   "callsign": "SWA4659",
+   "onset": "2026-04-09T09:52:01+00:00",
+   "end": "2026-04-09T09:54:05+00:00",
+   "peak_score": 0.7167642180159546
+  },
+  {
+   "episode_id": 173,
+   "transponder_id": "4CC4F1",
+   "callsign": "ICE721",
+   "onset": "2026-04-09T09:52:25+00:00",
+   "end": "2026-04-09T09:56:14+00:00",
+   "peak_score": 0.7143452960306237
+  },
+  {
+   "episode_id": 144,
+   "transponder_id": "ABB8A0",
+   "callsign": "SWA3976",
+   "onset": "2026-04-09T09:58:31+00:00",
+   "end": "2026-04-09T10:03:43+00:00",
+   "peak_score": 0.8802199853183573
+  },
+  {
+   "episode_id": 179,
+   "transponder_id": "C035BB",
+   "callsign": "JZA603",
+   "onset": "2026-04-09T10:02:31+00:00",
+   "end": "2026-04-09T10:07:31+00:00",
+   "peak_score": 0.8870483675494649
+  },
+  {
+   "episode_id": 183,
+   "transponder_id": "A7A60E",
+   "callsign": "JIA5160",
+   "onset": "2026-04-09T10:04:01+00:00",
+   "end": "2026-04-09T10:05:20+00:00",
+   "peak_score": 0.48287334438043583
+  },
+  {
+   "episode_id": 260,
+   "transponder_id": "A12AC8",
+   "callsign": "UAL2441",
+   "onset": "2026-04-09T10:04:31+00:00",
+   "end": "2026-04-09T10:08:30+00:00",
+   "peak_score": 0.7394229618899137
+  },
+  {
+   "episode_id": 227,
+   "transponder_id": "A5FEF9",
+   "callsign": "OAE4068",
+   "onset": "2026-04-09T10:08:31+00:00",
+   "end": "2026-04-09T10:20:18+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 215,
+   "transponder_id": "A25B3F",
+   "callsign": "ASA311",
+   "onset": "2026-04-09T10:09:01+00:00",
+   "end": "2026-04-09T10:12:36+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 296,
+   "transponder_id": "ABE3E6",
+   "callsign": "SWA3705",
+   "onset": "2026-04-09T10:11:30+00:00",
+   "end": "2026-04-09T10:15:01+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 119,
+   "transponder_id": "AB53E4",
+   "callsign": "EDV5396",
+   "onset": "2026-04-09T10:12:30+00:00",
+   "end": "2026-04-09T10:15:30+00:00",
+   "peak_score": 0.7800457640334116
+  },
+  {
+   "episode_id": 222,
+   "transponder_id": "A3CC82",
+   "callsign": "DAL2303",
+   "onset": "2026-04-09T10:13:31+00:00",
+   "end": "2026-04-09T10:18:32+00:00",
+   "peak_score": 0.4897702607710379
+  },
+  {
+   "episode_id": 122,
+   "transponder_id": "A01F73",
+   "callsign": "RPA4534",
+   "onset": "2026-04-09T10:18:30+00:00",
+   "end": "2026-04-09T10:30:34+00:00",
+   "peak_score": 0.9448610154873169
+  },
+  {
+   "episode_id": 175,
+   "transponder_id": "AAAB08",
+   "callsign": "FDX1491",
+   "onset": "2026-04-09T10:20:01+00:00",
+   "end": "2026-04-09T10:22:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 105,
+   "transponder_id": "A7F6F6",
+   "callsign": "JBU1443",
+   "onset": "2026-04-09T10:29:01+00:00",
+   "end": "2026-04-09T10:29:57+00:00",
+   "peak_score": 0.34986921204788884
+  },
+  {
+   "episode_id": 191,
+   "transponder_id": "AB10DF",
+   "callsign": "AAL2293",
+   "onset": "2026-04-09T10:29:30+00:00",
+   "end": "2026-04-09T10:33:40+00:00",
+   "peak_score": 0.6687663593951408
+  },
+  {
+   "episode_id": 185,
+   "transponder_id": "A449A4",
+   "callsign": "UAL1414",
+   "onset": "2026-04-09T10:36:00+00:00",
+   "end": "2026-04-09T10:43:30+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 188,
+   "transponder_id": "ABF32F",
+   "callsign": "SWA3415",
+   "onset": "2026-04-09T10:40:00+00:00",
+   "end": "2026-04-09T10:41:51+00:00",
+   "peak_score": 0.5867370125563228
+  },
+  {
+   "episode_id": 193,
+   "transponder_id": "A38E69",
+   "callsign": "JBU311",
+   "onset": "2026-04-09T10:42:31+00:00",
+   "end": "2026-04-09T10:48:00+00:00",
+   "peak_score": 0.48439804559080135
+  },
+  {
+   "episode_id": 249,
+   "transponder_id": "A79046",
+   "callsign": "DAL859",
+   "onset": "2026-04-09T10:42:33+00:00",
+   "end": "2026-04-09T10:45:01+00:00",
+   "peak_score": 0.3388096314090256
+  },
+  {
+   "episode_id": 184,
+   "transponder_id": "A86A2B",
+   "callsign": "JIA5034",
+   "onset": "2026-04-09T10:43:00+00:00",
+   "end": "2026-04-09T10:46:14+00:00",
+   "peak_score": 0.38488416659961505
+  },
+  {
+   "episode_id": 194,
+   "transponder_id": "A44258",
+   "callsign": "UAL2684",
+   "onset": "2026-04-09T10:43:32+00:00",
+   "end": "2026-04-09T10:45:30+00:00",
+   "peak_score": 0.7494808964595328
+  },
+  {
+   "episode_id": 214,
+   "transponder_id": "A560F4",
+   "callsign": "AAL2315",
+   "onset": "2026-04-09T10:48:01+00:00",
+   "end": "2026-04-09T10:51:08+00:00",
+   "peak_score": 0.4230405878866083
+  },
+  {
+   "episode_id": 187,
+   "transponder_id": "ADB29F",
+   "callsign": "AAL1509",
+   "onset": "2026-04-09T10:48:31+00:00",
+   "end": "2026-04-09T10:56:00+00:00",
+   "peak_score": 0.7560928830619048
+  },
+  {
+   "episode_id": 245,
+   "transponder_id": "A085ED",
+   "callsign": "ABX3107",
+   "onset": "2026-04-09T10:51:31+00:00",
+   "end": "2026-04-09T10:54:00+00:00",
+   "peak_score": 0.3056374012697802
+  },
+  {
+   "episode_id": 135,
+   "transponder_id": "C06A80",
+   "callsign": "TSC284",
+   "onset": "2026-04-09T10:59:30+00:00",
+   "end": "2026-04-09T11:00:22+00:00",
+   "peak_score": 0.4237024406418571
+  },
+  {
+   "episode_id": 278,
+   "transponder_id": "ADA5EE",
+   "callsign": "JBU919",
+   "onset": "2026-04-09T11:06:00+00:00",
+   "end": "2026-04-09T11:08:31+00:00",
+   "peak_score": 0.47179079276154035
+  },
+  {
+   "episode_id": 192,
+   "transponder_id": "C01401",
+   "callsign": "ACA767",
+   "onset": "2026-04-09T11:07:00+00:00",
+   "end": "2026-04-09T11:11:01+00:00",
+   "peak_score": 0.4708940266390145
+  },
+  {
+   "episode_id": 56,
+   "transponder_id": "4067A3",
+   "callsign": "DHK368",
+   "onset": "2026-04-09T11:09:36+00:00",
+   "end": "2026-04-09T11:09:40+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 190,
+   "transponder_id": "A0B7FA",
+   "callsign": "UAL285",
+   "onset": "2026-04-09T11:24:02+00:00",
+   "end": "2026-04-09T11:31:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 283,
+   "transponder_id": "AAC499",
+   "callsign": "EJA793",
+   "onset": "2026-04-09T11:26:00+00:00",
+   "end": "2026-04-09T11:26:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 267,
+   "transponder_id": "A362A2",
+   "callsign": "UPS207",
+   "onset": "2026-04-09T11:28:40+00:00",
+   "end": "2026-04-09T11:38:29+00:00",
+   "peak_score": 0.8243107311451993
+  },
+  {
+   "episode_id": 261,
+   "transponder_id": "C06AAC",
+   "callsign": "TSC738",
+   "onset": "2026-04-09T11:31:00+00:00",
+   "end": "2026-04-09T11:34:57+00:00",
+   "peak_score": 0.45408565888413405
+  },
+  {
+   "episode_id": 279,
+   "transponder_id": "AD6BDC",
+   "callsign": "JBU2677",
+   "onset": "2026-04-09T11:34:57+00:00",
+   "end": "2026-04-09T11:37:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 197,
+   "transponder_id": "A3A27A",
+   "callsign": "ENY4051",
+   "onset": "2026-04-09T11:37:00+00:00",
+   "end": "2026-04-09T11:39:01+00:00",
+   "peak_score": 0.4779078677812969
+  },
+  {
+   "episode_id": 195,
+   "transponder_id": "A34D52",
+   "callsign": "JBU641",
+   "onset": "2026-04-09T11:37:30+00:00",
+   "end": "2026-04-09T11:41:26+00:00",
+   "peak_score": 0.269669739501027
+  },
+  {
+   "episode_id": 198,
+   "transponder_id": "A73F35",
+   "callsign": "SWA4948",
+   "onset": "2026-04-09T11:39:30+00:00",
+   "end": "2026-04-09T11:41:32+00:00",
+   "peak_score": 0.2687510448690747
+  },
+  {
+   "episode_id": 233,
+   "transponder_id": "AC00D6",
+   "callsign": "SWA961",
+   "onset": "2026-04-09T11:40:30+00:00",
+   "end": "2026-04-09T11:44:54+00:00",
+   "peak_score": 0.3593805900275467
+  },
+  {
+   "episode_id": 291,
+   "transponder_id": "ADA167",
+   "callsign": "ASA459",
+   "onset": "2026-04-09T11:42:00+00:00",
+   "end": "2026-04-09T11:45:01+00:00",
+   "peak_score": 0.30179341490931705
+  },
+  {
+   "episode_id": 196,
+   "transponder_id": "ACC3B4",
+   "callsign": "AAL497",
+   "onset": "2026-04-09T11:42:02+00:00",
+   "end": "2026-04-09T11:43:58+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 213,
+   "transponder_id": "A3D302",
+   "callsign": "UAL647",
+   "onset": "2026-04-09T11:44:03+00:00",
+   "end": "2026-04-09T11:47:31+00:00",
+   "peak_score": 0.25463079250861737
+  },
+  {
+   "episode_id": 255,
+   "transponder_id": "C07A0C",
+   "callsign": "TSC894",
+   "onset": "2026-04-09T11:46:31+00:00",
+   "end": "2026-04-09T11:50:34+00:00",
+   "peak_score": 0.28722655948357934
+  },
+  {
+   "episode_id": 126,
+   "transponder_id": "AC857B",
+   "callsign": "PDT5914",
+   "onset": "2026-04-09T11:48:00+00:00",
+   "end": "2026-04-09T12:00:23+00:00",
+   "peak_score": 0.9508070404921559
+  },
+  {
+   "episode_id": 182,
+   "transponder_id": "A36130",
+   "callsign": "DAL2570",
+   "onset": "2026-04-09T11:48:01+00:00",
+   "end": "2026-04-09T11:54:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 304,
+   "transponder_id": "A1DE8D",
+   "callsign": "JBU133",
+   "onset": "2026-04-09T11:49:02+00:00",
+   "end": "2026-04-09T11:51:32+00:00",
+   "peak_score": 0.4436706947317555
+  },
+  {
+   "episode_id": 295,
+   "transponder_id": "AD27F3",
+   "callsign": "JBU287",
+   "onset": "2026-04-09T11:54:30+00:00",
+   "end": "2026-04-09T11:56:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 302,
+   "transponder_id": "A12AC5",
+   "callsign": "UAL2011",
+   "onset": "2026-04-09T12:09:00+00:00",
+   "end": "2026-04-09T12:14:01+00:00",
+   "peak_score": 0.34327633786989026
+  },
+  {
+   "episode_id": 228,
+   "transponder_id": "A6D83C",
+   "callsign": "DAL384",
+   "onset": "2026-04-09T12:09:01+00:00",
+   "end": "2026-04-09T12:11:01+00:00",
+   "peak_score": 0.1982993424897621
+  },
+  {
+   "episode_id": 312,
+   "transponder_id": "A977BB",
+   "callsign": "DAL479",
+   "onset": "2026-04-09T12:10:04+00:00",
+   "end": "2026-04-09T12:13:19+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 259,
+   "transponder_id": "A7CF10",
+   "callsign": "DAL499",
+   "onset": "2026-04-09T12:10:31+00:00",
+   "end": "2026-04-09T12:11:36+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 116,
+   "transponder_id": "A7B7C5",
+   "callsign": "DAL977",
+   "onset": "2026-04-09T12:14:30+00:00",
+   "end": "2026-04-09T12:16:30+00:00",
+   "peak_score": 0.4773868715761287
+  },
+  {
+   "episode_id": 234,
+   "transponder_id": "AE07D8",
+   "callsign": "RCH578",
+   "onset": "2026-04-09T12:18:48+00:00",
+   "end": "2026-04-09T12:30:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 40,
+   "transponder_id": "89639C",
+   "callsign": "UAE8ER",
+   "onset": "2026-04-09T12:34:59+00:00",
+   "end": "2026-04-09T12:44:34+00:00",
+   "peak_score": 0.741069470592447
+  },
+  {
+   "episode_id": 273,
+   "transponder_id": "C028CD",
+   "callsign": "WJA2658",
+   "onset": "2026-04-09T12:38:01+00:00",
+   "end": "2026-04-09T12:50:58+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 235,
+   "transponder_id": "ADAEE8",
+   "callsign": "AAL2114",
+   "onset": "2026-04-09T12:38:31+00:00",
+   "end": "2026-04-09T12:46:01+00:00",
+   "peak_score": 0.43235271174955386
+  },
+  {
+   "episode_id": 236,
+   "transponder_id": "A05F37",
+   "callsign": "DAL1138",
+   "onset": "2026-04-09T12:41:30+00:00",
+   "end": "2026-04-09T12:43:31+00:00",
+   "peak_score": 0.6220232538376439
+  },
+  {
+   "episode_id": 239,
+   "transponder_id": "A8102A",
+   "callsign": "UAL2744",
+   "onset": "2026-04-09T12:42:35+00:00",
+   "end": "2026-04-09T12:50:34+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 174,
+   "transponder_id": "4CC4F1",
+   "callsign": "ICE721",
+   "onset": "2026-04-09T12:54:35+00:00",
+   "end": "2026-04-09T12:58:37+00:00",
+   "peak_score": 0.8512672725786405
+  },
+  {
+   "episode_id": 308,
+   "transponder_id": "A8CC46",
+   "callsign": "UAL934",
+   "onset": "2026-04-09T13:03:05+00:00",
+   "end": "2026-04-09T13:07:34+00:00",
+   "peak_score": 0.9068072346387943
+  },
+  {
+   "episode_id": 230,
+   "transponder_id": "A7C7A2",
+   "callsign": "DAL514",
+   "onset": "2026-04-09T13:03:31+00:00",
+   "end": "2026-04-09T13:06:31+00:00",
+   "peak_score": 0.4846679380756207
+  },
+  {
+   "episode_id": 101,
+   "transponder_id": "4BB475",
+   "callsign": "MNB312",
+   "onset": "2026-04-09T13:05:30+00:00",
+   "end": "2026-04-09T13:15:38+00:00",
+   "peak_score": 0.7316213925037048
+  },
+  {
+   "episode_id": 270,
+   "transponder_id": "ADC694",
+   "callsign": "EJA987",
+   "onset": "2026-04-09T13:11:30+00:00",
+   "end": "2026-04-09T13:16:00+00:00",
+   "peak_score": 0.2830919569962239
+  },
+  {
+   "episode_id": 225,
+   "transponder_id": "424508",
+   "callsign": "BMA413",
+   "onset": "2026-04-09T13:13:00+00:00",
+   "end": "2026-04-09T13:23:00+00:00",
+   "peak_score": 0.8243506571589382
+  },
+  {
+   "episode_id": 124,
+   "transponder_id": "A075DF",
+   "callsign": "RPA4627",
+   "onset": "2026-04-09T13:13:02+00:00",
+   "end": "2026-04-09T13:18:01+00:00",
+   "peak_score": 0.45321270854018864
+  },
+  {
+   "episode_id": 237,
+   "transponder_id": "AE117D",
+   "callsign": "RCH708",
+   "onset": "2026-04-09T13:18:11+00:00",
+   "end": "2026-04-09T13:29:34+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 223,
+   "transponder_id": "A31472",
+   "callsign": "AAY1203",
+   "onset": "2026-04-09T13:18:25+00:00",
+   "end": "2026-04-09T13:29:02+00:00",
+   "peak_score": 0.7930353091702597
+  },
+  {
+   "episode_id": 306,
+   "transponder_id": "ACED21",
+   "callsign": "ASA215",
+   "onset": "2026-04-09T13:29:31+00:00",
+   "end": "2026-04-09T13:33:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 241,
+   "transponder_id": "A008C5",
+   "callsign": "DAL1748",
+   "onset": "2026-04-09T13:30:30+00:00",
+   "end": "2026-04-09T13:36:00+00:00",
+   "peak_score": 0.26915712804008324
+  },
+  {
+   "episode_id": 251,
+   "transponder_id": "A40A17",
+   "callsign": "N36BL",
+   "onset": "2026-04-09T13:30:30+00:00",
+   "end": "2026-04-09T13:36:30+00:00",
+   "peak_score": 0.7418101393322698
+  },
+  {
+   "episode_id": 280,
+   "transponder_id": "AB4040",
+   "callsign": "N824FM",
+   "onset": "2026-04-09T13:32:01+00:00",
+   "end": "2026-04-09T13:41:30+00:00",
+   "peak_score": 0.44436688453259965
+  },
+  {
+   "episode_id": 248,
+   "transponder_id": "AAB2FF",
+   "callsign": "N789LR",
+   "onset": "2026-04-09T13:34:55+00:00",
+   "end": "2026-04-09T13:36:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 257,
+   "transponder_id": "A24529",
+   "callsign": "UAL1349",
+   "onset": "2026-04-09T13:38:30+00:00",
+   "end": "2026-04-09T13:45:02+00:00",
+   "peak_score": 0.5763014390481015
+  },
+  {
+   "episode_id": 240,
+   "transponder_id": "AC5E01",
+   "callsign": "SWA3412",
+   "onset": "2026-04-09T13:39:30+00:00",
+   "end": "2026-04-09T13:39:53+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 315,
+   "transponder_id": "AD1CDE",
+   "callsign": "JBU387",
+   "onset": "2026-04-09T13:40:33+00:00",
+   "end": "2026-04-09T13:43:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 311,
+   "transponder_id": "A92478",
+   "callsign": "UAL662",
+   "onset": "2026-04-09T13:41:01+00:00",
+   "end": "2026-04-09T13:46:32+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 210,
+   "transponder_id": "448465",
+   "callsign": "CHG591",
+   "onset": "2026-04-09T13:43:00+00:00",
+   "end": "2026-04-09T13:52:21+00:00",
+   "peak_score": 0.7308184503411107
+  },
+  {
+   "episode_id": 238,
+   "transponder_id": "A06ABA",
+   "callsign": "RPA4698",
+   "onset": "2026-04-09T13:44:01+00:00",
+   "end": "2026-04-09T13:52:00+00:00",
+   "peak_score": 0.4692270997631174
+  },
+  {
+   "episode_id": 396,
+   "transponder_id": "A68371",
+   "callsign": "KOW519",
+   "onset": "2026-04-09T13:45:01+00:00",
+   "end": "2026-04-09T13:49:51+00:00",
+   "peak_score": 0.23874848500475948
+  },
+  {
+   "episode_id": 211,
+   "transponder_id": "3949E0",
+   "callsign": "AFR2N",
+   "onset": "2026-04-09T13:46:00+00:00",
+   "end": "2026-04-09T13:55:52+00:00",
+   "peak_score": 0.7006596442298272
+  },
+  {
+   "episode_id": 284,
+   "transponder_id": "C07995",
+   "callsign": "TSC890",
+   "onset": "2026-04-09T13:46:01+00:00",
+   "end": "2026-04-09T13:47:06+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 98,
+   "transponder_id": "A8D6BD",
+   "callsign": "PDT6050",
+   "onset": "2026-04-09T13:50:31+00:00",
+   "end": "2026-04-09T14:02:29+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 386,
+   "transponder_id": "A4C98F",
+   "callsign": "JBU1107",
+   "onset": "2026-04-09T13:55:20+00:00",
+   "end": "2026-04-09T13:55:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 220,
+   "transponder_id": "4066AB",
+   "callsign": "VIR91U",
+   "onset": "2026-04-09T14:04:47+00:00",
+   "end": "2026-04-09T14:09:53+00:00",
+   "peak_score": 0.8163931513031563
+  },
+  {
+   "episode_id": 130,
+   "transponder_id": "4BB146",
+   "callsign": "THY3",
+   "onset": "2026-04-09T14:06:32+00:00",
+   "end": "2026-04-09T14:16:21+00:00",
+   "peak_score": 0.6732811817181615
+  },
+  {
+   "episode_id": 242,
+   "transponder_id": "A67858",
+   "callsign": "GJS4478",
+   "onset": "2026-04-09T14:07:30+00:00",
+   "end": "2026-04-09T14:12:51+00:00",
+   "peak_score": 0.27716701194318955
+  },
+  {
+   "episode_id": 103,
+   "transponder_id": "4005BE",
+   "callsign": "BAW17R",
+   "onset": "2026-04-09T14:08:31+00:00",
+   "end": "2026-04-09T14:18:21+00:00",
+   "peak_score": 0.6450059379258829
+  },
+  {
+   "episode_id": 246,
+   "transponder_id": "A1C57E",
+   "callsign": "RPA5641",
+   "onset": "2026-04-09T14:10:00+00:00",
+   "end": "2026-04-09T14:16:31+00:00",
+   "peak_score": 0.7151722011420433
+  },
+  {
+   "episode_id": 100,
+   "transponder_id": "8966D4",
+   "callsign": "ETD1",
+   "onset": "2026-04-09T14:10:30+00:00",
+   "end": "2026-04-09T14:20:27+00:00",
+   "peak_score": 0.6609508417227027
+  },
+  {
+   "episode_id": 307,
+   "transponder_id": "ADC531",
+   "callsign": "AAL1653",
+   "onset": "2026-04-09T14:10:30+00:00",
+   "end": "2026-04-09T14:12:30+00:00",
+   "peak_score": 0.23858476265420153
+  },
+  {
+   "episode_id": 258,
+   "transponder_id": "A387F0",
+   "callsign": "JBU1037",
+   "onset": "2026-04-09T14:14:01+00:00",
+   "end": "2026-04-09T14:18:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 201,
+   "transponder_id": "A4C96C",
+   "callsign": "JBU2220",
+   "onset": "2026-04-09T14:14:30+00:00",
+   "end": "2026-04-09T14:25:28+00:00",
+   "peak_score": 0.7918200137023177
+  },
+  {
+   "episode_id": 313,
+   "transponder_id": "C052D7",
+   "callsign": "WJA2620",
+   "onset": "2026-04-09T14:14:55+00:00",
+   "end": "2026-04-09T14:27:33+00:00",
+   "peak_score": 0.9148423694010804
+  },
+  {
+   "episode_id": 199,
+   "transponder_id": "4D2308",
+   "callsign": "EAU57B",
+   "onset": "2026-04-09T14:19:01+00:00",
+   "end": "2026-04-09T14:22:00+00:00",
+   "peak_score": 0.5614097593435242
+  },
+  {
+   "episode_id": 292,
+   "transponder_id": "A7D395",
+   "callsign": "N603NE",
+   "onset": "2026-04-09T14:20:00+00:00",
+   "end": "2026-04-09T14:24:41+00:00",
+   "peak_score": 0.2833799732352938
+  },
+  {
+   "episode_id": 325,
+   "transponder_id": "C0524C",
+   "callsign": "WJA2882",
+   "onset": "2026-04-09T14:21:00+00:00",
+   "end": "2026-04-09T14:31:10+00:00",
+   "peak_score": 0.7287385320052618
+  },
+  {
+   "episode_id": 266,
+   "transponder_id": "A20D0E",
+   "callsign": "RPA5614",
+   "onset": "2026-04-09T14:21:31+00:00",
+   "end": "2026-04-09T14:28:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 202,
+   "transponder_id": "A1775F",
+   "callsign": "DAL219",
+   "onset": "2026-04-09T14:23:31+00:00",
+   "end": "2026-04-09T14:34:02+00:00",
+   "peak_score": 0.7125146931996964
+  },
+  {
+   "episode_id": 387,
+   "transponder_id": "A40DE8",
+   "callsign": "N360SM",
+   "onset": "2026-04-09T14:25:31+00:00",
+   "end": "2026-04-09T14:26:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 88,
+   "transponder_id": "A120FE",
+   "callsign": "DAL208",
+   "onset": "2026-04-09T14:27:00+00:00",
+   "end": "2026-04-09T14:37:05+00:00",
+   "peak_score": 0.6921976333697085
+  },
+  {
+   "episode_id": 318,
+   "transponder_id": "A1BC92",
+   "callsign": "JBU2577",
+   "onset": "2026-04-09T14:29:31+00:00",
+   "end": "2026-04-09T14:32:30+00:00",
+   "peak_score": 0.1922575672921443
+  },
+  {
+   "episode_id": 319,
+   "transponder_id": "A0149F",
+   "callsign": "N104LW",
+   "onset": "2026-04-09T14:31:30+00:00",
+   "end": "2026-04-09T14:41:31+00:00",
+   "peak_score": 0.8037614046062397
+  },
+  {
+   "episode_id": 212,
+   "transponder_id": "76CEED",
+   "callsign": "SIA26",
+   "onset": "2026-04-09T14:32:30+00:00",
+   "end": "2026-04-09T14:42:16+00:00",
+   "peak_score": 0.732443580032266
+  },
+  {
+   "episode_id": 397,
+   "transponder_id": "A04641",
+   "callsign": "AAL404",
+   "onset": "2026-04-09T14:35:02+00:00",
+   "end": "2026-04-09T14:38:01+00:00",
+   "peak_score": 0.23868500446015606
+  },
+  {
+   "episode_id": 203,
+   "transponder_id": "A9A399",
+   "callsign": "AAL731",
+   "onset": "2026-04-09T14:43:32+00:00",
+   "end": "2026-04-09T14:54:41+00:00",
+   "peak_score": 0.7375305769522059
+  },
+  {
+   "episode_id": 243,
+   "transponder_id": "A5FC87",
+   "callsign": "EDV5254",
+   "onset": "2026-04-09T14:46:45+00:00",
+   "end": "2026-04-09T14:57:00+00:00",
+   "peak_score": 0.6964537777757134
+  },
+  {
+   "episode_id": 209,
+   "transponder_id": "AB6851",
+   "callsign": "DAL141",
+   "onset": "2026-04-09T14:48:33+00:00",
+   "end": "2026-04-09T15:00:21+00:00",
+   "peak_score": 0.9544536136017856
+  },
+  {
+   "episode_id": 392,
+   "transponder_id": "A6EACF",
+   "callsign": "DAL464",
+   "onset": "2026-04-09T14:49:59+00:00",
+   "end": "2026-04-09T14:50:16+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 205,
+   "transponder_id": "AA7F5E",
+   "callsign": "AAL705",
+   "onset": "2026-04-09T14:52:00+00:00",
+   "end": "2026-04-09T14:56:22+00:00",
+   "peak_score": 0.21540130588512232
+  },
+  {
+   "episode_id": 367,
+   "transponder_id": "7380CB",
+   "callsign": "ELY1028",
+   "onset": "2026-04-09T14:53:10+00:00",
+   "end": "2026-04-09T14:53:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 368,
+   "transponder_id": "ADDE95",
+   "callsign": "JBU2233",
+   "onset": "2026-04-09T14:56:30+00:00",
+   "end": "2026-04-09T14:58:32+00:00",
+   "peak_score": 0.2922853270529856
+  },
+  {
+   "episode_id": 115,
+   "transponder_id": "40641D",
+   "callsign": "VIR75L",
+   "onset": "2026-04-09T14:57:03+00:00",
+   "end": "2026-04-09T15:08:27+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 282,
+   "transponder_id": "A4BA02",
+   "callsign": "RPA4486",
+   "onset": "2026-04-09T14:58:01+00:00",
+   "end": "2026-04-09T15:03:30+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 250,
+   "transponder_id": "AACB7F",
+   "callsign": "N795KF",
+   "onset": "2026-04-09T14:58:31+00:00",
+   "end": "2026-04-09T15:04:00+00:00",
+   "peak_score": 0.2382388692861101
+  },
+  {
+   "episode_id": 391,
+   "transponder_id": "ADD734",
+   "callsign": "JBU619",
+   "onset": "2026-04-09T14:59:02+00:00",
+   "end": "2026-04-09T14:59:56+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 277,
+   "transponder_id": "AC541B",
+   "callsign": "SWA776",
+   "onset": "2026-04-09T15:00:31+00:00",
+   "end": "2026-04-09T15:07:31+00:00",
+   "peak_score": 0.46932219272871756
+  },
+  {
+   "episode_id": 254,
+   "transponder_id": "C013D0",
+   "callsign": "ACA751",
+   "onset": "2026-04-09T15:01:01+00:00",
+   "end": "2026-04-09T15:03:31+00:00",
+   "peak_score": 0.2837939479455197
+  },
+  {
+   "episode_id": 252,
+   "transponder_id": "AB3D40",
+   "callsign": "AAY981",
+   "onset": "2026-04-09T15:03:21+00:00",
+   "end": "2026-04-09T15:13:31+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 265,
+   "transponder_id": "A86CAE",
+   "callsign": "PDT6124",
+   "onset": "2026-04-09T15:09:52+00:00",
+   "end": "2026-04-09T15:10:20+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 207,
+   "transponder_id": "AA4548",
+   "callsign": "AAL785",
+   "onset": "2026-04-09T15:14:01+00:00",
+   "end": "2026-04-09T15:18:43+00:00",
+   "peak_score": 0.4334662869233048
+  },
+  {
+   "episode_id": 281,
+   "transponder_id": "AB0743",
+   "callsign": "N81CP",
+   "onset": "2026-04-09T15:14:02+00:00",
+   "end": "2026-04-09T15:17:30+00:00",
+   "peak_score": 0.315019309552855
+  },
+  {
+   "episode_id": 224,
+   "transponder_id": "A31472",
+   "callsign": "AAY1203",
+   "onset": "2026-04-09T15:22:31+00:00",
+   "end": "2026-04-09T15:34:28+00:00",
+   "peak_score": 0.5587081302597434
+  },
+  {
+   "episode_id": 293,
+   "transponder_id": "A8FC72",
+   "callsign": "UAL503",
+   "onset": "2026-04-09T15:23:00+00:00",
+   "end": "2026-04-09T15:30:31+00:00",
+   "peak_score": 0.33007799497319096
+  },
+  {
+   "episode_id": 216,
+   "transponder_id": "AB2855",
+   "callsign": "DAL47",
+   "onset": "2026-04-09T15:23:01+00:00",
+   "end": "2026-04-09T15:32:55+00:00",
+   "peak_score": 0.7043626653559071
+  },
+  {
+   "episode_id": 263,
+   "transponder_id": "A6EBC6",
+   "callsign": "JIA5082",
+   "onset": "2026-04-09T15:24:21+00:00",
+   "end": "2026-04-09T15:31:26+00:00",
+   "peak_score": 0.4556008163768376
+  },
+  {
+   "episode_id": 217,
+   "transponder_id": "A12FDA",
+   "callsign": "DAL93",
+   "onset": "2026-04-09T15:25:31+00:00",
+   "end": "2026-04-09T15:36:03+00:00",
+   "peak_score": 0.7607158199664005
+  },
+  {
+   "episode_id": 324,
+   "transponder_id": "AC7BF8",
+   "callsign": "SCX252",
+   "onset": "2026-04-09T15:26:31+00:00",
+   "end": "2026-04-09T15:32:31+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 321,
+   "transponder_id": "A000AA",
+   "callsign": "N1GT",
+   "onset": "2026-04-09T15:28:31+00:00",
+   "end": "2026-04-09T15:34:01+00:00",
+   "peak_score": 0.441658837394077
+  },
+  {
+   "episode_id": 376,
+   "transponder_id": "3965A8",
+   "callsign": "AFR030",
+   "onset": "2026-04-09T15:34:56+00:00",
+   "end": "2026-04-09T15:46:04+00:00",
+   "peak_score": 0.8511662016706478
+  },
+  {
+   "episode_id": 425,
+   "transponder_id": "A58542",
+   "callsign": "LXJ455",
+   "onset": "2026-04-09T15:35:22+00:00",
+   "end": "2026-04-09T15:39:49+00:00",
+   "peak_score": 0.6962245274749246
+  },
+  {
+   "episode_id": 297,
+   "transponder_id": "484F73",
+   "callsign": "KLM627",
+   "onset": "2026-04-09T15:42:31+00:00",
+   "end": "2026-04-09T15:53:43+00:00",
+   "peak_score": 0.9990485212161905
+  },
+  {
+   "episode_id": 275,
+   "transponder_id": "AB473A",
+   "callsign": "AAL2610",
+   "onset": "2026-04-09T15:44:31+00:00",
+   "end": "2026-04-09T15:46:38+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 82,
+   "transponder_id": "AB3856",
+   "callsign": "AAL204",
+   "onset": "2026-04-09T15:46:00+00:00",
+   "end": "2026-04-09T15:57:24+00:00",
+   "peak_score": 0.9806656818981292
+  },
+  {
+   "episode_id": 271,
+   "transponder_id": "AA7668",
+   "callsign": "RPA3513",
+   "onset": "2026-04-09T15:46:45+00:00",
+   "end": "2026-04-09T15:51:01+00:00",
+   "peak_score": 0.9047117467625605
+  },
+  {
+   "episode_id": 108,
+   "transponder_id": "3C4A01",
+   "callsign": "DLH444",
+   "onset": "2026-04-09T15:47:00+00:00",
+   "end": "2026-04-09T15:51:03+00:00",
+   "peak_score": 0.28197687255493037
+  },
+  {
+   "episode_id": 218,
+   "transponder_id": "44CCC6",
+   "callsign": "BEL1CP",
+   "onset": "2026-04-09T15:51:31+00:00",
+   "end": "2026-04-09T16:02:05+00:00",
+   "peak_score": 0.7984345861002059
+  },
+  {
+   "episode_id": 395,
+   "transponder_id": "A0B7B8",
+   "callsign": "UAL414",
+   "onset": "2026-04-09T15:54:00+00:00",
+   "end": "2026-04-09T15:57:30+00:00",
+   "peak_score": 0.8131483945070241
+  },
+  {
+   "episode_id": 219,
+   "transponder_id": "4B1880",
+   "callsign": "SWR16F",
+   "onset": "2026-04-09T15:54:30+00:00",
+   "end": "2026-04-09T16:04:27+00:00",
+   "peak_score": 0.7362909667679997
+  },
+  {
+   "episode_id": 226,
+   "transponder_id": "424508",
+   "callsign": "BMA413",
+   "onset": "2026-04-09T15:54:30+00:00",
+   "end": "2026-04-09T16:04:44+00:00",
+   "peak_score": 0.8939705965958498
+  },
+  {
+   "episode_id": 340,
+   "transponder_id": "A2CF3B",
+   "callsign": "AAY436",
+   "onset": "2026-04-09T15:55:31+00:00",
+   "end": "2026-04-09T16:02:24+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 352,
+   "transponder_id": "A12A7F",
+   "callsign": "UAL1074",
+   "onset": "2026-04-09T15:55:31+00:00",
+   "end": "2026-04-09T15:59:41+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 32,
+   "transponder_id": "A32BBA",
+   "callsign": "AAL82",
+   "onset": "2026-04-09T15:57:01+00:00",
+   "end": "2026-04-09T16:07:16+00:00",
+   "peak_score": 0.8042399712684231
+  },
+  {
+   "episode_id": 268,
+   "transponder_id": "A90AAA",
+   "callsign": "PDT5958",
+   "onset": "2026-04-09T15:57:39+00:00",
+   "end": "2026-04-09T16:08:00+00:00",
+   "peak_score": 0.5811559155779308
+  },
+  {
+   "episode_id": 417,
+   "transponder_id": "A08057",
+   "callsign": "EJA131",
+   "onset": "2026-04-09T15:58:01+00:00",
+   "end": "2026-04-09T16:04:02+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 286,
+   "transponder_id": "A20957",
+   "callsign": "RPA5606",
+   "onset": "2026-04-09T16:00:31+00:00",
+   "end": "2026-04-09T16:06:01+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 287,
+   "transponder_id": "44CCD1",
+   "callsign": "BEL2FU",
+   "onset": "2026-04-09T16:08:01+00:00",
+   "end": "2026-04-09T16:17:34+00:00",
+   "peak_score": 0.7861187875988732
+  },
+  {
+   "episode_id": 383,
+   "transponder_id": "3C6566",
+   "callsign": "OCN10",
+   "onset": "2026-04-09T16:09:32+00:00",
+   "end": "2026-04-09T16:13:49+00:00",
+   "peak_score": 0.3604172697299366
+  },
+  {
+   "episode_id": 301,
+   "transponder_id": "3C4B23",
+   "callsign": "DLH462",
+   "onset": "2026-04-09T16:09:46+00:00",
+   "end": "2026-04-09T16:20:28+00:00",
+   "peak_score": 0.8145470155429428
+  },
+  {
+   "episode_id": 323,
+   "transponder_id": "A77B76",
+   "callsign": "AAL1008",
+   "onset": "2026-04-09T16:14:02+00:00",
+   "end": "2026-04-09T16:17:01+00:00",
+   "peak_score": 0.31105308341265336
+  },
+  {
+   "episode_id": 418,
+   "transponder_id": "A788D3",
+   "callsign": "DAL332",
+   "onset": "2026-04-09T16:14:30+00:00",
+   "end": "2026-04-09T16:14:50+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 342,
+   "transponder_id": "A3B87F",
+   "callsign": "DAL1103",
+   "onset": "2026-04-09T16:17:31+00:00",
+   "end": "2026-04-09T16:21:00+00:00",
+   "peak_score": 0.4671341462913106
+  },
+  {
+   "episode_id": 294,
+   "transponder_id": "4BB961",
+   "callsign": "EAJ01",
+   "onset": "2026-04-09T16:18:02+00:00",
+   "end": "2026-04-09T16:31:09+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 90,
+   "transponder_id": "AC3448",
+   "callsign": "AAL278",
+   "onset": "2026-04-09T16:19:15+00:00",
+   "end": "2026-04-09T16:22:42+00:00",
+   "peak_score": 0.8193488820137715
+  },
+  {
+   "episode_id": 276,
+   "transponder_id": "400773",
+   "callsign": "BAW7NY",
+   "onset": "2026-04-09T16:20:32+00:00",
+   "end": "2026-04-09T16:30:44+00:00",
+   "peak_score": 0.8654265901814178
+  },
+  {
+   "episode_id": 41,
+   "transponder_id": "89639C",
+   "callsign": "UAE8ER",
+   "onset": "2026-04-09T16:20:39+00:00",
+   "end": "2026-04-09T16:27:31+00:00",
+   "peak_score": 0.7989346835131352
+  },
+  {
+   "episode_id": 402,
+   "transponder_id": "A0AAD0",
+   "callsign": "N142HC",
+   "onset": "2026-04-09T16:22:00+00:00",
+   "end": "2026-04-09T16:23:27+00:00",
+   "peak_score": 0.29915228207748346
+  },
+  {
+   "episode_id": 285,
+   "transponder_id": "AC086B",
+   "callsign": "SWA3413",
+   "onset": "2026-04-09T16:26:00+00:00",
+   "end": "2026-04-09T16:28:25+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 378,
+   "transponder_id": "4007EF",
+   "callsign": "BAW43C",
+   "onset": "2026-04-09T16:29:56+00:00",
+   "end": "2026-04-09T16:41:26+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 221,
+   "transponder_id": "4CAFFB",
+   "callsign": "ITY602",
+   "onset": "2026-04-09T16:30:31+00:00",
+   "end": "2026-04-09T16:40:57+00:00",
+   "peak_score": 0.8378156802518578
+  },
+  {
+   "episode_id": 288,
+   "transponder_id": "4CA614",
+   "callsign": "EIN105",
+   "onset": "2026-04-09T16:32:30+00:00",
+   "end": "2026-04-09T16:43:10+00:00",
+   "peak_score": 0.8338124164573296
+  },
+  {
+   "episode_id": 290,
+   "transponder_id": "AAAE4B",
+   "callsign": "AAL43",
+   "onset": "2026-04-09T16:34:31+00:00",
+   "end": "2026-04-09T16:44:16+00:00",
+   "peak_score": 0.6766994312341029
+  },
+  {
+   "episode_id": 333,
+   "transponder_id": "AE07EB",
+   "callsign": "RCH4536",
+   "onset": "2026-04-09T16:41:20+00:00",
+   "end": "2026-04-09T16:53:01+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 154,
+   "transponder_id": "A9B275",
+   "callsign": "AAL730",
+   "onset": "2026-04-09T16:42:00+00:00",
+   "end": "2026-04-09T16:51:42+00:00",
+   "peak_score": 0.8189734976887044
+  },
+  {
+   "episode_id": 381,
+   "transponder_id": "407698",
+   "callsign": "VIR5C",
+   "onset": "2026-04-09T16:42:00+00:00",
+   "end": "2026-04-09T16:53:05+00:00",
+   "peak_score": 0.9639774833965283
+  },
+  {
+   "episode_id": 332,
+   "transponder_id": "A700A4",
+   "callsign": "JIA5331",
+   "onset": "2026-04-09T16:44:00+00:00",
+   "end": "2026-04-09T16:44:17+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 106,
+   "transponder_id": "3C6518",
+   "callsign": "DLH400",
+   "onset": "2026-04-09T16:45:30+00:00",
+   "end": "2026-04-09T16:55:14+00:00",
+   "peak_score": 0.729748794424453
+  },
+  {
+   "episode_id": 336,
+   "transponder_id": "A8FC09",
+   "callsign": "UAL1732",
+   "onset": "2026-04-09T16:46:31+00:00",
+   "end": "2026-04-09T16:54:00+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 244,
+   "transponder_id": "A5FC87",
+   "callsign": "EDV5254",
+   "onset": "2026-04-09T16:50:31+00:00",
+   "end": "2026-04-09T16:54:30+00:00",
+   "peak_score": 0.4759623538711419
+  },
+  {
+   "episode_id": 337,
+   "transponder_id": "AD8B20",
+   "callsign": "AAL2976",
+   "onset": "2026-04-09T16:53:01+00:00",
+   "end": "2026-04-09T17:00:31+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 107,
+   "transponder_id": "AB40F8",
+   "callsign": "DAL183",
+   "onset": "2026-04-09T16:55:31+00:00",
+   "end": "2026-04-09T17:05:31+00:00",
+   "peak_score": 0.7995201188921416
+  },
+  {
+   "episode_id": 375,
+   "transponder_id": "4CAEB3",
+   "callsign": "ITY608",
+   "onset": "2026-04-09T17:01:01+00:00",
+   "end": "2026-04-09T17:11:01+00:00",
+   "peak_score": 0.869531990143446
+  },
+  {
+   "episode_id": 229,
+   "transponder_id": "AC1076",
+   "callsign": "AAL93",
+   "onset": "2026-04-09T17:03:43+00:00",
+   "end": "2026-04-09T17:08:01+00:00",
+   "peak_score": 0.8804906837733912
+  },
+  {
+   "episode_id": 168,
+   "transponder_id": "4075B4",
+   "callsign": "VIR154",
+   "onset": "2026-04-09T17:04:00+00:00",
+   "end": "2026-04-09T17:08:23+00:00",
+   "peak_score": 0.4331349266692576
+  },
+  {
+   "episode_id": 232,
+   "transponder_id": "394A05",
+   "callsign": "AFR004",
+   "onset": "2026-04-09T17:05:31+00:00",
+   "end": "2026-04-09T17:15:31+00:00",
+   "peak_score": 0.8684453388897002
+  },
+  {
+   "episode_id": 320,
+   "transponder_id": "AE07D6",
+   "callsign": "RCH795",
+   "onset": "2026-04-09T17:06:26+00:00",
+   "end": "2026-04-09T17:14:09+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 382,
+   "transponder_id": "4067F5",
+   "callsign": "TOM108",
+   "onset": "2026-04-09T17:07:00+00:00",
+   "end": "2026-04-09T17:07:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 388,
+   "transponder_id": "3C6565",
+   "callsign": "OCN642",
+   "onset": "2026-04-09T17:07:00+00:00",
+   "end": "2026-04-09T17:18:14+00:00",
+   "peak_score": 0.5623690043059154
+  },
+  {
+   "episode_id": 109,
+   "transponder_id": "A13391",
+   "callsign": "DAL233",
+   "onset": "2026-04-09T17:09:30+00:00",
+   "end": "2026-04-09T17:19:12+00:00",
+   "peak_score": 0.8722599927476372
+  },
+  {
+   "episode_id": 253,
+   "transponder_id": "AB3D40",
+   "callsign": "AAY981",
+   "onset": "2026-04-09T17:09:46+00:00",
+   "end": "2026-04-09T17:21:53+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 377,
+   "transponder_id": "AB321C",
+   "callsign": "DAL203",
+   "onset": "2026-04-09T17:11:32+00:00",
+   "end": "2026-04-09T17:21:17+00:00",
+   "peak_score": 0.7831555923274646
+  },
+  {
+   "episode_id": 157,
+   "transponder_id": "AAA326",
+   "callsign": "AAL724",
+   "onset": "2026-04-09T17:12:31+00:00",
+   "end": "2026-04-09T17:17:03+00:00",
+   "peak_score": 0.2994671388696929
+  },
+  {
+   "episode_id": 338,
+   "transponder_id": "AD21BC",
+   "callsign": "SWA1317",
+   "onset": "2026-04-09T17:14:30+00:00",
+   "end": "2026-04-09T17:19:40+00:00",
+   "peak_score": 0.45649685532174633
+  },
+  {
+   "episode_id": 231,
+   "transponder_id": "80159F",
+   "callsign": "AIC119",
+   "onset": "2026-04-09T17:18:39+00:00",
+   "end": "2026-04-09T17:27:46+00:00",
+   "peak_score": 0.8384493657887735
+  },
+  {
+   "episode_id": 510,
+   "transponder_id": "507C50",
+   "callsign": "UZB102",
+   "onset": "2026-04-09T17:19:17+00:00",
+   "end": "2026-04-09T17:26:30+00:00",
+   "peak_score": 0.44780277209751707
+  },
+  {
+   "episode_id": 328,
+   "transponder_id": "ABCA08",
+   "callsign": "DAL107",
+   "onset": "2026-04-09T17:19:59+00:00",
+   "end": "2026-04-09T17:29:52+00:00",
+   "peak_score": 0.822731567967008
+  },
+  {
+   "episode_id": 341,
+   "transponder_id": "A414E8",
+   "callsign": "DAL2222",
+   "onset": "2026-04-09T17:20:30+00:00",
+   "end": "2026-04-09T17:26:00+00:00",
+   "peak_score": 0.8845648685496896
+  },
+  {
+   "episode_id": 432,
+   "transponder_id": "A4DD65",
+   "callsign": "AAL1057",
+   "onset": "2026-04-09T17:21:02+00:00",
+   "end": "2026-04-09T17:23:46+00:00",
+   "peak_score": 0.3292190817938048
+  },
+  {
+   "episode_id": 329,
+   "transponder_id": "407993",
+   "callsign": "BAW173A",
+   "onset": "2026-04-09T17:23:01+00:00",
+   "end": "2026-04-09T17:32:38+00:00",
+   "peak_score": 0.8576054125122832
+  },
+  {
+   "episode_id": 264,
+   "transponder_id": "A6EBC6",
+   "callsign": "JIA5082",
+   "onset": "2026-04-09T17:24:30+00:00",
+   "end": "2026-04-09T17:36:01+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 322,
+   "transponder_id": "A31731",
+   "callsign": "N299CX",
+   "onset": "2026-04-09T17:24:30+00:00",
+   "end": "2026-04-09T17:30:01+00:00",
+   "peak_score": 0.4459252512838195
+  },
+  {
+   "episode_id": 339,
+   "transponder_id": "C00B9E",
+   "callsign": "JZA693",
+   "onset": "2026-04-09T17:26:00+00:00",
+   "end": "2026-04-09T17:32:01+00:00",
+   "peak_score": 0.3310525634278056
+  },
+  {
+   "episode_id": 70,
+   "transponder_id": "A0F46F",
+   "callsign": "DAL246",
+   "onset": "2026-04-09T17:28:31+00:00",
+   "end": "2026-04-09T17:38:59+00:00",
+   "peak_score": 0.9043574127449434
+  },
+  {
+   "episode_id": 131,
+   "transponder_id": "4BB146",
+   "callsign": "THY3",
+   "onset": "2026-04-09T17:30:08+00:00",
+   "end": "2026-04-09T17:39:04+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 380,
+   "transponder_id": "AAC337",
+   "callsign": "AAL787",
+   "onset": "2026-04-09T17:31:00+00:00",
+   "end": "2026-04-09T17:42:10+00:00",
+   "peak_score": 0.7867326296314017
+  },
+  {
+   "episode_id": 110,
+   "transponder_id": "3444C4",
+   "callsign": "IBE03SY",
+   "onset": "2026-04-09T17:31:30+00:00",
+   "end": "2026-04-09T17:47:01+00:00",
+   "peak_score": 1.0
+  },
+  {
+   "episode_id": 512,
+   "transponder_id": "71C250",
+   "callsign": "KAL092",
+   "onset": "2026-04-09T17:32:31+00:00",
+   "end": "2026-04-09T17:35:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 298,
+   "transponder_id": "477FF1",
+   "callsign": "BRK50",
+   "onset": "2026-04-09T17:36:22+00:00",
+   "end": "2026-04-09T17:46:34+00:00",
+   "peak_score": 0.8550544375290149
+  },
+  {
+   "episode_id": 334,
+   "transponder_id": "AA7DD6",
+   "callsign": "RPA3643",
+   "onset": "2026-04-09T17:37:03+00:00",
+   "end": "2026-04-09T17:37:03+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 379,
+   "transponder_id": "3C656E",
+   "callsign": "DLH408",
+   "onset": "2026-04-09T17:39:32+00:00",
+   "end": "2026-04-09T17:50:51+00:00",
+   "peak_score": 0.5268248379952883
+  },
+  {
+   "episode_id": 511,
+   "transponder_id": "86E4B8",
+   "callsign": "JAL7",
+   "onset": "2026-04-09T17:42:30+00:00",
+   "end": "2026-04-09T17:43:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 269,
+   "transponder_id": "A90AAA",
+   "callsign": "PDT5958",
+   "onset": "2026-04-09T17:42:31+00:00",
+   "end": "2026-04-09T17:54:59+00:00",
+   "peak_score": 0.8089075850162947
+  },
+  {
+   "episode_id": 330,
+   "transponder_id": "AA64CA",
+   "callsign": "AAL1401",
+   "onset": "2026-04-09T17:42:53+00:00",
+   "end": "2026-04-09T17:53:00+00:00",
+   "peak_score": 0.9747401488531803
+  },
+  {
+   "episode_id": 303,
+   "transponder_id": "ABD3CF",
+   "callsign": "DAL2",
+   "onset": "2026-04-09T17:44:01+00:00",
+   "end": "2026-04-09T17:54:18+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 48,
+   "transponder_id": "AAB202",
+   "callsign": "AAL174",
+   "onset": "2026-04-09T17:44:59+00:00",
+   "end": "2026-04-09T17:55:54+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 430,
+   "transponder_id": "AD2573",
+   "callsign": "SWA3416",
+   "onset": "2026-04-09T17:49:00+00:00",
+   "end": "2026-04-09T17:51:24+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 326,
+   "transponder_id": "AB59F4",
+   "callsign": "SKW3719",
+   "onset": "2026-04-09T17:49:31+00:00",
+   "end": "2026-04-09T17:50:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 305,
+   "transponder_id": "A34358",
+   "callsign": "UAL109",
+   "onset": "2026-04-09T17:54:30+00:00",
+   "end": "2026-04-09T17:57:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 314,
+   "transponder_id": "AE123E",
+   "callsign": "RCH4567",
+   "onset": "2026-04-09T18:00:36+00:00",
+   "end": "2026-04-09T18:12:52+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 443,
+   "transponder_id": "AD33F2",
+   "callsign": "N95SV",
+   "onset": "2026-04-09T18:03:31+00:00",
+   "end": "2026-04-09T18:06:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 299,
+   "transponder_id": "4CAB80",
+   "callsign": "NOS787",
+   "onset": "2026-04-09T18:08:31+00:00",
+   "end": "2026-04-09T18:18:08+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 43,
+   "transponder_id": "A9C508",
+   "callsign": "AAL38",
+   "onset": "2026-04-09T18:09:02+00:00",
+   "end": "2026-04-09T18:20:21+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 186,
+   "transponder_id": "A449A4",
+   "callsign": "UAL1414",
+   "onset": "2026-04-09T18:12:01+00:00",
+   "end": "2026-04-09T18:16:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 300,
+   "transponder_id": "A4C592",
+   "callsign": "JBU1408",
+   "onset": "2026-04-09T18:12:31+00:00",
+   "end": "2026-04-09T18:23:14+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 343,
+   "transponder_id": "AB4090",
+   "callsign": "JRE824",
+   "onset": "2026-04-09T18:15:00+00:00",
+   "end": "2026-04-09T18:20:46+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 309,
+   "transponder_id": "4A91AF",
+   "callsign": "SAS923",
+   "onset": "2026-04-09T18:22:33+00:00",
+   "end": "2026-04-09T18:32:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 384,
+   "transponder_id": "406591",
+   "callsign": "BAW181",
+   "onset": "2026-04-09T18:26:01+00:00",
+   "end": "2026-04-09T18:35:43+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 365,
+   "transponder_id": "4006C3",
+   "callsign": "BAW12J",
+   "onset": "2026-04-09T18:27:31+00:00",
+   "end": "2026-04-09T18:38:35+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 78,
+   "transponder_id": "406814",
+   "callsign": "VIR128K",
+   "onset": "2026-04-09T18:31:32+00:00",
+   "end": "2026-04-09T18:41:08+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 364,
+   "transponder_id": "4079CC",
+   "callsign": "VIR135G",
+   "onset": "2026-04-09T18:32:00+00:00",
+   "end": "2026-04-09T18:42:42+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 356,
+   "transponder_id": "4079CD",
+   "callsign": "VIR73Q",
+   "onset": "2026-04-09T18:39:00+00:00",
+   "end": "2026-04-09T18:50:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 359,
+   "transponder_id": "3C15BE",
+   "callsign": "OCN601",
+   "onset": "2026-04-09T18:41:00+00:00",
+   "end": "2026-04-09T18:51:18+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 403,
+   "transponder_id": "ABFA24",
+   "callsign": "AAL125",
+   "onset": "2026-04-09T18:41:31+00:00",
+   "end": "2026-04-09T18:53:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 484,
+   "transponder_id": "010154",
+   "callsign": "MSR986",
+   "onset": "2026-04-09T18:41:38+00:00",
+   "end": "2026-04-09T18:44:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 393,
+   "transponder_id": "C051C6",
+   "callsign": "TSC683",
+   "onset": "2026-04-09T18:42:28+00:00",
+   "end": "2026-04-09T18:43:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 96,
+   "transponder_id": "A07FA6",
+   "callsign": "RPA4702",
+   "onset": "2026-04-09T18:43:01+00:00",
+   "end": "2026-04-09T18:49:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 358,
+   "transponder_id": "4077D3",
+   "callsign": "VIR129R",
+   "onset": "2026-04-09T18:44:30+00:00",
+   "end": "2026-04-09T18:53:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 416,
+   "transponder_id": "A97DCB",
+   "callsign": "DAL318",
+   "onset": "2026-04-09T18:46:01+00:00",
+   "end": "2026-04-09T18:50:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 355,
+   "transponder_id": "47880D",
+   "callsign": "SAS929",
+   "onset": "2026-04-09T18:46:30+00:00",
+   "end": "2026-04-09T18:57:53+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 482,
+   "transponder_id": "4BB187",
+   "callsign": "THY9LC",
+   "onset": "2026-04-09T18:47:26+00:00",
+   "end": "2026-04-09T18:48:58+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 350,
+   "transponder_id": "3C66C5",
+   "callsign": "DLH460",
+   "onset": "2026-04-09T18:49:57+00:00",
+   "end": "2026-04-09T19:00:44+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 429,
+   "transponder_id": "A1BE10",
+   "callsign": "RPA5653",
+   "onset": "2026-04-09T18:49:58+00:00",
+   "end": "2026-04-09T18:56:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 385,
+   "transponder_id": "4075C2",
+   "callsign": "UBT70A",
+   "onset": "2026-04-09T18:50:31+00:00",
+   "end": "2026-04-09T18:59:58+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 111,
+   "transponder_id": "801612",
+   "callsign": "AIC101",
+   "onset": "2026-04-09T18:51:31+00:00",
+   "end": "2026-04-09T19:01:12+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 477,
+   "transponder_id": "AD1927",
+   "callsign": "JBU933",
+   "onset": "2026-04-09T18:52:00+00:00",
+   "end": "2026-04-09T18:54:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 162,
+   "transponder_id": "AACE5C",
+   "callsign": "AAL56",
+   "onset": "2026-04-09T18:52:01+00:00",
+   "end": "2026-04-09T19:03:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 372,
+   "transponder_id": "7103D8",
+   "callsign": "SVA021",
+   "onset": "2026-04-09T18:53:02+00:00",
+   "end": "2026-04-09T19:02:43+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 316,
+   "transponder_id": "A173A8",
+   "callsign": "DAL45",
+   "onset": "2026-04-09T18:54:30+00:00",
+   "end": "2026-04-09T19:04:37+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 354,
+   "transponder_id": "3C670C",
+   "callsign": "DLH428",
+   "onset": "2026-04-09T18:56:00+00:00",
+   "end": "2026-04-09T19:06:45+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 362,
+   "transponder_id": "394A01",
+   "callsign": "AFR006",
+   "onset": "2026-04-09T18:56:31+00:00",
+   "end": "2026-04-09T19:05:56+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 389,
+   "transponder_id": "3C15C1",
+   "callsign": "OCN50",
+   "onset": "2026-04-09T18:57:00+00:00",
+   "end": "2026-04-09T19:08:26+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 435,
+   "transponder_id": "A0A4AC",
+   "callsign": "N140WH",
+   "onset": "2026-04-09T18:58:01+00:00",
+   "end": "2026-04-09T19:10:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 39,
+   "transponder_id": "A4EACB",
+   "callsign": "DAL230",
+   "onset": "2026-04-09T19:02:31+00:00",
+   "end": "2026-04-09T19:12:12+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 449,
+   "transponder_id": "A01BBC",
+   "callsign": "RPA4774",
+   "onset": "2026-04-09T19:03:30+00:00",
+   "end": "2026-04-09T19:10:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 518,
+   "transponder_id": "896439",
+   "callsign": "ETD8MY",
+   "onset": "2026-04-09T19:04:30+00:00",
+   "end": "2026-04-09T19:14:12+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 441,
+   "transponder_id": "A7C849",
+   "callsign": "EDV5151",
+   "onset": "2026-04-09T19:05:13+00:00",
+   "end": "2026-04-09T19:15:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 272,
+   "transponder_id": "AA7668",
+   "callsign": "RPA3513",
+   "onset": "2026-04-09T19:05:31+00:00",
+   "end": "2026-04-09T19:10:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 447,
+   "transponder_id": "A030ED",
+   "callsign": "N111LJ",
+   "onset": "2026-04-09T19:10:30+00:00",
+   "end": "2026-04-09T19:11:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 62,
+   "transponder_id": "AB4840",
+   "callsign": "DAL52",
+   "onset": "2026-04-09T19:19:01+00:00",
+   "end": "2026-04-09T19:28:55+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 426,
+   "transponder_id": "A067F8",
+   "callsign": "N125TK",
+   "onset": "2026-04-09T19:19:54+00:00",
+   "end": "2026-04-09T19:32:43+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 454,
+   "transponder_id": "A00CE0",
+   "callsign": "RPA4709",
+   "onset": "2026-04-09T19:24:53+00:00",
+   "end": "2026-04-09T19:33:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 446,
+   "transponder_id": "ABBD73",
+   "callsign": "SWA3218",
+   "onset": "2026-04-09T19:27:32+00:00",
+   "end": "2026-04-09T19:34:09+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 423,
+   "transponder_id": "A55FA2",
+   "callsign": "UAL2297",
+   "onset": "2026-04-09T19:27:35+00:00",
+   "end": "2026-04-09T19:30:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 444,
+   "transponder_id": "A67050",
+   "callsign": "JIA5077",
+   "onset": "2026-04-09T19:28:21+00:00",
+   "end": "2026-04-09T19:38:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 450,
+   "transponder_id": "A887FD",
+   "callsign": "PDT6123",
+   "onset": "2026-04-09T19:29:01+00:00",
+   "end": "2026-04-09T19:32:36+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 370,
+   "transponder_id": "A658A1",
+   "callsign": "GTI4353",
+   "onset": "2026-04-09T19:29:30+00:00",
+   "end": "2026-04-09T19:39:13+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 439,
+   "transponder_id": "A4478D",
+   "callsign": "DAL1127",
+   "onset": "2026-04-09T19:31:30+00:00",
+   "end": "2026-04-09T19:35:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 398,
+   "transponder_id": "407DA5",
+   "callsign": "VIR45W",
+   "onset": "2026-04-09T19:32:30+00:00",
+   "end": "2026-04-09T19:42:36+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 331,
+   "transponder_id": "AA64CA",
+   "callsign": "AAL1401",
+   "onset": "2026-04-09T19:33:00+00:00",
+   "end": "2026-04-09T19:45:53+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 451,
+   "transponder_id": "A1E6B9",
+   "callsign": "SWA490",
+   "onset": "2026-04-09T19:34:32+00:00",
+   "end": "2026-04-09T19:38:09+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 366,
+   "transponder_id": "4075C1",
+   "callsign": "UBT78G",
+   "onset": "2026-04-09T19:35:30+00:00",
+   "end": "2026-04-09T19:46:40+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 399,
+   "transponder_id": "4B1886",
+   "callsign": "SWR14V",
+   "onset": "2026-04-09T19:37:01+00:00",
+   "end": "2026-04-09T19:46:57+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 346,
+   "transponder_id": "4078DD",
+   "callsign": "BAW6RB",
+   "onset": "2026-04-09T19:37:03+00:00",
+   "end": "2026-04-09T19:37:07+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 448,
+   "transponder_id": "491D84",
+   "callsign": "NJE957R",
+   "onset": "2026-04-09T19:39:19+00:00",
+   "end": "2026-04-09T19:46:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 390,
+   "transponder_id": "ABA155",
+   "callsign": "AAL105",
+   "onset": "2026-04-09T19:39:49+00:00",
+   "end": "2026-04-09T19:49:27+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 133,
+   "transponder_id": "AB1FA7",
+   "callsign": "AAL754",
+   "onset": "2026-04-09T19:41:14+00:00",
+   "end": "2026-04-09T19:51:45+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 327,
+   "transponder_id": "AB59F4",
+   "callsign": "SKW3719",
+   "onset": "2026-04-09T19:42:01+00:00",
+   "end": "2026-04-09T19:43:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 455,
+   "transponder_id": "A59B0A",
+   "callsign": "EJA460",
+   "onset": "2026-04-09T19:43:42+00:00",
+   "end": "2026-04-09T19:54:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 476,
+   "transponder_id": "AC51E8",
+   "callsign": "EJA893",
+   "onset": "2026-04-09T19:49:57+00:00",
+   "end": "2026-04-09T19:59:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 400,
+   "transponder_id": "4CA9BB",
+   "callsign": "EIN1LH",
+   "onset": "2026-04-09T19:50:31+00:00",
+   "end": "2026-04-09T20:00:38+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 438,
+   "transponder_id": "ACF975",
+   "callsign": "AAL3209",
+   "onset": "2026-04-09T19:51:01+00:00",
+   "end": "2026-04-09T19:57:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 353,
+   "transponder_id": "3C6561",
+   "callsign": "OCN68",
+   "onset": "2026-04-09T19:57:01+00:00",
+   "end": "2026-04-09T20:08:38+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 347,
+   "transponder_id": "A4E35F",
+   "callsign": "DAL49",
+   "onset": "2026-04-09T19:59:53+00:00",
+   "end": "2026-04-09T20:10:08+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 415,
+   "transponder_id": "A95518",
+   "callsign": "N700FN",
+   "onset": "2026-04-09T20:00:30+00:00",
+   "end": "2026-04-09T20:04:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 357,
+   "transponder_id": "AE1173",
+   "callsign": "RCH667",
+   "onset": "2026-04-09T20:01:30+00:00",
+   "end": "2026-04-09T20:13:13+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 349,
+   "transponder_id": "478D42",
+   "callsign": "SAS915",
+   "onset": "2026-04-09T20:07:31+00:00",
+   "end": "2026-04-09T20:17:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 139,
+   "transponder_id": "AAF968",
+   "callsign": "DAL184",
+   "onset": "2026-04-09T20:14:57+00:00",
+   "end": "2026-04-09T20:25:17+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 373,
+   "transponder_id": "4007F1",
+   "callsign": "BAW39D",
+   "onset": "2026-04-09T20:16:30+00:00",
+   "end": "2026-04-09T20:27:10+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 479,
+   "transponder_id": "AD2445",
+   "callsign": "JBU19",
+   "onset": "2026-04-09T20:19:01+00:00",
+   "end": "2026-04-09T20:21:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 458,
+   "transponder_id": "A95745",
+   "callsign": "AAL2390",
+   "onset": "2026-04-09T20:19:58+00:00",
+   "end": "2026-04-09T20:27:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 456,
+   "transponder_id": "AC425A",
+   "callsign": "SWA898",
+   "onset": "2026-04-09T20:22:02+00:00",
+   "end": "2026-04-09T20:29:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 369,
+   "transponder_id": "407F19",
+   "callsign": "VIR127C",
+   "onset": "2026-04-09T20:29:02+00:00",
+   "end": "2026-04-09T20:38:28+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 457,
+   "transponder_id": "A08E82",
+   "callsign": "RPA4726",
+   "onset": "2026-04-09T20:38:01+00:00",
+   "end": "2026-04-09T20:43:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 146,
+   "transponder_id": "AA9BB8",
+   "callsign": "AAL734",
+   "onset": "2026-04-09T20:40:31+00:00",
+   "end": "2026-04-09T20:51:40+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 452,
+   "transponder_id": "A895B0",
+   "callsign": "PDT5955",
+   "onset": "2026-04-09T20:41:23+00:00",
+   "end": "2026-04-09T20:47:22+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 478,
+   "transponder_id": "A55D31",
+   "callsign": "AAL1850",
+   "onset": "2026-04-09T20:44:00+00:00",
+   "end": "2026-04-09T20:49:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 335,
+   "transponder_id": "AA7DD6",
+   "callsign": "RPA3643",
+   "onset": "2026-04-09T20:44:02+00:00",
+   "end": "2026-04-09T20:56:17+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 442,
+   "transponder_id": "A7C849",
+   "callsign": "EDV5151",
+   "onset": "2026-04-09T20:46:01+00:00",
+   "end": "2026-04-09T20:56:47+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 433,
+   "transponder_id": "A1BAC2",
+   "callsign": "AAY2550",
+   "onset": "2026-04-09T20:47:43+00:00",
+   "end": "2026-04-09T20:58:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 427,
+   "transponder_id": "A2454F",
+   "callsign": "UAL2040",
+   "onset": "2026-04-09T20:49:02+00:00",
+   "end": "2026-04-09T20:54:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 516,
+   "transponder_id": "A05646",
+   "callsign": "UAL124",
+   "onset": "2026-04-09T20:49:11+00:00",
+   "end": "2026-04-09T20:58:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 414,
+   "transponder_id": "C051DA",
+   "callsign": "TSC612",
+   "onset": "2026-04-09T20:50:32+00:00",
+   "end": "2026-04-09T20:58:26+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 481,
+   "transponder_id": "A4B7D7",
+   "callsign": "ASA1319",
+   "onset": "2026-04-09T20:51:30+00:00",
+   "end": "2026-04-09T20:55:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 480,
+   "transponder_id": "A8C3BD",
+   "callsign": "GTI8099",
+   "onset": "2026-04-09T20:52:01+00:00",
+   "end": "2026-04-09T20:56:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 497,
+   "transponder_id": "A6DDB9",
+   "callsign": "VJA541",
+   "onset": "2026-04-09T20:52:30+00:00",
+   "end": "2026-04-09T21:00:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 436,
+   "transponder_id": "AE5F4B",
+   "callsign": "PIONR34",
+   "onset": "2026-04-09T20:53:42+00:00",
+   "end": "2026-04-09T21:05:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 462,
+   "transponder_id": "A72567",
+   "callsign": "N56JP",
+   "onset": "2026-04-09T20:54:00+00:00",
+   "end": "2026-04-09T21:06:52+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 360,
+   "transponder_id": "4C0221",
+   "callsign": "ASL500",
+   "onset": "2026-04-09T20:54:30+00:00",
+   "end": "2026-04-09T20:58:06+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 460,
+   "transponder_id": "A3689E",
+   "callsign": "DAL2646",
+   "onset": "2026-04-09T20:57:00+00:00",
+   "end": "2026-04-09T21:03:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 351,
+   "transponder_id": "4BB185",
+   "callsign": "THY1",
+   "onset": "2026-04-09T20:57:30+00:00",
+   "end": "2026-04-09T21:07:36+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 461,
+   "transponder_id": "AAFD17",
+   "callsign": "AAL1040",
+   "onset": "2026-04-09T21:01:31+00:00",
+   "end": "2026-04-09T21:09:52+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 361,
+   "transponder_id": "4C0221",
+   "callsign": "ASL500",
+   "onset": "2026-04-09T21:03:29+00:00",
+   "end": "2026-04-09T21:04:35+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 499,
+   "transponder_id": "A21FA1",
+   "callsign": "RPA5680",
+   "onset": "2026-04-09T21:07:01+00:00",
+   "end": "2026-04-09T21:13:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 498,
+   "transponder_id": "AC1B21",
+   "callsign": "SWA2578",
+   "onset": "2026-04-09T21:07:31+00:00",
+   "end": "2026-04-09T21:09:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 177,
+   "transponder_id": "AA5F41",
+   "callsign": "AAL198",
+   "onset": "2026-04-09T21:10:30+00:00",
+   "end": "2026-04-09T21:20:28+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 473,
+   "transponder_id": "A0B7D8",
+   "callsign": "UAL800",
+   "onset": "2026-04-09T21:14:00+00:00",
+   "end": "2026-04-09T21:17:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 256,
+   "transponder_id": "C07A0C",
+   "callsign": "TSC894",
+   "onset": "2026-04-09T21:14:11+00:00",
+   "end": "2026-04-09T21:23:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 431,
+   "transponder_id": "C066B0",
+   "callsign": "WJA2883",
+   "onset": "2026-04-09T21:14:46+00:00",
+   "end": "2026-04-09T21:22:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 440,
+   "transponder_id": "AB7AA2",
+   "callsign": "JRE839",
+   "onset": "2026-04-09T21:14:57+00:00",
+   "end": "2026-04-09T21:23:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 406,
+   "transponder_id": "406A03",
+   "callsign": "BAW5E",
+   "onset": "2026-04-09T21:16:30+00:00",
+   "end": "2026-04-09T21:27:09+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 459,
+   "transponder_id": "C00B7C",
+   "callsign": "JZA695",
+   "onset": "2026-04-09T21:16:46+00:00",
+   "end": "2026-04-09T21:20:03+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 371,
+   "transponder_id": "407994",
+   "callsign": "BAW15K",
+   "onset": "2026-04-09T21:18:31+00:00",
+   "end": "2026-04-09T21:28:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 463,
+   "transponder_id": "A320E5",
+   "callsign": "N300SC",
+   "onset": "2026-04-09T21:20:31+00:00",
+   "end": "2026-04-09T21:24:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 247,
+   "transponder_id": "A1C57E",
+   "callsign": "RPA5641",
+   "onset": "2026-04-09T21:21:31+00:00",
+   "end": "2026-04-09T21:26:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 487,
+   "transponder_id": "ACCA19",
+   "callsign": "JBU1487",
+   "onset": "2026-04-09T21:25:31+00:00",
+   "end": "2026-04-09T21:26:29+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 503,
+   "transponder_id": "A6F5FC",
+   "callsign": "DAL1432",
+   "onset": "2026-04-09T21:26:01+00:00",
+   "end": "2026-04-09T21:30:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 445,
+   "transponder_id": "A67050",
+   "callsign": "JIA5077",
+   "onset": "2026-04-09T21:27:00+00:00",
+   "end": "2026-04-09T21:38:50+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 289,
+   "transponder_id": "4CA614",
+   "callsign": "EIN105",
+   "onset": "2026-04-09T21:28:55+00:00",
+   "end": "2026-04-09T21:38:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 262,
+   "transponder_id": "C06AAC",
+   "callsign": "TSC738",
+   "onset": "2026-04-09T21:30:57+00:00",
+   "end": "2026-04-09T21:33:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 520,
+   "transponder_id": "AAC136",
+   "callsign": "UAL40",
+   "onset": "2026-04-09T21:44:45+00:00",
+   "end": "2026-04-09T21:44:50+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 408,
+   "transponder_id": "3C6563",
+   "callsign": "OCN80",
+   "onset": "2026-04-09T21:46:30+00:00",
+   "end": "2026-04-09T21:51:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 515,
+   "transponder_id": "A91B44",
+   "callsign": "UAL962",
+   "onset": "2026-04-09T21:48:54+00:00",
+   "end": "2026-04-09T21:59:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 348,
+   "transponder_id": "40683E",
+   "callsign": "VIR153",
+   "onset": "2026-04-09T21:51:30+00:00",
+   "end": "2026-04-09T22:02:05+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 500,
+   "transponder_id": "A57AF9",
+   "callsign": "EJA452",
+   "onset": "2026-04-09T21:54:51+00:00",
+   "end": "2026-04-09T22:03:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 274,
+   "transponder_id": "C028CD",
+   "callsign": "WJA2658",
+   "onset": "2026-04-09T21:57:44+00:00",
+   "end": "2026-04-09T22:08:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 206,
+   "transponder_id": "AA7F5E",
+   "callsign": "AAL705",
+   "onset": "2026-04-09T21:58:52+00:00",
+   "end": "2026-04-09T21:59:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 421,
+   "transponder_id": "4CC52D",
+   "callsign": "ICE1A",
+   "onset": "2026-04-09T22:00:31+00:00",
+   "end": "2026-04-09T22:13:07+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 92,
+   "transponder_id": "4CC52E",
+   "callsign": "ICE622",
+   "onset": "2026-04-09T22:00:32+00:00",
+   "end": "2026-04-09T22:04:52+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 509,
+   "transponder_id": "ABB76D",
+   "callsign": "AAL2815",
+   "onset": "2026-04-09T22:01:01+00:00",
+   "end": "2026-04-09T22:08:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 409,
+   "transponder_id": "4CC587",
+   "callsign": "ICE689",
+   "onset": "2026-04-09T22:01:31+00:00",
+   "end": "2026-04-09T22:14:15+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 345,
+   "transponder_id": "3965AF",
+   "callsign": "AFR8U",
+   "onset": "2026-04-09T22:03:30+00:00",
+   "end": "2026-04-09T22:13:47+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 3,
+   "transponder_id": "4CA9BC",
+   "callsign": "EIN109",
+   "onset": "2026-04-09T22:04:05+00:00",
+   "end": "2026-04-09T22:07:06+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 428,
+   "transponder_id": "4CC50F",
+   "callsign": "ICE43E",
+   "onset": "2026-04-09T22:08:00+00:00",
+   "end": "2026-04-09T22:20:04+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 521,
+   "transponder_id": "A8E132",
+   "callsign": "UAL956",
+   "onset": "2026-04-09T22:08:29+00:00",
+   "end": "2026-04-09T22:09:45+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 411,
+   "transponder_id": "484560",
+   "callsign": "KLM133",
+   "onset": "2026-04-09T22:09:57+00:00",
+   "end": "2026-04-09T22:21:05+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 504,
+   "transponder_id": "AC0A75",
+   "callsign": "RPA5784",
+   "onset": "2026-04-09T22:10:30+00:00",
+   "end": "2026-04-09T22:15:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 530,
+   "transponder_id": "48607F",
+   "callsign": "MMD6758",
+   "onset": "2026-04-09T22:11:12+00:00",
+   "end": "2026-04-09T22:15:22+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 374,
+   "transponder_id": "400685",
+   "callsign": "BAW22B",
+   "onset": "2026-04-09T22:13:00+00:00",
+   "end": "2026-04-09T22:23:51+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 310,
+   "transponder_id": "4A91AF",
+   "callsign": "SAS923",
+   "onset": "2026-04-09T22:13:29+00:00",
+   "end": "2026-04-09T22:14:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 532,
+   "transponder_id": "AC3857",
+   "callsign": "FDX48",
+   "onset": "2026-04-09T22:13:30+00:00",
+   "end": "2026-04-09T22:20:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 489,
+   "transponder_id": "A6F9B3",
+   "callsign": "DAL571",
+   "onset": "2026-04-09T22:14:01+00:00",
+   "end": "2026-04-09T22:16:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 490,
+   "transponder_id": "A7A89D",
+   "callsign": "ASA389",
+   "onset": "2026-04-09T22:14:42+00:00",
+   "end": "2026-04-09T22:20:32+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 514,
+   "transponder_id": "478F5C",
+   "callsign": "SAS910",
+   "onset": "2026-04-09T22:16:00+00:00",
+   "end": "2026-04-09T22:16:59+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 528,
+   "transponder_id": "4CAE34",
+   "callsign": "EIN11P",
+   "onset": "2026-04-09T22:16:38+00:00",
+   "end": "2026-04-09T22:24:49+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 344,
+   "transponder_id": "A26DF9",
+   "callsign": "MXY252",
+   "onset": "2026-04-09T22:16:56+00:00",
+   "end": "2026-04-09T22:27:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 531,
+   "transponder_id": "A8BD6A",
+   "callsign": "UAL16",
+   "onset": "2026-04-09T22:18:34+00:00",
+   "end": "2026-04-09T22:19:35+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 513,
+   "transponder_id": "AAAA92",
+   "callsign": "AAL704",
+   "onset": "2026-04-09T22:19:07+00:00",
+   "end": "2026-04-09T22:20:04+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 529,
+   "transponder_id": "4CAE35",
+   "callsign": "EIN1PR",
+   "onset": "2026-04-09T22:19:30+00:00",
+   "end": "2026-04-09T22:27:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 394,
+   "transponder_id": "C051C6",
+   "callsign": "TSC683",
+   "onset": "2026-04-09T22:21:01+00:00",
+   "end": "2026-04-09T22:23:39+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 419,
+   "transponder_id": "4CAE33",
+   "callsign": "EIN107",
+   "onset": "2026-04-09T22:22:00+00:00",
+   "end": "2026-04-09T22:32:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 491,
+   "transponder_id": "A99B83",
+   "callsign": "DAL321",
+   "onset": "2026-04-09T22:24:49+00:00",
+   "end": "2026-04-09T22:30:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 413,
+   "transponder_id": "4006C4",
+   "callsign": "BAW7TG",
+   "onset": "2026-04-09T22:26:30+00:00",
+   "end": "2026-04-09T22:31:33+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 522,
+   "transponder_id": "478F47",
+   "callsign": "SAS904",
+   "onset": "2026-04-09T22:27:03+00:00",
+   "end": "2026-04-09T22:31:38+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 493,
+   "transponder_id": "A7851C",
+   "callsign": "DAL1655",
+   "onset": "2026-04-09T22:27:31+00:00",
+   "end": "2026-04-09T22:29:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 465,
+   "transponder_id": "A292C9",
+   "callsign": "ENY3474",
+   "onset": "2026-04-09T22:28:01+00:00",
+   "end": "2026-04-09T22:31:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 475,
+   "transponder_id": "4CC578",
+   "callsign": "ICE691",
+   "onset": "2026-04-09T22:29:36+00:00",
+   "end": "2026-04-09T22:42:10+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 488,
+   "transponder_id": "A7BF22",
+   "callsign": "DAL2148",
+   "onset": "2026-04-09T22:30:30+00:00",
+   "end": "2026-04-09T22:31:14+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 420,
+   "transponder_id": "C03064",
+   "callsign": "ACA949",
+   "onset": "2026-04-09T22:32:26+00:00",
+   "end": "2026-04-09T22:42:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 524,
+   "transponder_id": "4A91B2",
+   "callsign": "SAS908",
+   "onset": "2026-04-09T22:32:50+00:00",
+   "end": "2026-04-09T22:37:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 422,
+   "transponder_id": "896457",
+   "callsign": "UAE4PV",
+   "onset": "2026-04-09T22:38:30+00:00",
+   "end": "2026-04-09T22:48:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 506,
+   "transponder_id": "A38B84",
+   "callsign": "JBU415",
+   "onset": "2026-04-09T22:39:30+00:00",
+   "end": "2026-04-09T22:45:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 470,
+   "transponder_id": "ABB601",
+   "callsign": "SWA888",
+   "onset": "2026-04-09T22:40:31+00:00",
+   "end": "2026-04-09T22:46:55+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 533,
+   "transponder_id": "AA92F8",
+   "callsign": "UAL70",
+   "onset": "2026-04-09T22:43:54+00:00",
+   "end": "2026-04-09T22:53:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 492,
+   "transponder_id": "A12F4C",
+   "callsign": "UAL639",
+   "onset": "2026-04-09T22:45:31+00:00",
+   "end": "2026-04-09T22:49:52+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 412,
+   "transponder_id": "AA2CA9",
+   "callsign": "AAL735",
+   "onset": "2026-04-09T22:47:01+00:00",
+   "end": "2026-04-09T22:58:23+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 466,
+   "transponder_id": "A1BEE0",
+   "callsign": "SKW6013",
+   "onset": "2026-04-09T22:48:01+00:00",
+   "end": "2026-04-09T22:51:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 505,
+   "transponder_id": "AE144A",
+   "callsign": "RCH217",
+   "onset": "2026-04-09T22:48:04+00:00",
+   "end": "2026-04-09T23:03:44+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 410,
+   "transponder_id": "407995",
+   "callsign": "BAW33K",
+   "onset": "2026-04-09T22:48:30+00:00",
+   "end": "2026-04-09T22:58:26+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 501,
+   "transponder_id": "A74541",
+   "callsign": "GJS4487",
+   "onset": "2026-04-09T22:49:26+00:00",
+   "end": "2026-04-09T23:00:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 434,
+   "transponder_id": "A1BAC2",
+   "callsign": "AAY2550",
+   "onset": "2026-04-09T22:49:30+00:00",
+   "end": "2026-04-09T23:02:19+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 485,
+   "transponder_id": "AD7E6F",
+   "callsign": "JBU2077",
+   "onset": "2026-04-09T22:49:31+00:00",
+   "end": "2026-04-09T22:53:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 523,
+   "transponder_id": "A2A2E6",
+   "callsign": "UAL108",
+   "onset": "2026-04-09T22:51:08+00:00",
+   "end": "2026-04-09T22:59:07+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 453,
+   "transponder_id": "A895B0",
+   "callsign": "PDT5955",
+   "onset": "2026-04-09T22:53:00+00:00",
+   "end": "2026-04-09T23:05:22+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 508,
+   "transponder_id": "A7B133",
+   "callsign": "JIA5400",
+   "onset": "2026-04-09T22:54:00+00:00",
+   "end": "2026-04-09T23:00:12+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 517,
+   "transponder_id": "AAAC4A",
+   "callsign": "UAL57",
+   "onset": "2026-04-09T22:54:31+00:00",
+   "end": "2026-04-09T23:04:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 534,
+   "transponder_id": "A86E6C",
+   "callsign": "UAL946",
+   "onset": "2026-04-09T22:56:04+00:00",
+   "end": "2026-04-09T22:57:19+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 519,
+   "transponder_id": "7805AA",
+   "callsign": "CSG2546",
+   "onset": "2026-04-09T22:56:20+00:00",
+   "end": "2026-04-09T22:57:31+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 495,
+   "transponder_id": "A12AA4",
+   "callsign": "UAL2400",
+   "onset": "2026-04-09T22:56:32+00:00",
+   "end": "2026-04-09T22:58:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 507,
+   "transponder_id": "C00B78",
+   "callsign": "JZA611",
+   "onset": "2026-04-09T22:59:01+00:00",
+   "end": "2026-04-09T23:02:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 404,
+   "transponder_id": "3C64C6",
+   "callsign": "DLH404",
+   "onset": "2026-04-09T23:00:30+00:00",
+   "end": "2026-04-09T23:10:41+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 526,
+   "transponder_id": "A913D6",
+   "callsign": "UAL134",
+   "onset": "2026-04-09T23:02:18+00:00",
+   "end": "2026-04-09T23:03:38+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 405,
+   "transponder_id": "44012F",
+   "callsign": "AUA7K",
+   "onset": "2026-04-09T23:03:30+00:00",
+   "end": "2026-04-09T23:13:36+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 437,
+   "transponder_id": "AE5F4B",
+   "callsign": "PIONR34",
+   "onset": "2026-04-09T23:04:01+00:00",
+   "end": "2026-04-09T23:21:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 527,
+   "transponder_id": "A8B75A",
+   "callsign": "UAL30",
+   "onset": "2026-04-09T23:07:01+00:00",
+   "end": "2026-04-09T23:10:29+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 494,
+   "transponder_id": "A5EC61",
+   "callsign": "ASA306",
+   "onset": "2026-04-09T23:09:01+00:00",
+   "end": "2026-04-09T23:12:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 208,
+   "transponder_id": "AA4548",
+   "callsign": "AAL785",
+   "onset": "2026-04-09T23:11:18+00:00",
+   "end": "2026-04-09T23:21:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 472,
+   "transponder_id": "A836FB",
+   "callsign": "UAL1015",
+   "onset": "2026-04-09T23:11:31+00:00",
+   "end": "2026-04-09T23:15:24+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 486,
+   "transponder_id": "AB3FCC",
+   "callsign": "AAL1009",
+   "onset": "2026-04-09T23:11:31+00:00",
+   "end": "2026-04-09T23:18:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 525,
+   "transponder_id": "A07DC8",
+   "callsign": "UAL994",
+   "onset": "2026-04-09T23:14:18+00:00",
+   "end": "2026-04-09T23:23:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 317,
+   "transponder_id": "A173A8",
+   "callsign": "DAL45",
+   "onset": "2026-04-09T23:14:44+00:00",
+   "end": "2026-04-09T23:21:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 407,
+   "transponder_id": "AE4F12",
+   "callsign": "RCH1800",
+   "onset": "2026-04-09T23:14:54+00:00",
+   "end": "2026-04-09T23:26:14+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 401,
+   "transponder_id": "4CA9BB",
+   "callsign": "EIN1LH",
+   "onset": "2026-04-09T23:23:41+00:00",
+   "end": "2026-04-09T23:33:20+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 464,
+   "transponder_id": "C035BF",
+   "callsign": "JZA697",
+   "onset": "2026-04-09T23:24:01+00:00",
+   "end": "2026-04-09T23:30:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 73,
+   "transponder_id": "3481D5",
+   "callsign": "LOT5N",
+   "onset": "2026-04-09T23:26:31+00:00",
+   "end": "2026-04-09T23:36:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 474,
+   "transponder_id": "AC2C9C",
+   "callsign": "SWA3418",
+   "onset": "2026-04-09T23:27:31+00:00",
+   "end": "2026-04-09T23:29:30+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 204,
+   "transponder_id": "A9A399",
+   "callsign": "AAL731",
+   "onset": "2026-04-09T23:30:50+00:00",
+   "end": "2026-04-09T23:34:46+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 535,
+   "transponder_id": "A8B9B3",
+   "callsign": "UAL14",
+   "onset": "2026-04-09T23:31:07+00:00",
+   "end": "2026-04-09T23:32:10+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 496,
+   "transponder_id": "A6BBEF",
+   "callsign": "DAL324",
+   "onset": "2026-04-09T23:33:01+00:00",
+   "end": "2026-04-09T23:35:01+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 424,
+   "transponder_id": "4078DE",
+   "callsign": "BAW37J",
+   "onset": "2026-04-09T23:37:00+00:00",
+   "end": "2026-04-09T23:46:20+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 36,
+   "transponder_id": "AD646E",
+   "callsign": "JBU733",
+   "onset": "2026-04-09T23:42:30+00:00",
+   "end": "2026-04-09T23:45:02+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 467,
+   "transponder_id": "A87F41",
+   "callsign": "PDT6125",
+   "onset": "2026-04-09T23:45:31+00:00",
+   "end": "2026-04-09T23:48:13+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 502,
+   "transponder_id": "AC6243",
+   "callsign": "SWA3665",
+   "onset": "2026-04-09T23:50:31+00:00",
+   "end": "2026-04-09T23:57:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 363,
+   "transponder_id": "394A01",
+   "callsign": "AFR006",
+   "onset": "2026-04-09T23:52:08+00:00",
+   "end": "2026-04-09T23:52:43+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 469,
+   "transponder_id": "C04599",
+   "callsign": "CJT619",
+   "onset": "2026-04-09T23:52:33+00:00",
+   "end": "2026-04-10T00:00:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 471,
+   "transponder_id": "A0F86B",
+   "callsign": "UCA4296",
+   "onset": "2026-04-09T23:53:30+00:00",
+   "end": "2026-04-10T00:00:00+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 468,
+   "transponder_id": "A53F5B",
+   "callsign": "RPA4702",
+   "onset": "2026-04-09T23:55:30+00:00",
+   "end": "2026-04-09T23:59:55+00:00",
+   "peak_score": 0.0
+  },
+  {
+   "episode_id": 483,
+   "transponder_id": "A283F4",
+   "callsign": "AAY2493",
+   "onset": "2026-04-09T23:59:01+00:00",
+   "end": "2026-04-09T23:59:59+00:00",
+   "peak_score": 0.0
+  }
+ ]
+}

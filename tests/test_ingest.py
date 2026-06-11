@@ -343,3 +343,65 @@ def test_cli_ingest_labels_malformed_file(tmp_path: Path):
     ])
     assert result.exit_code != 0
     assert "invalid JSON" in result.output
+
+
+# ---------------------------------------------------------------------------
+# v2 labeler fields: persistence category + measurement_km
+# ---------------------------------------------------------------------------
+
+
+def test_validate_accepts_persistence_and_measurement():
+    payload = _payload(labels=[{
+        "episode_id": 1,
+        "label": "contrail",
+        "labeler_id": "alice",
+        "persistence": "potentially_persistent",
+        "measurement_km": 12.5,
+    }])
+    out = validate_payload(payload, expected_date=TEST_DATE)
+    assert out["labels"][0]["persistence"] == "potentially_persistent"
+    assert out["labels"][0]["measurement_km"] == 12.5
+
+
+def test_validate_rejects_unknown_persistence():
+    payload = _payload(labels=[{
+        "episode_id": 1,
+        "label": "contrail",
+        "labeler_id": "alice",
+        "persistence": "forever",
+    }])
+    with pytest.raises(LabelValidationError, match="persistence"):
+        validate_payload(payload, expected_date=TEST_DATE)
+
+
+def test_validate_rejects_non_numeric_measurement():
+    payload = _payload(labels=[{
+        "episode_id": 1,
+        "label": "contrail",
+        "labeler_id": "alice",
+        "measurement_km": "12km",
+    }])
+    with pytest.raises(LabelValidationError, match="measurement_km"):
+        validate_payload(payload, expected_date=TEST_DATE)
+
+
+def test_ingest_persists_persistence_and_measurement(tmp_path: Path):
+    db_path = tmp_path / "pipeline.duckdb"
+    _seed_db(db_path)
+
+    f = tmp_path / "alice.json"
+    f.write_text(json.dumps(_payload(labels=[{
+        "episode_id": 1,
+        "label": "contrail",
+        "labeler_id": "alice",
+        "persistence": "short",
+        "measurement_km": 3.25,
+    }])))
+    ingest_label_files(db_path, [f], expected_date=TEST_DATE)
+
+    with Database(db_path) as db:
+        rows = db.query(
+            "SELECT persistence, measurement_km FROM contrail_episodes "
+            "WHERE episode_id = 1"
+        )
+    assert rows == [("short", 3.25)]
