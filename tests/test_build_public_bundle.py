@@ -124,3 +124,41 @@ def test_same_flight_multiple_passes_not_self_compared():
     eps = [_ep(1, "A", "12:00:00", "12:01:00"), _ep(2, "A", "12:00:00", "12:01:00")]
     tracks = {"A": _track([("12:00:00", 1000, 500), ("12:01:00", 1600, 500)])}
     assert sustained_overlap_ids(eps, tracks, sep_px=200) == set()
+
+
+# ---------------------------------------------------------------------------
+# Manifest size: dead-frame filtering + compact pings
+# ---------------------------------------------------------------------------
+
+build_manifest = _module.build_manifest
+compact_pings = _module.compact_pings
+
+
+def test_compact_pings_schema_and_rounding():
+    pings = [
+        {"wall_time_utc": "2026-04-09T05:23:00+00:00",
+         "pixel_x": 3160.6542367450793, "pixel_y": 1471.2205221015925,
+         "alt_m": 9717.98, "alt_baro_m": 9717.98, "dist_km": 198.26},
+        {"wall_time_utc": "2026-04-09T05:23:01+00:00",
+         "pixel_x": 3158.76, "pixel_y": 1471.32,
+         "alt_m": 9718.0, "alt_baro_m": None, "dist_km": None},
+    ]
+    out = compact_pings(pings, step_s=1)
+    assert out[0] == {"t": 1775712180000, "x": 3160.7, "y": 1471.2,
+                      "alt_baro_m": 9718, "dist_km": 198.26}
+    # alt_m kept only as fallback when barometric is missing.
+    assert out[1]["alt_m"] == 9718
+    assert "alt_baro_m" not in out[1]
+    assert "dist_km" not in out[1]
+
+
+def test_compact_pings_thinning_keeps_endpoints():
+    pings = [
+        {"wall_time_utc": f"2026-04-09T05:23:{s:02d}+00:00",
+         "pixel_x": 100.0 + s, "pixel_y": 50.0, "alt_m": None,
+         "alt_baro_m": None, "dist_km": None}
+        for s in range(11)
+    ]
+    out = compact_pings(pings, step_s=2)
+    # 0,2,4,6,8,10 — every 2s, last ping always kept.
+    assert [p["x"] for p in out] == [100, 102, 104, 106, 108, 110]

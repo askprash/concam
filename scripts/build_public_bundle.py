@@ -65,6 +65,49 @@ def _split_on_gap(frames: list[dict], max_gap_seconds: float) -> list[list[dict]
     return runs
 
 
+def compact_pings(pings: list[dict], *, step_s: float = 2.0) -> list[dict]:
+    """Compact + thin a track's ping list for the manifest.
+
+    The verbose ping schema dominated manifest size (61 MB of a 91 MB
+    manifest on 2026-04-09: 341k pings with 16-digit floats, duplicated
+    altitude fields, and 28-byte ISO timestamps). Compact schema per ping:
+
+      t          epoch milliseconds (int) — labeler uses Date.parse anyway
+      x, y       pixel position, 1 decimal (sub-0.1px precision is noise)
+      alt_baro_m rounded int; alt_m emitted ONLY when barometric is missing
+                 (mirrors the labeler's fallback order)
+      dist_km    unchanged; omitted when null
+
+    Thinning keeps one ping per ``step_s`` seconds plus the final ping —
+    ADS-B is upsampled to 1 Hz by linear interpolation, so intermediate
+    pings carry no extra information at overlay scale. The labeler accepts
+    both this and the legacy verbose schema.
+    """
+    out: list[dict] = []
+    last_kept: float | None = None
+    for i, p in enumerate(pings):
+        t = _parse_iso(p["wall_time_utc"]).timestamp()
+        is_last = i == len(pings) - 1
+        if last_kept is not None and not is_last and (t - last_kept) < step_s:
+            continue
+        last_kept = t
+        rec: dict = {
+            "t": int(round(t * 1000)),
+            "x": round(float(p["pixel_x"]), 1),
+            "y": round(float(p["pixel_y"]), 1),
+        }
+        alt_baro = p.get("alt_baro_m")
+        alt = p.get("alt_m")
+        if alt_baro is not None:
+            rec["alt_baro_m"] = int(round(alt_baro))
+        elif alt is not None:
+            rec["alt_m"] = int(round(alt))
+        if p.get("dist_km") is not None:
+            rec["dist_km"] = p["dist_km"]
+        out.append(rec)
+    return out
+
+
 def _build_flight_tracks_with_altitude(
     projections_path: Path,
     site_lat: float,
@@ -282,6 +325,10 @@ def build_manifest(
                     "peak_contrail_length_m": None,
                     "is_overlap": False,
                     "closest_approach_km": closest_approach_km,
+                    # Only frames carrying signal: zero-score lineless entries
+                    # were 88% of frame rows and the labeler never reads them
+                    # (detection lines need pixel_line; the forming-now check
+                    # needs score >= threshold; absent == score 0).
                     "frames": [
                         {
                             "wall_time_utc": f["wall_time_utc"],
@@ -289,6 +336,7 @@ def build_manifest(
                             "pixel_line": f["pixel_line"],
                         }
                         for f in run
+                        if f["score"] > 0.0 or f["pixel_line"]
                     ],
                 }
             )
@@ -382,6 +430,10 @@ def main() -> None:
     for ep in manifest["episodes"]:
         ep["is_overlap"] = ep["episode_id"] in overlap_ids
     manifest["overlap_episode_ids"] = sorted(overlap_ids)
+    # Compact AFTER overlap flagging — sustained_overlap_ids reads the verbose
+    # ping schema. This is the manifest-size lever: 91 MB -> ~10 MB.
+    for track in manifest["flight_tracks"].values():
+        track["pings"] = compact_pings(track["pings"])
     manifest["calibration"] = calibration_block(load_calibration(site.calibration))
     excl = exclusion_regions_block(site.detection)
     if excl is not None:

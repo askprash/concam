@@ -549,14 +549,17 @@
 
   // --- Flight track indexing ---------------------------------------------
   // Each track.pings is already time-sorted. We pre-parse wall_time_utc once.
+  // Two ping schemas: compact {t (epoch ms), x, y, alt_baro_m|alt_m, dist_km}
+  // written by current build_public_bundle.py (manifest size), and the legacy
+  // verbose {wall_time_utc, pixel_x, pixel_y, ...} from older bundles.
   const flightTracks = Object.entries(manifest.flight_tracks || {}).map(
     ([tid, track]) => ({
       tid,
       callsign: track.callsign,
       pings: track.pings.map((p) => ({
-        t: Date.parse(p.wall_time_utc),
-        x: p.pixel_x,
-        y: p.pixel_y,
+        t: (typeof p.t === "number") ? p.t : Date.parse(p.wall_time_utc),
+        x: (p.x != null) ? p.x : p.pixel_x,
+        y: (p.y != null) ? p.y : p.pixel_y,
         // Barometric (pressure) altitude in metres — canonical source for
         // flight level display. Falls back to effective alt_m if missing.
         alt_baro_m: p.alt_baro_m != null ? p.alt_baro_m : (p.alt_m != null ? p.alt_m : null),
@@ -1568,17 +1571,19 @@
     return (altMetres * 3.28084) / 100;
   }
 
+  // Pre-parsed track lookup — episodeMedianFL must read the normalized pings
+  // (flightTracks), never raw manifest pings, so both ping schemas work.
+  const tracksByTid = new Map(flightTracks.map((t) => [t.tid, t]));
+
   function episodeMedianFL(ep) {
-    const track = (manifest.flight_tracks || {})[ep.transponder_id];
+    const track = tracksByTid.get(ep.transponder_id);
     if (!track) return null;
     const onset = Date.parse(ep.onset);
     const end = Date.parse(ep.end);
     const fls = [];
     for (const p of track.pings) {
-      const t = Date.parse(p.wall_time_utc);
-      if (t < onset || t > end) continue;
-      const alt = p.alt_baro_m != null ? p.alt_baro_m : p.alt_m;
-      const fl = metresToFL(alt);
+      if (p.t < onset || p.t > end) continue;
+      const fl = metresToFL(p.alt_baro_m);
       if (fl != null) fls.push(fl);
     }
     if (fls.length === 0) return null;
