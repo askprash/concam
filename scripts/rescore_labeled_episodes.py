@@ -110,51 +110,64 @@ def main() -> None:
             work.append((eid, lab["label"], ep["transponder_id"],
                          _second_key(f["wall_time_utc"]), float(f["score"])))
 
-    frame_ids = sorted({
+    n_frames = len({
         fi for _, _, _, wall, _ in work for fi in inv.get(wall, [])
     })
-    decode_ids = sorted({fi for f in frame_ids for fi in (f - 1, f) if fi >= 0})
     print(f"[rescore] {args.date}: {len(labels)} labeled, {skipped_zero} never "
-          f"fired (skip), {len(work)} frame-tasks, {len(decode_ids)} decodes")
+          f"fired (skip), {len(work)} frame-tasks, ~{n_frames} target frames")
 
-    frames = decode_frames(video, decode_ids)
-    print(f"[rescore] decoded {len(frames)}/{len(decode_ids)}")
+    # Decode in chunks — a 4K BGR frame is ~25 MB, so holding a whole day's
+    # worth (plus prev-frames) at once OOMs even a 16 GB allocation. Sort the
+    # work by frame index for decode locality; each chunk holds <=2*CHUNK
+    # frames (~1.6 GB) and is dropped before the next.
+    CHUNK = 32
+    work = sorted(work, key=lambda w: min(inv.get(w[3], [10**9])))
 
     results: dict[str, dict] = {}
     mismatches = 0
-    for eid, label, tid, wall, stored in work:
-        proj = proj_index.get((tid, wall))
-        if proj is None:
-            continue
-        roi = Rect(x=proj["roi"]["x"], y=proj["roi"]["y"],
-                   w=proj["roi"]["w"], h=proj["roi"]["h"])
-        center = PixelPoint(x=float(proj["pixel_x"]), y=float(proj["pixel_y"]))
-        path_vec = (float(proj["path_dx"]), float(proj["path_dy"]))
-
-        best_nomask = 0.0
-        best_masked = 0.0
-        for fi in inv.get(wall, []):
-            frame = frames.get(fi)
-            if frame is None:
-                continue
-            prev = frames.get(fi - 1)
-            poly = rotated_polygon(center, path_vec, det_nomask)
-            r0 = detect(frame, roi, det_nomask, polygon=poly,
-                        path_vec=path_vec, prev_frame=prev)
-            r1 = detect(frame, roi, det_masked, polygon=poly,
-                        path_vec=path_vec, prev_frame=prev)
-            best_nomask = max(best_nomask, r0.score)
-            best_masked = max(best_masked, r1.score)
-
-        entry = results.setdefault(eid, {
-            "label": label, "stored_peak": 0.0,
-            "nomask_peak": 0.0, "masked_peak": 0.0,
+    for start in range(0, len(work), CHUNK):
+        chunk = work[start : start + CHUNK]
+        decode_ids = sorted({
+            i for _, _, _, wall, _ in chunk
+            for fi in inv.get(wall, []) for i in (fi - 1, fi) if i >= 0
         })
-        entry["stored_peak"] = max(entry["stored_peak"], stored)
-        entry["nomask_peak"] = max(entry["nomask_peak"], best_nomask)
-        entry["masked_peak"] = max(entry["masked_peak"], best_masked)
-        if abs(best_nomask - stored) > 1e-6:
-            mismatches += 1
+        frames = decode_frames(video, decode_ids)
+        for eid, label, tid, wall, stored in chunk:
+            proj = proj_index.get((tid, wall))
+            if proj is None:
+                continue
+            roi = Rect(x=proj["roi"]["x"], y=proj["roi"]["y"],
+                       w=proj["roi"]["w"], h=proj["roi"]["h"])
+            center = PixelPoint(x=float(proj["pixel_x"]), y=float(proj["pixel_y"]))
+            path_vec = (float(proj["path_dx"]), float(proj["path_dy"]))
+
+            best_nomask = 0.0
+            best_masked = 0.0
+            for fi in inv.get(wall, []):
+                frame = frames.get(fi)
+                if frame is None:
+                    continue
+                prev = frames.get(fi - 1)
+                poly = rotated_polygon(center, path_vec, det_nomask)
+                r0 = detect(frame, roi, det_nomask, polygon=poly,
+                            path_vec=path_vec, prev_frame=prev)
+                r1 = detect(frame, roi, det_masked, polygon=poly,
+                            path_vec=path_vec, prev_frame=prev)
+                best_nomask = max(best_nomask, r0.score)
+                best_masked = max(best_masked, r1.score)
+
+            entry = results.setdefault(eid, {
+                "label": label, "stored_peak": 0.0,
+                "nomask_peak": 0.0, "masked_peak": 0.0,
+            })
+            entry["stored_peak"] = max(entry["stored_peak"], stored)
+            entry["nomask_peak"] = max(entry["nomask_peak"], best_nomask)
+            entry["masked_peak"] = max(entry["masked_peak"], best_masked)
+            if abs(best_nomask - stored) > 1e-6:
+                mismatches += 1
+        del frames
+        done = min(start + CHUNK, len(work))
+        print(f"[rescore] {done}/{len(work)} frame-tasks", flush=True)
 
     # Episode-level summary at the production threshold.
     def detected(v):

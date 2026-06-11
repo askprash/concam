@@ -2,7 +2,7 @@
 #SBATCH --job-name=concam-mask-rescore
 #SBATCH --time=6:00:00
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=24G
 #SBATCH --partition=normal
 #SBATCH --output=slurm/logs/mask-rescore-%j.log
 #
