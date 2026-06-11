@@ -41,6 +41,27 @@ The labeler hatches the masked regions (manifest `exclusion_regions`, built
 by `build_public_bundle.py` via `mask_to_polygons`) so reviewers can see what
 the detector ignores.
 
+## Measured impact (2026-06-11, slurm job 587404)
+
+Top-5-strong-frame rescore of every reliably-labeled episode on the two big
+days, production config with vs without the mask
+(`scripts/rescore_labeled_episodes.py`; the no-mask arm reproduced stored
+production scores exactly — 0 mismatched frame-tasks):
+
+| Day | FP killed | TP killed | Precision (fired set) | AUC among fired |
+|---|---|---|---|---|
+| 2026-04-09 | 42/81 (52%) | 6/211 (2.8%) | 0.723 → 0.840 | 0.738 → 0.918 |
+| 2026-04-08 | 44/64 (69%) | 42/243 (17%) | 0.792 → 0.910 | 0.647 → 0.833 |
+
+Every killed TP (48/48) had its peak line at the tower pixels
+(x ≈ 3130–3300, y ≈ 1250–1410). Detections there were ~50/50
+contrail/no-contrail — the building emitted aligned lines regardless of sky
+truth, so the signal had no discriminative value and removing it is correct
+even at recall cost. The flights themselves remain visible to the detector on
+frames where they are clear of the tower (rescore covered only each episode's
+top-5 strong frames, so episode-level TP loss in production is an upper
+bound).
+
 ## Consequences
 
 - The mask is a site artifact like the calibration npz; rebuild it if the
