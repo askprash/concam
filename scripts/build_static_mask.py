@@ -34,6 +34,7 @@ from concam.detection.static_mask import (
     compute_static_mask,
     mask_to_polygons,
     save_static_mask,
+    svg_to_mask,
 )
 from concam.video import decode_frames
 
@@ -81,6 +82,13 @@ def main() -> None:
     ap.add_argument("--end-hour", type=float, default=22.0)
     ap.add_argument("--persistence-threshold", type=float, default=0.5)
     ap.add_argument("--dilate-px", type=int, default=12)
+    ap.add_argument("--svg", type=Path, default=None,
+                    help="hand-drawn SVG mask outline (straight-segment paths,"
+                         " drawn over a screenshot at any resolution); union'd"
+                         " with the persistent-edge mask. The manual outline"
+                         " captures full building volumes (weak-edged glass"
+                         " facades); edge persistence still catches thin"
+                         " structures above it (cranes, antennas).")
     args = ap.parse_args()
 
     frames: list[np.ndarray] = []
@@ -99,6 +107,11 @@ def main() -> None:
         persistence_threshold=args.persistence_threshold,
         dilate_px=args.dilate_px,
     )
+    if args.svg is not None:
+        manual = svg_to_mask(args.svg.read_text(), mask.shape)
+        print(f"[mask] manual SVG outline covers {100.0 * manual.mean():.2f}%; "
+              f"union with persistent-edge mask")
+        mask = mask | manual
     coverage = 100.0 * mask.mean()
     print(f"[mask] static mask covers {coverage:.2f}% of the frame "
           f"({mask.sum()} px of {mask.size})")

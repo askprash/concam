@@ -196,7 +196,7 @@ def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
            bundles_dir: str | None, video: str | None,
            seconds_per_frame: float) -> None:
     """Generate per-labeler annotation bundles for a given date."""
-    from concam.bundle import generate_bundles
+    from concam.bundle import exclusion_regions_block, generate_bundles
     from concam.config import load_config
     from concam.pipeline import resolve_video_path, stage_paths
     from concam.projection import load_calibration
@@ -241,6 +241,7 @@ def bundle(ctx: click.Context, date: str, labelers: tuple[str, ...],
         ocr_path=paths["ocr"] if paths["ocr"].exists() else None,
         detection_threshold=site_config.aggregation.detection_threshold,
         calibration=load_calibration(site_config.calibration),
+        exclusion_regions=exclusion_regions_block(site_config.detection),
     )
     for lbl, bundle_dir in result.items():
         click.echo(f"{lbl}: {bundle_dir}")

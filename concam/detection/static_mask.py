@@ -109,6 +109,87 @@ def mask_to_polygons(
     return polys
 
 
+def parse_svg_polygons(svg_text: str) -> tuple[list[np.ndarray], tuple[float, float]]:
+    """Extract filled polygon outlines from a hand-drawn SVG mask.
+
+    Supports the straight-line path subset Inkscape emits for polygon tools
+    (``m/M l/L h/H v/V z/Z``; bare coordinate pairs are implicit linetos).
+    Curves are rejected — a mask outline must be redrawn with straight
+    segments. Returns ``(polygons, (svg_width, svg_height))`` where each
+    polygon is an (N, 2) float array in SVG user units.
+    """
+    import re
+
+    size_m = re.search(r'<svg[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"',
+                       svg_text, re.S)
+    if size_m is None:
+        raise ValueError("SVG width/height attributes not found")
+    size = (float(size_m.group(1)), float(size_m.group(2)))
+
+    polygons: list[np.ndarray] = []
+    for d in re.findall(r'\bd="([^"]+)"', svg_text):
+        if not re.match(r"\s*[mM]", d):
+            continue
+        tokens = re.findall(r"[a-zA-Z]|-?\d*\.?\d+(?:e-?\d+)?", d)
+        pts: list[np.ndarray] = []
+        cur = np.zeros(2)
+        cmd = None
+        i = 0
+        while i < len(tokens):
+            t = tokens[i]
+            if t.isalpha():
+                cmd = t
+                i += 1
+                if cmd in "zZ":
+                    if len(pts) >= 3:
+                        polygons.append(np.array(pts))
+                    pts = []
+                continue
+            if cmd in ("m", "l"):
+                delta = np.array([float(t), float(tokens[i + 1])])
+                cur = delta if (cmd == "m" and not pts) else cur + delta
+                pts.append(cur.copy())
+                i += 2
+                cmd = "l" if cmd == "m" else cmd
+            elif cmd in ("M", "L"):
+                cur = np.array([float(t), float(tokens[i + 1])])
+                pts.append(cur.copy())
+                i += 2
+                cmd = "L" if cmd == "M" else cmd
+            elif cmd == "h":
+                cur = cur + [float(t), 0.0]; pts.append(cur.copy()); i += 1
+            elif cmd == "H":
+                cur = np.array([float(t), cur[1]]); pts.append(cur.copy()); i += 1
+            elif cmd == "v":
+                cur = cur + [0.0, float(t)]; pts.append(cur.copy()); i += 1
+            elif cmd == "V":
+                cur = np.array([cur[0], float(t)]); pts.append(cur.copy()); i += 1
+            else:
+                raise ValueError(
+                    f"unsupported SVG path command {cmd!r} — redraw the mask "
+                    "outline with straight segments (no curves)"
+                )
+        if len(pts) >= 3:  # unclosed trailing subpath
+            polygons.append(np.array(pts))
+    return polygons, size
+
+
+def svg_to_mask(svg_text: str, shape: tuple[int, int]) -> np.ndarray:
+    """Rasterize a hand-drawn SVG mask onto a (H, W) boolean array.
+
+    Polygon coordinates are scaled from the SVG canvas to ``shape`` (the SVG
+    is typically drawn over a downscaled screenshot of the camera frame).
+    """
+    polygons, (svg_w, svg_h) = parse_svg_polygons(svg_text)
+    h, w = shape
+    sx, sy = w / svg_w, h / svg_h
+    mask = np.zeros((h, w), dtype=np.uint8)
+    for poly in polygons:
+        scaled = np.round(poly * [sx, sy]).astype(np.int32)
+        cv2.fillPoly(mask, [scaled], 255)
+    return mask > 0
+
+
 def save_static_mask(mask: np.ndarray, path: str | Path) -> None:
     """Write the mask as a compressed npz (key: ``mask``, bool array)."""
     np.savez_compressed(path, mask=mask.astype(bool))

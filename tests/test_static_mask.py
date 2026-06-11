@@ -108,3 +108,38 @@ class TestSaveLoad:
         a = load_static_mask(path)
         b = load_static_mask(path)
         assert a is b  # same object — per-path cache, hit once per process
+
+
+class TestSvgPolygons:
+    SVG = '''<svg width="100" height="50" viewBox="0 0 100 50"
+      xmlns="http://www.w3.org/2000/svg">
+      <path d="m 10,30 5,2 h 10 v -4 L 40,30 5,8 Z" style="fill:#ffffff"/>
+    </svg>'''
+
+    def test_parse_polyline_subset(self):
+        from concam.detection.static_mask import parse_svg_polygons
+        polys, size = parse_svg_polygons(self.SVG)
+        assert size == (100.0, 50.0)
+        assert len(polys) == 1
+        p = polys[0]
+        # m 10,30 -> (10,30); implicit l 5,2 -> (15,32); h 10 -> (25,32);
+        # v -4 -> (25,28); L 40,30 -> (40,30); implicit L pair 5,8 -> (5,8)
+        np.testing.assert_allclose(
+            p, [[10, 30], [15, 32], [25, 32], [25, 28], [40, 30], [5, 8]])
+
+    def test_svg_mask_scales_to_frame(self):
+        from concam.detection.static_mask import svg_to_mask
+        mask = svg_to_mask(self.SVG, (100, 200))  # (H, W): 2x scale
+        assert mask.shape == (100, 200)
+        assert mask.dtype == bool
+        # Interior point (20, 30) in svg coords -> (40, 60) in mask coords.
+        assert mask[60, 40]
+        # Far corner stays clear.
+        assert not mask[5, 190]
+
+    def test_rejects_curves(self):
+        from concam.detection.static_mask import parse_svg_polygons
+        svg = ('<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg">'
+               '<path d="m 0,0 c 1,1 2,2 3,3 Z"/></svg>')
+        with pytest.raises(ValueError, match="[Uu]nsupported"):
+            parse_svg_polygons(svg)

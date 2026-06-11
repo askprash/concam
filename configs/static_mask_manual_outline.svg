@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg1"
+   width="1280"
+   height="720"
+   viewBox="0 0 1280 720"
+   sodipodi:docname="mask_MIT_cam.svg"
+   inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.40994588"
+     inkscape:cx="557.39065"
+     inkscape:cy="311.01667"
+     inkscape:window-width="1720"
+     inkscape:window-height="730"
+     inkscape:window-x="0"
+     inkscape:window-y="30"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="g1" />
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="Image"
+     id="g1">
+    <!-- embedded reference screenshot stripped; outline drawn over a 1280x720 frame capture -->
+    <path
+       style="fill:#ffffff;stroke:#8d97e1;stroke-width:2.04664;stroke-dasharray:8.18659, 2.04664;-inkscape-stroke:none;paint-order:markers stroke fill"
+       d="m -1.7229188,500.57038 62.7235128,13.01871 88.631046,6.50936 32.72531,6.50936 57.2693,5.20748 64.08707,2.60374 147.2639,7.81122 139.08257,1.30188 220.89584,-10.41497 109.08437,-9.11309 v -10.41498 l 36.81597,-2.60373 5.45423,-1.30187 v 3.9056 l 61.36,-3.9056 -1.3636,1.30187 h 14.9991 l -4.0907,-144.50769 -8.1813,-42.96174 9.5448,35.15051 9.545,42.96176 1.3636,6.50934 57.2692,-5.20748 5.4543,3.90561 1.3634,23.43368 12.2721,26.03742 2.7271,18.22619 h 21.8169 l 12.272,6.50936 1.3634,9.1131 61.3601,-7.81123 4.0906,-9.11309 23.1805,-2.60375 24.5439,-3.90562 13.6355,-2.60373 6.8179,259.07233 L 1.0041901,733.6053 Z"
+       id="path1" />
+  </g>
+</svg>

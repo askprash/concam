@@ -256,6 +256,32 @@ def calibration_block(calib: Calibration) -> dict:
     }
 
 
+def exclusion_regions_block(detection_config) -> dict | None:
+    """Manifest block describing pixels the detector ignores.
+
+    ``polygons`` are [[x, y], ...] vertex lists (full-frame coords) — the
+    static-scene mask (buildings) simplified for overlay rendering — and
+    ``timestamp_region`` is the [y0, y1, x0, x1] OSD exclusion rect. The
+    labeler hatches both so reviewers can see what is *not* being considered.
+    Returns None when neither exclusion is configured.
+    """
+    polygons: list = []
+    mask_path = getattr(detection_config, "static_mask_path", None)
+    if mask_path and Path(mask_path).exists():
+        from concam.detection.static_mask import load_static_mask, mask_to_polygons
+
+        # min_area trims visual noise: regions under ~30x30 px are invisible
+        # at overlay scale but would bloat the manifest.
+        polygons = mask_to_polygons(load_static_mask(mask_path), min_area_px=900.0)
+    ts_region = getattr(detection_config, "timestamp_exclusion_region", None)
+    if not polygons and not ts_region:
+        return None
+    return {
+        "polygons": polygons,
+        "timestamp_region": list(ts_region) if ts_region else None,
+    }
+
+
 def _symlink_video(video_path: Path, bundle_dir: Path) -> str:
     """Symlink the video into the bundle directory and return the link name.
 
@@ -287,6 +313,7 @@ def build_manifest(
     video_start_utc: str | None = None,
     detection_threshold: float = 0.3,
     calibration: Calibration | None = None,
+    exclusion_regions: dict | None = None,
 ) -> dict:
     """Assemble the manifest dict for a single labeler.
 
@@ -340,6 +367,8 @@ def build_manifest(
     }
     if calibration is not None:
         manifest["calibration"] = calibration_block(calibration)
+    if exclusion_regions is not None:
+        manifest["exclusion_regions"] = exclusion_regions
     return manifest
 
 
@@ -358,6 +387,7 @@ def generate_bundles(
     ocr_path: Path | None = None,
     detection_threshold: float = 0.3,
     calibration: Calibration | None = None,
+    exclusion_regions: dict | None = None,
 ) -> dict[str, Path]:
     """Generate one bundle directory per labeler.
 
@@ -400,6 +430,7 @@ def generate_bundles(
             video_start_utc=video_start_utc,
             detection_threshold=detection_threshold,
             calibration=calibration,
+            exclusion_regions=exclusion_regions,
         )
         with open(bundle_dir / "manifest.json", "w") as f:
             json.dump(manifest, f, indent=2)

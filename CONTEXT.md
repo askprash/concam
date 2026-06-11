@@ -30,6 +30,23 @@ detection-deepening review; extend it as new concepts crystallise.
   rolling-median smoothing gate and gap-splitting (`concam.aggregation`).
 - **Flight / ADS-B ping** — aircraft trajectory data from `feder`; pings are
   projected to pixels via the camera **calibration** (`concam.projection`).
+- **Static-scene mask** — boolean full-frame mask of fixed structures
+  (buildings/skyline): the union of a hand-drawn SVG outline
+  (`configs/static_mask_manual_outline.svg`, authoritative for building
+  volumes) and Canny edge persistence across frames sampled over a day
+  (catches cranes/antennas above the outline). Built by
+  `scripts/build_static_mask.py` into
+  `configs/static_mask_mit_green_building.npz`; the kernel suppresses masked
+  pixels in the post-Canny edge map (ADR-0002).
+- **Persistence category** — per-episode human judgement `short`
+  ("dissipating behind the airplane") vs `potentially_persistent` ("end of the
+  contrail is outside the frame"); gated on contrail visibility (ADR-0001).
+  Supersedes the legacy 1–5 `persistence_rating`.
+- **Episode-ID space** — episode ids are scoped to one manifest *generation*;
+  pipeline re-runs renumber them. Label exports only join to the generation
+  the reviewer saw (ADR-0003, docs/label_reliability.md). Old generations'
+  episode skeletons live in `labels/archive/`; the cross-generation consensus
+  label set is `labels/derived/reliable_labels.json`.
 
 ## Architecture concepts (detection cluster)
 
@@ -154,6 +171,15 @@ seam so the convert→filter→upsample pipeline is testable without the live st
   `closest_approach_km > maxDistKm`). Both treat `null`/absent distance as
   always-visible, and the slider self-hides when a manifest carries no distance
   data (graceful degradation for old/private bundles).
+- **`exclusion_regions`** (manifest block, optional) — `polygons` (static-mask
+  regions simplified via `mask_to_polygons`) + `timestamp_region`
+  ([y0, y1, x0, x1]). The labeler hatches these on the overlay canvas
+  ("Masked areas" toggle) so reviewers see what the detector ignores; absent
+  block = no overlay (old bundles degrade gracefully).
+- **Calendar labeler dots** — `dates.json` entries carry `labelers` (scanned
+  from repo `labels/` by `scripts/regenerate_public_index.py`, which is also
+  the single implementation used by `publish_public_date.sh`); the calendar
+  renders one fixed-palette dot per labeler per day.
 
 ## Known latent inconsistencies (documented, deliberately not auto-"fixed")
 
