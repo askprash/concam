@@ -38,3 +38,4 @@ credentials.txt
 # Internal AI-agent harness (kept on disk for local use, not shared)
 .ralph/
 ralph-once.sh
+!configs/static_mask_mit_green_building.npz
