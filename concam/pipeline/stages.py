@@ -115,6 +115,21 @@ def run_ocr_stage(
         seconds_per_frame=seconds_per_frame,
     )
 
+    # Arm 1: out-of-day OCR-date gate.  ``read.parsed_dt`` is the naive *local*
+    # wall time parsed straight off the burned-in overlay.  A day's timelapse
+    # legitimately spans local-midnight of ``date`` through local-midnight of
+    # ``date + 1`` (verified against the clean 2026-04-08 output: local wall
+    # dates {2026-04-08, 2026-04-09}).  We allow +-1 day of slack around the
+    # processed day so a real midnight rollover and any DST edge are never
+    # rejected; anything outside that window is a confident OCR year/day misread
+    # (e.g. 2026-04-11 -> 2026-04-14 or 8026-04-11).  Such reads are forced
+    # invalid so the tracker PROJECTS through them instead of anchoring on
+    # garbage, which is what produced the silent post-midday detection cliff.
+    allowed_lo = date - datetime.timedelta(days=1)
+    allowed_hi = date + datetime.timedelta(days=1)
+    date_gate_rejected = 0
+    date_gate_samples: list[tuple[int, str]] = []
+
     frames_written = 0
     with open(out_path, "w") as f:
         for frame_idx, frame in enumerate(iter_video_frames(video_path)):
@@ -123,10 +138,22 @@ def run_ocr_stage(
 
             read = reader.read(frame)
             ocr_dt = read.parsed_dt if read.ok else None
+            ocr_valid = read.ok
+            if ocr_dt is not None and not (
+                allowed_lo <= ocr_dt.date() <= allowed_hi
+            ):
+                # Out-of-day OCR date: drop it so the tracker projects through.
+                date_gate_rejected += 1
+                if len(date_gate_samples) < 5:
+                    date_gate_samples.append(
+                        (frame_idx, ocr_dt.date().isoformat())
+                    )
+                ocr_dt = None
+                ocr_valid = False
             wall_local, status = tracker.validate(
                 frame_num=frame_idx,
                 ocr_ts=ocr_dt,
-                is_valid=read.ok,
+                is_valid=ocr_valid,
             )
             # wall_local is naive; interpret as local-time and convert to UTC.
             wall_utc = wall_local.replace(tzinfo=tz).astimezone(
@@ -145,6 +172,27 @@ def run_ocr_stage(
             frames_written += 1
             if (frame_idx + 1) % 1000 == 0:
                 logger.info("OCR: %d frames processed", frame_idx + 1)
+
+    # Observability: never let rejected frames vanish silently.  A non-zero
+    # count here is the early-warning signal for the detection-time bug
+    # (GitHub #1) — frames whose OCR date fell outside [day-1, day+1].
+    if date_gate_rejected:
+        logger.warning(
+            "OCR: rejected %d/%d frames with out-of-day OCR dates "
+            "(allowed window %s..%s); sample [(frame_idx, ocr_date)]: %s",
+            date_gate_rejected,
+            frames_written,
+            allowed_lo.isoformat(),
+            allowed_hi.isoformat(),
+            date_gate_samples,
+        )
+    if tracker.date_rejected_count:
+        logger.warning(
+            "OCR: tracker refused %d contender reads on calendar-date grounds "
+            "(date jump > %d day(s) vs trusted timeline)",
+            tracker.date_rejected_count,
+            tracker.max_reanchor_date_delta_days,
+        )
 
     return frames_written
 

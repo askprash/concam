@@ -149,6 +149,90 @@ def test_aggregate_and_store_stages(tmp_path: Path) -> None:
     assert rows == [("UAL123", 5)]
 
 
+def test_ocr_stage_gates_out_of_day_dates(tmp_path: Path, monkeypatch) -> None:
+    """Arm 1: a mid-day frame whose OCR parses to a wrong year/day is gated.
+
+    Reproduces GitHub #1: the template OCR confidently misreads the YEAR/DAY
+    mid-day (e.g. 04-11 -> 04-14 / 8026-…) while HH:MM:SS stays continuous.
+    ``run_ocr_stage`` must drop those out-of-day reads so the tracker projects
+    through them; the emitted timestamps must stay within the processed day
+    (+rollover), never carry the corrupt year/day.
+    """
+    from concam.ocr.reader import TimestampRead
+    from concam.pipeline import stages as stages_mod
+
+    date = datetime.date(2026, 4, 11)
+    n_clean_before = 8
+    n_corrupt = 10
+    n_clean_after = 4
+    total = n_clean_before + n_corrupt + n_clean_after
+
+    # Scripted OCR reads (naive LOCAL wall time, as the engine emits):
+    #  - clean frames on the processed day,
+    #  - a block of confidently-misread frames dated +3 years (8026-04-14)
+    #    that are mutually seconds-consistent (the bug's anchoring trap),
+    #  - clean frames again.
+    def _read(local_dt: datetime.datetime) -> TimestampRead:
+        return TimestampRead(
+            parsed_dt=local_dt,
+            text=local_dt.strftime("%m/%d/%Y %H:%M:%S"),
+            confidence=0.733,  # above fallback_confidence_threshold, as observed
+            per_char_confidence=(),
+            method="template",
+            status="ok",
+        )
+
+    base_local = datetime.datetime(2026, 4, 11, 10, 0, 0)
+    scripted: list[TimestampRead] = []
+    for i in range(total):
+        good = base_local + datetime.timedelta(seconds=i)
+        if n_clean_before <= i < n_clean_before + n_corrupt:
+            # Corrupt: same continuous HH:MM:SS but year 8026 and day +3.
+            corrupt = good.replace(year=8026, day=14)
+            scripted.append(_read(corrupt))
+        else:
+            scripted.append(_read(good))
+
+    class _FakeReader:
+        def __init__(self, *_a, **_k) -> None:
+            self._i = 0
+
+        def read(self, _frame):
+            r = scripted[self._i]
+            self._i += 1
+            return r
+
+    frames = [np.zeros((8, 8, 3), dtype=np.uint8) for _ in range(total)]
+    monkeypatch.setattr(stages_mod, "FixedFormatTimestampReader", _FakeReader)
+    monkeypatch.setattr(stages_mod, "iter_video_frames", lambda _p: iter(frames))
+
+    site_config = load_config(CONFIG_PATH)
+    out_path = tmp_path / "ocr.jsonl"
+    n = run_ocr_stage(
+        video_path=Path("unused.mp4"),
+        date=date,
+        site_config=site_config,
+        out_path=out_path,
+    )
+    assert n == total
+
+    records = [json.loads(line) for line in out_path.read_text().splitlines()]
+    # Every emitted UTC wall date must fall within [day-1, day+1]; the corrupt
+    # year 8026 must never leak into any record.
+    allowed = {
+        (date + datetime.timedelta(days=d)).isoformat() for d in (-1, 0, 1)
+    }
+    for rec in records:
+        utc_date = rec["wall_time_utc"][:10]
+        assert utc_date in allowed, f"{rec['frame_idx']}: leaked {utc_date}"
+        assert "8026" not in rec["wall_time_utc"]
+
+    # The clean frame right after the corrupt block must project continuously
+    # on the real day (the tracker projected through the corruption).
+    after = records[n_clean_before + n_corrupt]
+    assert after["wall_time_utc"].startswith("2026-04-11")
+
+
 def test_cli_dry_run(tmp_path: Path) -> None:
     """--dry-run should print the plan and not create the output dir."""
     output_dir = tmp_path / "output"
