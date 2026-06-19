@@ -45,9 +45,12 @@ OUT_PATH = LABELS_DIR / "derived" / "reliable_labels.json"
 DIRECT_FILES = [
     "2026-03-29_thendo_labels.json",
     "2026-03-30_thendo_labels.json",
+    "2026-03-31_thendo_labels.json",
+    "2026-04-03_lrsand_labels.json",
     "2026-04-08_thendo_labels.json",
     "2026-04-09_lrsand_labels.json",
     "2026-04-19_lrsand_labels.json",
+    "2026-06-09_thendo_labels.json",
 ]
 # 2026-04-09 files in the April-21 ID space, remapped via the archived skeleton.
 REMAP_FILES = ["2026-04-09_thendo.json", "2026-04-09_reviewer-1.json"]
