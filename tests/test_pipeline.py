@@ -149,29 +149,32 @@ def test_aggregate_and_store_stages(tmp_path: Path) -> None:
     assert rows == [("UAL123", 5)]
 
 
-def test_ocr_stage_gates_out_of_day_dates(tmp_path: Path, monkeypatch) -> None:
-    """Arm 1: a mid-day frame whose OCR parses to a wrong year/day is gated.
+def test_ocr_stage_derives_date_from_context(
+    tmp_path: Path, monkeypatch, caplog
+) -> None:
+    """Tier 1 (GitHub #1): the OCR date is never trusted — it is derived from
+    the processed day — while the OCR time-of-day is kept.
 
-    Reproduces GitHub #1: the template OCR confidently misreads the YEAR/DAY
-    mid-day (e.g. 04-11 -> 04-14 / 8026-…) while HH:MM:SS stays continuous.
-    ``run_ocr_stage`` must drop those out-of-day reads so the tracker projects
-    through them; the emitted timestamps must stay within the processed day
-    (+rollover), never carry the corrupt year/day.
+    The template OCR confidently misreads the YEAR/DAY mid-day while HH:MM:SS
+    stays continuous. ``run_ocr_stage`` must emit the processed day's date for
+    *every* frame and preserve the continuous time-of-day. Two corruption
+    blocks are scripted: a far-off one (year 8026) that the tracker's
+    calendar-date guard blocks from re-anchoring, and a within-+1-day one
+    (04-12) that the guard *permits* to re-anchor — only the context-date
+    override keeps the latter from leaking 04-12 into the output.
     """
+    import logging
+
     from concam.ocr.reader import TimestampRead
     from concam.pipeline import stages as stages_mod
 
     date = datetime.date(2026, 4, 11)
     n_clean_before = 8
-    n_corrupt = 10
+    n_far = 6  # year 8026: tracker date guard blocks re-anchor
+    n_near = 6  # +1 day (04-12): guard permits re-anchor -> Tier 1 overrides
     n_clean_after = 4
-    total = n_clean_before + n_corrupt + n_clean_after
+    total = n_clean_before + n_far + n_near + n_clean_after
 
-    # Scripted OCR reads (naive LOCAL wall time, as the engine emits):
-    #  - clean frames on the processed day,
-    #  - a block of confidently-misread frames dated +3 years (8026-04-14)
-    #    that are mutually seconds-consistent (the bug's anchoring trap),
-    #  - clean frames again.
     def _read(local_dt: datetime.datetime) -> TimestampRead:
         return TimestampRead(
             parsed_dt=local_dt,
@@ -185,11 +188,11 @@ def test_ocr_stage_gates_out_of_day_dates(tmp_path: Path, monkeypatch) -> None:
     base_local = datetime.datetime(2026, 4, 11, 10, 0, 0)
     scripted: list[TimestampRead] = []
     for i in range(total):
-        good = base_local + datetime.timedelta(seconds=i)
-        if n_clean_before <= i < n_clean_before + n_corrupt:
-            # Corrupt: same continuous HH:MM:SS but year 8026 and day +3.
-            corrupt = good.replace(year=8026, day=14)
-            scripted.append(_read(corrupt))
+        good = base_local + datetime.timedelta(seconds=i)  # continuous HH:MM:SS
+        if n_clean_before <= i < n_clean_before + n_far:
+            scripted.append(_read(good.replace(year=8026, day=14)))
+        elif n_clean_before + n_far <= i < n_clean_before + n_far + n_near:
+            scripted.append(_read(good.replace(day=12)))  # within guard slack
         else:
             scripted.append(_read(good))
 
@@ -208,29 +211,37 @@ def test_ocr_stage_gates_out_of_day_dates(tmp_path: Path, monkeypatch) -> None:
 
     site_config = load_config(CONFIG_PATH)
     out_path = tmp_path / "ocr.jsonl"
-    n = run_ocr_stage(
-        video_path=Path("unused.mp4"),
-        date=date,
-        site_config=site_config,
-        out_path=out_path,
-    )
+    with caplog.at_level(logging.WARNING):
+        n = run_ocr_stage(
+            video_path=Path("unused.mp4"),
+            date=date,
+            site_config=site_config,
+            out_path=out_path,
+        )
     assert n == total
 
     records = [json.loads(line) for line in out_path.read_text().splitlines()]
-    # Every emitted UTC wall date must fall within [day-1, day+1]; the corrupt
-    # year 8026 must never leak into any record.
-    allowed = {
-        (date + datetime.timedelta(days=d)).isoformat() for d in (-1, 0, 1)
-    }
+
+    # Tier 1 contract: EVERY emitted date is the processed day. April is EDT
+    # (UTC-4), so local 10:00 -> 14:00 UTC on the same calendar date. Neither
+    # the far-off year (8026) nor the within-slack 04-12 may ever leak — the
+    # latter only stays out because the date is overridden, not merely gated.
     for rec in records:
-        utc_date = rec["wall_time_utc"][:10]
-        assert utc_date in allowed, f"{rec['frame_idx']}: leaked {utc_date}"
+        assert rec["wall_time_utc"][:10] == "2026-04-11", rec
         assert "8026" not in rec["wall_time_utc"]
 
-    # The clean frame right after the corrupt block must project continuously
-    # on the real day (the tracker projected through the corruption).
-    after = records[n_clean_before + n_corrupt]
-    assert after["wall_time_utc"].startswith("2026-04-11")
+    # Time-of-day is preserved (monotonic, continuous): the last clean frame
+    # lands at its expected wall time, local 10:00:(total-1) -> +4h UTC.
+    utc_times = [rec["wall_time_utc"] for rec in records]
+    assert utc_times == sorted(utc_times)
+    expected_last = base_local + datetime.timedelta(seconds=total - 1, hours=4)
+    assert utc_times[-1].startswith(expected_last.strftime("%Y-%m-%dT%H:%M:%S"))
+
+    # Canary: the date mismatches are surfaced, never silently dropped.
+    assert any(
+        "disagreeing with the context-derived date" in r.message
+        for r in caplog.records
+    )
 
 
 def test_cli_dry_run(tmp_path: Path) -> None:
