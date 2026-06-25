@@ -152,7 +152,7 @@
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-filled" value="filled" checked> filled</label>
   <label style="margin-left:0.25rem"><input type="radio" name="dot-style" id="dot-style-ring" value="ring"> ring</label>
   <label style="margin-left:1rem"><input type="checkbox" id="toggle-detections"> Detection lines</label>
-  <label style="margin-left:0.25rem" title="Oriented box around everything the detector has seen of this contrail so far; grows with the contrail and persists while it is still visible"><input type="checkbox" id="toggle-contrail-box" checked> Contrail box</label>
+  <label style="margin-left:0.25rem" title="Dashed ribbon that follows the flight path along the part of the contrail the detector currently sees; bends with curved contrails and retracts as the contrail dissipates"><input type="checkbox" id="toggle-contrail-box" checked> Contrail outline</label>
   <label style="margin-left:1rem" id="toggle-mask-label" hidden
          title="Hatched areas (buildings, timestamp) are ignored by the contrail detector"><input type="checkbox" id="toggle-mask" checked> Masked areas</label>
   <label style="margin-left:1rem" title="Click a flight in the sidebar to zoom on it"><input type="checkbox" id="toggle-zoom" checked> Zoom selected flight</label>
@@ -1008,75 +1008,133 @@
     }
   }
 
-  // --- Growing contrail box ----------------------------------------------
-  // Oriented bounding box around every detection line the detector has seen
-  // of an episode SO FAR (frames with t <= wallMs), inflated by a fixed
-  // margin. The box grows monotonically during playback as new detections
-  // extend the contrail, and shrinks correctly when seeking backward because
-  // it is recomputed from scratch on every draw (no cumulative state).
-  const CONTRAIL_BOX_MARGIN_PX = 25;
+  // --- Contrail ribbon (path-following) -----------------------------------
+  // A contrail is a slice of the aircraft's projected flight path trailing
+  // behind it, so we render it as a dashed ribbon that FOLLOWS the smooth
+  // ADS-B path (manifest.flight_tracks) over only the span the detector is
+  // currently lighting up. Two consequences, both deliberate:
+  //   * shape comes from the flight path  -> it bends correctly through turns
+  //     (the old oriented rectangle could not represent a curved contrail);
+  //   * extent comes from a DECAYING window of recent above-threshold
+  //     detections -> it grows as the contrail forms and RETRACTS as the
+  //     contrail dissipates. The old box drew the cumulative hull of every
+  //     detection ever seen in the episode, so it stayed as long as the
+  //     longest moment and lingered at full size after the contrail was gone.
+  const CONTRAIL_RIBBON_HALF_WIDTH_PX = 16;  // perpendicular half-width
+  const CONTRAIL_RIBBON_DECAY_MS = 45_000;   // only detections this recent count
 
-  function orientedBoxFromLines(lines, marginPx) {
-    // Dominant axis: the direction of the longest accumulated line. All line
-    // endpoints are projected onto that axis and its perpendicular; min/max
-    // extents along both give the rotated rectangle.
-    let dx = 1, dy = 0, bestLen2 = -1;
-    for (const [x1, y1, x2, y2] of lines) {
-      const ldx = x2 - x1, ldy = y2 - y1;
-      const len2 = ldx * ldx + ldy * ldy;
-      if (len2 > bestLen2) { bestLen2 = len2; dx = ldx; dy = ldy; }
-    }
-    const norm = Math.hypot(dx, dy);
-    const ux = norm > 0 ? dx / norm : 1;
-    const uy = norm > 0 ? dy / norm : 0;
-    const px = -uy, py = ux; // perpendicular
-    let uMin = Infinity, uMax = -Infinity, vMin = Infinity, vMax = -Infinity;
-    for (const [x1, y1, x2, y2] of lines) {
-      for (const [x, y] of [[x1, y1], [x2, y2]]) {
-        const u = x * ux + y * uy;
-        const v = x * px + y * py;
-        if (u < uMin) uMin = u;
-        if (u > uMax) uMax = u;
-        if (v < vMin) vMin = v;
-        if (v > vMax) vMax = v;
+  const _ribbonTrackByTid = new Map(flightTracks.map((t) => [t.tid, t]));
+  const _ribbonArcCache = new Map();
+
+  function ribbonArc(tid) {
+    // Cumulative arc-length table [{x, y, s}] along a flight's projected path.
+    if (_ribbonArcCache.has(tid)) return _ribbonArcCache.get(tid);
+    const track = _ribbonTrackByTid.get(tid);
+    const arc = [];
+    if (track) {
+      let s = 0;
+      const ps = track.pings;
+      for (let i = 0; i < ps.length; i++) {
+        if (i > 0) s += Math.hypot(ps[i].x - ps[i - 1].x, ps[i].y - ps[i - 1].y);
+        arc.push({ x: ps[i].x, y: ps[i].y, s });
       }
     }
-    uMin -= marginPx; uMax += marginPx;
-    vMin -= marginPx; vMax += marginPx;
-    return [
-      [ux * uMin + px * vMin, uy * uMin + py * vMin],
-      [ux * uMax + px * vMin, uy * uMax + py * vMin],
-      [ux * uMax + px * vMax, uy * uMax + py * vMax],
-      [ux * uMin + px * vMax, uy * uMin + py * vMax],
-    ];
+    _ribbonArcCache.set(tid, arc);
+    return arc;
   }
 
-  function drawContrailBox(wallMs) {
+  function projectToArc(arc, x, y) {
+    // Arc-length of the nearest point on the polyline to (x, y).
+    let bestD = Infinity, bestS = 0;
+    for (let i = 0; i < arc.length - 1; i++) {
+      const ax = arc[i].x, ay = arc[i].y, bx = arc[i + 1].x, by = arc[i + 1].y;
+      const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+      const t = L2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2));
+      const px = ax + t * dx, py = ay + t * dy;
+      const d = (x - px) * (x - px) + (y - py) * (y - py);
+      if (d < bestD) { bestD = d; bestS = arc[i].s + t * Math.sqrt(L2); }
+    }
+    return bestS;
+  }
+
+  function arcPointAt(arc, s) {
+    // Interpolated (x, y) at arc-length s.
+    if (s <= arc[0].s) return { x: arc[0].x, y: arc[0].y };
+    for (let i = 0; i < arc.length - 1; i++) {
+      if (s >= arc[i].s && s <= arc[i + 1].s) {
+        const seg = arc[i + 1].s - arc[i].s;
+        const t = seg === 0 ? 0 : (s - arc[i].s) / seg;
+        return { x: arc[i].x + t * (arc[i + 1].x - arc[i].x),
+                 y: arc[i].y + t * (arc[i + 1].y - arc[i].y) };
+      }
+    }
+    return { x: arc[arc.length - 1].x, y: arc[arc.length - 1].y };
+  }
+
+  function arcCenterline(arc, s0, s1) {
+    // Ordered path points between arc-lengths s0..s1 (endpoints interpolated).
+    if (s1 < s0) { const t = s0; s0 = s1; s1 = t; }
+    const pts = [arcPointAt(arc, s0)];
+    for (const p of arc) if (p.s > s0 && p.s < s1) pts.push({ x: p.x, y: p.y });
+    pts.push(arcPointAt(arc, s1));
+    return pts;
+  }
+
+  function ribbonPolygon(center, halfW) {
+    // Offset the centerline by ±halfW along per-vertex normals -> closed,
+    // smooth polygon that hugs the (possibly curved) contrail.
+    const n = center.length;
+    if (n < 2) return null;
+    const left = [], right = [];
+    for (let i = 0; i < n; i++) {
+      const a = center[Math.max(0, i - 1)], b = center[Math.min(n - 1, i + 1)];
+      let tx = b.x - a.x, ty = b.y - a.y;
+      const L = Math.hypot(tx, ty) || 1;
+      tx /= L; ty /= L;
+      const nx = -ty, ny = tx;  // left normal
+      left.push({ x: center[i].x + nx * halfW, y: center[i].y + ny * halfW });
+      right.push({ x: center[i].x - nx * halfW, y: center[i].y - ny * halfW });
+    }
+    return left.concat(right.reverse());
+  }
+
+  function drawContrailRibbon(wallMs) {
     ctx.save();
     ctx.strokeStyle = "#ff9f43";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.setLineDash([12, 8]);
-    ctx.globalAlpha = 0.9;
-    for (const eps of episodesByTid.values()) {
+    ctx.lineJoin = "round";
+    for (const [tid, eps] of episodesByTid) {
+      const arc = ribbonArc(tid);
+      if (arc.length < 2) continue;
       for (const ep of eps) {
-        // Only while the detector still sees the contrail: stop drawing past
-        // end + FRAME_MATCH_MS, same active window as the red lines.
-        if (wallMs < ep.onset - FRAME_MATCH_MS || wallMs > ep.end + FRAME_MATCH_MS) {
+        // Active window: from just before onset until the decay tail past end.
+        if (wallMs < ep.onset - FRAME_MATCH_MS || wallMs > ep.end + CONTRAIL_RIBBON_DECAY_MS) {
           continue;
         }
+        // Span = min/max arc-length of recent, above-threshold detection lines.
         // Frames are pre-sorted by t, so bail at the first future frame.
-        const lines = [];
+        let sTail = Infinity, sHead = -Infinity, newestT = -Infinity, any = false;
         for (const f of ep.frames) {
           if (f.t > wallMs) break;
-          if (f.line) lines.push(f.line);
+          if (wallMs - f.t > CONTRAIL_RIBBON_DECAY_MS) continue;
+          if (f.line == null || f.score == null || f.score < detectionThreshold) continue;
+          const s1 = projectToArc(arc, f.line[0], f.line[1]);
+          const s2 = projectToArc(arc, f.line[2], f.line[3]);
+          sTail = Math.min(sTail, s1, s2);
+          sHead = Math.max(sHead, s1, s2);
+          if (f.t > newestT) newestT = f.t;
+          any = true;
         }
-        if (lines.length === 0) continue;
-        const corners = orientedBoxFromLines(lines, CONTRAIL_BOX_MARGIN_PX);
+        if (!any) continue;
+        const poly = ribbonPolygon(arcCenterline(arc, sTail, sHead), CONTRAIL_RIBBON_HALF_WIDTH_PX);
+        if (!poly) continue;
+        // Fade as the freshest detection ages (contrail dissipating post-pass).
+        const age = wallMs - newestT;
+        ctx.globalAlpha = Math.max(0.18, Math.min(0.9, 0.9 * (1 - age / CONTRAIL_RIBBON_DECAY_MS)));
         ctx.beginPath();
-        ctx.moveTo(corners[0][0], corners[0][1]);
-        for (let i = 1; i < corners.length; i++) {
-          ctx.lineTo(corners[i][0], corners[i][1]);
-        }
+        ctx.moveTo(poly[0].x, poly[0].y);
+        for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x, poly[i].y);
         ctx.closePath();
         ctx.stroke();
       }
@@ -1093,9 +1151,9 @@
       ctx.globalAlpha = 0.85;
       for (const track of flightTracks) drawTrack(track, wallMs);
     }
-    // Box before lines so the current frame's red segment stays on top.
+    // Ribbon before lines so the current frame's red segment stays on top.
     if (toggleContrailBox.checked) {
-      drawContrailBox(wallMs);
+      drawContrailRibbon(wallMs);
     }
     if (toggleDetections.checked) {
       drawDetections(wallMs);
