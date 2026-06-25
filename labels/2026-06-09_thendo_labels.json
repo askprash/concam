@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-06-09",
   "labeler_id": "thendo",
-  "exported_at": "2026-06-17T14:15:05.067Z",
+  "exported_at": "2026-06-24T14:19:01.565Z",
   "labels": [
     {
       "episode_id": 47,
@@ -27,10 +27,10 @@
     },
     {
       "episode_id": 1,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-15T13:48:25.710Z"
+      "label_timestamp": "2026-06-24T14:10:23.066Z"
     },
     {
       "episode_id": 24,
@@ -62,10 +62,10 @@
     },
     {
       "episode_id": 3,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-15T13:51:38.018Z"
+      "label_timestamp": "2026-06-24T14:11:02.627Z"
     },
     {
       "episode_id": 45,
@@ -386,10 +386,10 @@
     },
     {
       "episode_id": 50,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-15T15:03:01.989Z"
+      "label_timestamp": "2026-06-24T14:12:33.806Z"
     },
     {
       "episode_id": 190,
@@ -399,10 +399,10 @@
     },
     {
       "episode_id": 54,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-15T15:05:06.870Z"
+      "label_timestamp": "2026-06-24T14:13:22.662Z"
     },
     {
       "episode_id": 70,
@@ -831,10 +831,10 @@
     },
     {
       "episode_id": 128,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-15T17:19:07.434Z"
+      "label_timestamp": "2026-06-24T14:18:13.970Z"
     },
     {
       "episode_id": 206,
@@ -4111,10 +4111,10 @@
     },
     {
       "episode_id": 494,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-16T19:34:50.267Z"
+      "label_timestamp": "2026-06-24T14:09:11.185Z"
     },
     {
       "episode_id": 590,
@@ -4248,10 +4248,10 @@
     },
     {
       "episode_id": 695,
-      "label": "contrail",
+      "label": "unsure",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-16T19:48:06.837Z"
+      "label_timestamp": "2026-06-24T14:09:52.092Z"
     },
     {
       "episode_id": 606,
@@ -4333,10 +4333,10 @@
     },
     {
       "episode_id": 645,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-16T20:01:52.236Z"
+      "label_timestamp": "2026-06-24T14:13:54.246Z"
     },
     {
       "episode_id": 680,
@@ -4365,10 +4365,10 @@
     },
     {
       "episode_id": 659,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-16T20:04:51.785Z"
+      "label_timestamp": "2026-06-24T14:16:40.632Z"
     },
     {
       "episode_id": 624,
@@ -4396,10 +4396,10 @@
     },
     {
       "episode_id": 688,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-16T20:07:06.161Z"
+      "label_timestamp": "2026-06-24T14:15:59.745Z"
     },
     {
       "episode_id": 647,
@@ -4416,10 +4416,10 @@
     },
     {
       "episode_id": 674,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-16T20:08:33.827Z"
+      "label_timestamp": "2026-06-24T14:11:40.593Z"
     },
     {
       "episode_id": 521,
@@ -4532,10 +4532,9 @@
     },
     {
       "episode_id": 40,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
-      "persistence": "short",
-      "label_timestamp": "2026-06-17T13:55:44.901Z"
+      "label_timestamp": "2026-06-24T14:14:13.181Z"
     },
     {
       "episode_id": 658,
@@ -4551,10 +4550,10 @@
     },
     {
       "episode_id": 313,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-17T13:56:51.803Z"
+      "label_timestamp": "2026-06-24T14:15:42.838Z"
     },
     {
       "episode_id": 660,
@@ -4665,24 +4664,23 @@
     },
     {
       "episode_id": 668,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
-      "persistence": "short",
-      "label_timestamp": "2026-06-17T14:06:44.778Z"
+      "label_timestamp": "2026-06-24T14:14:38.205Z"
     },
     {
       "episode_id": 683,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-17T14:07:23.694Z"
+      "label_timestamp": "2026-06-24T14:17:15.974Z"
     },
     {
       "episode_id": 671,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
       "persistence": "short",
-      "label_timestamp": "2026-06-17T14:07:34.247Z"
+      "label_timestamp": "2026-06-24T14:17:04.083Z"
     },
     {
       "episode_id": 495,
@@ -4737,10 +4735,9 @@
     },
     {
       "episode_id": 676,
-      "label": "contrail",
+      "label": "no_contrail",
       "labeler_id": "thendo",
-      "persistence": "short",
-      "label_timestamp": "2026-06-17T14:11:03.016Z"
+      "label_timestamp": "2026-06-24T14:11:23.597Z"
     },
     {
       "episode_id": 591,

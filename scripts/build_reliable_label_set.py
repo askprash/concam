@@ -50,6 +50,7 @@ DIRECT_FILES = [
     "2026-04-08_thendo_labels.json",
     "2026-04-09_lrsand_labels.json",
     "2026-04-19_lrsand_labels.json",
+    "2026-06-04_thendo_labels.json",
     "2026-06-09_thendo_labels.json",
 ]
 # 2026-04-09 files in the April-21 ID space, remapped via the archived skeleton.
