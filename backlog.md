@@ -46,28 +46,54 @@ same label set, so they are directly comparable.
   classifier vs. thin-structure segmenter) — but they share a data-labeling and
   eval substrate, so scope that substrate once.
 
-Suggested order: **E0 → E1(+E2) → E4 → E5**, with E3 as an early spike folded
-into E1. E5's segmenter is the only path that *unifies* detector + overlay
-(masks → polylines), so it's the long-term destination, not the next step.
+- **E6 (systematic sweep) largely subsumes E1 as an empirical search.** E1 is
+  the *hypothesis* (ridge filter wins); E6 *tests it against everything else*.
+  They share the transform-chain kernel wiring (the real prerequisite), so don't
+  run them as separate builds — do the wiring once, then E6 is the experiment and
+  E1 is "what we expect E6 to confirm." If you only fund one near-term thing,
+  fund E6.
+- **E6 and E7 are the two "launch-and-leave" autonomous-search epics** (own
+  section below) — they're what gets sharded onto SLURM for half a day and comes
+  back with options. E0 must land first to give them a frozen split.
+
+Suggested order: **E0 → (wire transform chains) → E6 ‖ E7 (parallel sbatch
+searches) → E4 → E5**. E3 (LSD) folds into E6's line-extraction axis. E5's
+segmenter is the only path that *unifies* detector + overlay (masks →
+polylines), so it's the long-term destination, not the next step.
 
 ---
 
-## E0 — Evaluation harness upgrade *(prerequisite)*
+## E0 — Evaluation substrate: consensus set + harness *(prerequisite)*
 
-- **Tier:** enabler · **Scope:** S–M · **Labels:** uses existing ~2500
+- **Tier:** enabler · **Scope:** S–M · **Labels:** existing, plus a coverage
+  decision
 - **Why:** pooled ROC-AUC hides the failure modes we actually care about
   (per-day collapse, confident FPs, thin/faint recall). No held-out split today,
-  so any learned model (E5) can't be trusted.
+  so any learned model (E5) or sweep (E6) can overfit silently.
+- **⚠ Label-coverage reality (measured 2026-06-25):** of 2,567 consensus labels,
+  only **88 have ≥2 reviewers agreeing — all on a single day (04-09)**, 34
+  contrail / 54 not, with 7 inter-reviewer conflicts. The "extract everything ≥2
+  reviewers agreed on" plan yields a tiny, single-day, imbalanced set — too
+  narrow to tune against, because the detector's failure is *day-dependent*
+  (04-03 is 0% recall, 04-08/09 are ~0.9 AUC). Day-diversity matters more than
+  reviewer-redundancy here.
 - **Approach:** extend `scripts/eval_detector_truth_tables.py` toward a
-  GVCCS-style protocol — per-day + pooled, a fixed train/val/test day split,
+  GVCCS-style protocol — per-day + pooled, a frozen train/val/test **day** split,
   precision-recall curves, and a "confident-FP" slice (negatives scoring high).
-  If/when we have pixel or polyline labels, add Dice/mIoU + instance AP.
-- **Open questions (grill-me):** Which days are the test set, and do we freeze
-  them now? Is episode-level the right unit, or do we need frame/pixel-level
-  ground truth (which we don't have yet — does E0 include a labeling push)? What
-  single number, if any, do we optimize?
-- **Refs:** `scripts/eval_detector_truth_tables.py`, GVCCS metric protocol
-  (ESSD 18:1037, 2026), `memory/project_cv_ceiling_research.md`.
+  Emit the standard consensus subsets as artifacts: the full single-reviewer set
+  (day-stratified, for sweeping) and the strict 88-episode ≥2-reviewer set (clean
+  held-out sanity check). If/when we get pixel/polyline labels, add Dice/mIoU +
+  instance AP.
+- **Open decisions (grill-me / now):** (1) Sweep against the full 2,567
+  single-reviewer set with the 88 as holdout — **recommended** — or hold out for
+  more double-labeling first? (2) Is episode-level the right unit, or do we need
+  frame/pixel ground truth we don't have (→ a labeling campaign)? (3) Which days
+  are the frozen test set? (4) Single optimization target, or a Pareto front
+  (recall on faint days vs. confident-FP rate)?
+- **Refs:** `scripts/eval_detector_truth_tables.py`,
+  `scripts/build_reliable_label_set.py` (votes/conflicts already computed),
+  GVCCS metric protocol (ESSD 18:1037, 2026),
+  `memory/project_cv_ceiling_research.md`.
 
 ## E1 — Ridge/line-filter detector (+ E2 normalization) *(cheapest real win)*
 
@@ -141,6 +167,100 @@ into E1. E5's segmenter is the only path that *unifies* detector + overlay
   wide-field geometry mismatch? Build vs. keep classical as fallback?
 - **Refs:** GVCCS (arXiv 2507.18330), Kaggle 1st/2nd-place writeups,
   small-data transfer-learning (PMC4890616), `memory/project_cv_ceiling_research.md`.
+
+---
+
+# Autonomous search epics *(designed to run unattended on SLURM)*
+
+These two are explicitly built to be **launched in a fresh session, sharded
+across sbatch jobs, left to run for ~half a day, and to come back with a ranked
+shortlist of options** — not to be hand-iterated. Each must end by writing a
+single merged `report.md` of the top N pipelines with per-day truth tables and
+the confident-FP slice (from E0), so we can pick by eye. Both depend on E0's
+frozen split and consensus subsets.
+
+## E6 — Systematic classical-CV pipeline search ("settle the playground")
+
+- **Tier:** 1–2 · **Scope:** L (but mostly compute, not code) · **Labels:** E0
+  consensus set · **Execution:** SLURM job array, ~half a day
+- **Why:** we have a 13-transform menu (`concam/detection/transforms.py`:
+  `nrbr, hsv_sat_inv, lab_b, grey_excess, local_contrast, dog, tophat,
+  tophat_oriented, clahe, cross_grad, temporal_diff, frangi`, …) and an old
+  `notebooks/filter_playground.ipynb`, but we **never systematically settled
+  which pipeline wins** — the playground was eyeballed on a few frames, and the
+  production HPO only ever swept `none/local_contrast/cross_grad`. Now that we
+  have a day-diverse labeled set, decide it empirically.
+- **Prerequisite (shared with E1):** wire the **transform-chain dispatch** into
+  the kernel. Today `_preprocess` (`concam/detection/_core.py:98–113`) hard-codes
+  three modes; `transforms.py` already documents a `chain = [...]` concept and
+  has all 13 transforms, just unreachable. Make `preprocessing` accept an ordered
+  chain so the sweep can exercise e.g. `["temporal_diff","frangi"]` or
+  `["clahe","tophat_oriented"]`.
+- **Approach (smart decomposition):**
+  1. Define the search space: transform **chains** (1–3 stages from the menu) ×
+     line-extraction params (Canny percentiles / Hough or LSD from E3) ×
+     temporal window for `temporal_diff` (Δt = 1–5 s) × detection threshold.
+     Enumerate to a combo list; expect thousands of cells.
+  2. **Shard** the combo list into K independent SLURM array tasks (the "smart
+     decomposition" — each task owns a disjoint slice, replays `detect()` over
+     the E0 episodes for its combos, writes a partial `shard_{i}.json` with
+     AUC/Youden/per-day metrics). The expensive part is frame decode per episode;
+     decode once per episode and reuse across combos within a shard.
+  3. Merge + rank into `report.md`; promote the top few to a confirmation run on
+     the held-out days.
+- **Reuse, don't rebuild:** `scripts/detection_hpo.py` already does the
+  replay→AUC/Youden→`sweep_report.md` ranking for the 3 wired modes;
+  `slurm/hpo_reliable_daytime.sh` is the batch template (96G). E6 = generalize
+  its grid to chains + temporal + sharding.
+- **Open questions (grill-me):** Cap chain length at 2 or 3 (combinatorics)?
+  Per-combo decode caching strategy to stay within walltime? Score still
+  Mann-Whitney AUC, or switch to the E0 Pareto target? Do we let the sweep pick
+  *per-day* thresholds (diagnostic) or force one global threshold (production)?
+  Guard against overfitting the chain to 04-09's heavy double-labeling.
+- **Deliverable:** ranked shortlist (≈top 5 pipelines) with per-day truth tables
+  vs. the 0.870-AUC baseline, plus an explicit "what the winner still misses".
+- **Refs:** `transforms.py`, `_core.py:_preprocess`, `detection_hpo.py`,
+  `slurm/hpo_reliable_daytime.sh`, `notebooks/filter_playground.ipynb`.
+
+## E7 — Flight-path advection alignment detector
+
+- **Tier:** 2 (novel) · **Scope:** M–L · **Labels:** E0 consensus set ·
+  **Execution:** sbatch search over offset grids, ~half a day
+- **Why:** a contrail does not sit exactly on the instantaneous projected flight
+  path — it **advects with the wind** and is displaced by the time we see it.
+  The current detector looks for an edge *on* the path, which both misses
+  drifted contrails (faint-recall days) and fires on path-aligned clutter
+  (confident FPs). If instead we *search for the displacement that best aligns a
+  detected line with the path*, a good alignment is strong evidence the line is
+  that flight's contrail — and the best-fit displacement is a free wind estimate.
+- **Approach:**
+  1. In a **broadened** ROI around the projected path, extract candidate lines
+     (Canny/Hough or LSD, or the E6-winning ridge response).
+  2. Search a 2-D **advection offset** (dx, dy) — and optionally a small
+     along-path shear — over a grid bounded by a max plausible wind displacement
+     for the contrail's age/altitude. For each offset, translate the path and
+     score alignment: fraction of path length that has a *parallel* detected line
+     within a perpendicular tolerance.
+  3. Detection score = max alignment over offsets; record `argmax` offset as the
+     apparent advection vector. Build an **advected track** from it (no real wind
+     data needed) and optionally render it as a second ribbon.
+  4. **Cross-check (free validation):** simultaneous flights at similar altitude
+     should yield consistent advection vectors — a coherent wind field is
+     independent evidence the alignment is real, not coincidental.
+- **Optic-flow variant (optional, slower):** estimate the advection field from
+  dense optical flow between frames instead of a brute-force offset grid; flag as
+  a compute spike — likely too slow for per-episode use, evaluate on a sample.
+- **Open questions (grill-me):** Offset-search bound (how much can a contrail
+  drift in our frame scale)? Rigid translation vs. affine/shear? Does alignment
+  score *replace* or *multiply* the existing intensity score? Per-frame or
+  accumulated over the episode? How to evaluate the wind byproduct without
+  ground-truth wind (→ the cross-flight-consistency check is the proxy)?
+- **Deliverable:** AUC/confident-FP comparison of advection-alignment vs.
+  on-path detection on the E0 set, especially the faint-recall and confident-FP
+  slices; a sample wind field for one day as a sanity artifact.
+- **Refs:** `concam/projection` (path geometry), `tf_temporal_diff`,
+  detector ROI in `concam/detection/_core.py`, optical-flow notes in
+  `memory/project_cv_ceiling_research.md`.
 
 ---
 
