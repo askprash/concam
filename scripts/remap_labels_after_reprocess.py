@@ -18,6 +18,16 @@ Labels that cannot be matched are never guessed at: they are reported and (with
 --apply) dropped into a ``unmapped`` block in the rewritten file so the
 information is preserved rather than silently discarded.
 
+**ID-space guard.** Not every label file is in the ID space this baseline
+describes.  labels/ mixes several historical spaces (see the provenance notes
+in scripts/build_reliable_label_set.py) -- e.g. 2026-04-15_reviewer-1.json was
+exported 2026-04-22 against a manifest that two later regenerations have since
+replaced.  Remapping such a file would translate IDs *from the wrong space* and
+quietly corrupt real human work.  A file is therefore only rewritten when
+almost all of its labels resolve against the baseline; anything above
+``MAX_UNMAPPED_FRACTION`` is reported as a different ID space and left
+untouched unless --force says otherwise.
+
 Dry-run by default.  Usage:
     python scripts/remap_labels_after_reprocess.py               # report only
     python scripts/remap_labels_after_reprocess.py --apply       # rewrite files
@@ -42,6 +52,12 @@ ARCHIVE_DIR = LABELS_DIR / "archive"
 # A small tolerance covers an episode whose boundary frame changed when the
 # restored hours altered aggregation at the edges.
 ONSET_TOLERANCE_S = 2.0
+
+# A label file genuinely in the baseline's ID space resolves essentially all of
+# its episode IDs -- the reprocess only *adds* episodes, it does not remove the
+# ones the labeller saw.  A large unmapped fraction therefore means the file was
+# exported against a different manifest generation, not that the labels are bad.
+MAX_UNMAPPED_FRACTION = 0.10
 
 
 def _load_episodes(path: Path) -> list[dict]:
@@ -107,7 +123,7 @@ def build_remap(old: list[dict], new: list[dict]) -> tuple[dict[int, int], list[
     return mapping, unmatched
 
 
-def process_date(date: str, output_dir: Path, apply: bool) -> dict:
+def process_date(date: str, output_dir: Path, apply: bool, force: bool = False) -> dict:
     base = output_dir / date
     old_path = base / "episodes.pre-ocrfix.jsonl"
     new_path = base / "episodes.jsonl"
@@ -155,15 +171,29 @@ def process_date(date: str, output_dir: Path, apply: bool) -> dict:
         changed = sum(
             1 for a, b in zip(labels, remapped) if a.get("episode_id") != b.get("episode_id")
         )
-        result["label_files"].append(
-            {
-                "file": path.name,
-                "labels": len(labels),
-                "remapped": len(remapped),
-                "id_changed": changed,
-                "unmapped": len(dropped),
-            }
-        )
+        unmapped_fraction = len(dropped) / len(labels) if labels else 0.0
+        wrong_space = unmapped_fraction > MAX_UNMAPPED_FRACTION
+        entry_report = {
+            "file": path.name,
+            "exported_at": doc.get("exported_at"),
+            "labels": len(labels),
+            "remapped": len(remapped),
+            "id_changed": changed,
+            "unmapped": len(dropped),
+            "unmapped_fraction": round(unmapped_fraction, 3),
+        }
+        if wrong_space and not force:
+            entry_report["action"] = (
+                f"SKIPPED - {unmapped_fraction:.0%} of labels do not resolve against "
+                "the pre-fix baseline, so this file is in a different episode-ID "
+                "space (exported against an earlier manifest generation). "
+                "Remapping it would translate from the wrong space. Needs manual "
+                "provenance work; see scripts/build_reliable_label_set.py."
+            )
+            result["label_files"].append(entry_report)
+            continue
+        entry_report["action"] = "remapped" if apply else "would remap"
+        result["label_files"].append(entry_report)
         if apply:
             ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
             archived = ARCHIVE_DIR / f"{path.stem}.pre-ocrfix{path.suffix}"
@@ -191,6 +221,10 @@ def main() -> int:
     ap.add_argument("--output-dir", default="output")
     ap.add_argument("--apply", action="store_true",
                     help="rewrite the label files (default is a dry run)")
+    ap.add_argument("--force", action="store_true",
+                    help="remap even files that look like a different episode-ID "
+                         "space (see MAX_UNMAPPED_FRACTION); use only with "
+                         "verified provenance")
     args = ap.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -208,11 +242,22 @@ def main() -> int:
         print("no labelled dates found", file=sys.stderr)
         return 1
 
-    results = [process_date(d, output_dir, args.apply) for d in dates]
+    results = [process_date(d, output_dir, args.apply, args.force) for d in dates]
     print(json.dumps(results, indent=2))
 
     needs = [r for r in results if r.get("status", "").startswith(("remapped", "would remap"))]
+    skipped = [
+        (r["date"], lf["file"])
+        for r in results
+        for lf in r.get("label_files", [])
+        if isinstance(lf, dict) and str(lf.get("action", "")).startswith("SKIPPED")
+    ]
     print(f"\n{len(needs)} of {len(dates)} labelled dates need remapping", file=sys.stderr)
+    if skipped:
+        print(f"{len(skipped)} label file(s) SKIPPED as a different ID space "
+              f"(needs manual provenance work):", file=sys.stderr)
+        for date, name in skipped:
+            print(f"  {date}: {name}", file=sys.stderr)
     if not args.apply and needs:
         print("re-run with --apply to rewrite them", file=sys.stderr)
     return 0
