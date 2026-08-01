@@ -115,6 +115,24 @@ def run_ocr_stage(
         seconds_per_frame=seconds_per_frame,
     )
 
+    # Tier 1 (GitHub #1 follow-up): the burned-in DATE is never trusted from
+    # OCR.  A read-only diagnostic on the 2026-04-11 corruption showed every
+    # misread was a confident year/day digit error (2026-04-11 -> 2026-04-14 ->
+    # 8026-04-11) from transient glare over the date corner, while HH:MM:SS
+    # never misfired.  The processing day is known and a daily timelapse spans
+    # exactly one local date, so we derive the authoritative local date from
+    # the seed day plus any genuine midnight rollover and keep only the
+    # OCR-driven time-of-day.  This removes the whole date-misread failure
+    # class at the source (the silent post-midday detection cliff).  The raw
+    # OCR read (incl. its date) is still handed to the tracker so its
+    # calendar-date re-anchor guard stays meaningful as defense-in-depth for
+    # callers that bypass this stage (the raw 4 fps path).
+    seed_date = date
+    day_offset = 0
+    prev_tod_secs: int | None = None
+    date_mismatch_count = 0
+    date_mismatch_samples: list[tuple[int, str, str]] = []
+
     frames_written = 0
     with open(out_path, "w") as f:
         for frame_idx, frame in enumerate(iter_video_frames(video_path)):
@@ -128,7 +146,38 @@ def run_ocr_stage(
                 ocr_ts=ocr_dt,
                 is_valid=read.ok,
             )
-            # wall_local is naive; interpret as local-time and convert to UTC.
+
+            # Derive the date from context, not from OCR.  The tracker's
+            # time-of-day is monotonic non-decreasing within a day, so only a
+            # genuine local-midnight rollover drops it by ~24 h; gating on a
+            # >12 h drop counts that rollover while staying immune to the small
+            # backward steps a re-anchor can introduce (e.g. 10:11:24 ->
+            # 10:10:49).
+            tod = wall_local.time()
+            tod_secs = tod.hour * 3600 + tod.minute * 60 + tod.second
+            if prev_tod_secs is not None and tod_secs + 12 * 3600 < prev_tod_secs:
+                day_offset += 1
+            prev_tod_secs = tod_secs
+            derived_date = seed_date + datetime.timedelta(days=day_offset)
+
+            # Cross-check canary: we no longer trust the OCR date, but a
+            # disagreement with the derived date is a free early warning that
+            # the overlay/preprocessing is degrading (no silent truncation).
+            if ocr_dt is not None and ocr_dt.date() != derived_date:
+                date_mismatch_count += 1
+                if len(date_mismatch_samples) < 5:
+                    date_mismatch_samples.append(
+                        (
+                            frame_idx,
+                            ocr_dt.date().isoformat(),
+                            derived_date.isoformat(),
+                        )
+                    )
+
+            # Keep the OCR-driven time-of-day; supply the context-derived date.
+            # wall_local is naive; interpret as local-time and convert to UTC
+            # (DST-aware via ZoneInfo) exactly as before.
+            wall_local = datetime.datetime.combine(derived_date, tod)
             wall_utc = wall_local.replace(tzinfo=tz).astimezone(
                 datetime.timezone.utc
             )
@@ -145,6 +194,27 @@ def run_ocr_stage(
             frames_written += 1
             if (frame_idx + 1) % 1000 == 0:
                 logger.info("OCR: %d frames processed", frame_idx + 1)
+
+    # Observability: never let date corruption vanish silently.  A non-zero
+    # mismatch count is the early-warning signal for the detection-time bug
+    # (GitHub #1) — frames whose OCR date disagreed with the context-derived
+    # date (now overridden rather than trusted).
+    if date_mismatch_count:
+        logger.warning(
+            "OCR: %d/%d frames had an OCR date disagreeing with the "
+            "context-derived date (overridden); sample "
+            "[(frame_idx, ocr_date, derived_date)]: %s",
+            date_mismatch_count,
+            frames_written,
+            date_mismatch_samples,
+        )
+    if tracker.date_rejected_count:
+        logger.warning(
+            "OCR: tracker refused %d contender reads on calendar-date grounds "
+            "(date jump > %d day(s) vs trusted timeline)",
+            tracker.date_rejected_count,
+            tracker.max_reanchor_date_delta_days,
+        )
 
     return frames_written
 

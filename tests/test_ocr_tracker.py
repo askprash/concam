@@ -107,6 +107,71 @@ def test_sustained_offset_triggers_reanchor() -> None:
         assert status in {"consistent", "building_history (4/5)", "building_history (5/5)"}
 
 
+# -- Property 3b: a wrong-DATE contender is never promoted -----------------
+
+def test_wrong_date_contender_never_reanchors() -> None:
+    """A sustained contender several days off the trusted date is rejected.
+
+    This is the GitHub #1 root cause: the template OCR confidently misreads the
+    YEAR/DAY mid-day while HH:MM:SS stays continuous, so consecutive corrupt
+    frames are mutually seconds-consistent and (pre-fix) re-anchored the tracker
+    onto the wrong date.  The date-aware guard must keep the trusted day and
+    never re-anchor, regardless of how many such reads arrive.
+    """
+    tracker = _make_tracker()
+    # Clean same-day history.
+    for i in range(tracker.history_size):
+        ts = START + timedelta(seconds=i * SECONDS_PER_FRAME)
+        out_ts, status = tracker.validate(i, ts, is_valid=True)
+        assert out_ts == ts
+
+    # A coherent contender at the SAME wall-clock HH:MM:SS but dated +3 days.
+    # Each is seconds-consistent with the previous corrupt frame, so the only
+    # thing that can reject it is the calendar-date guard.
+    bad_date_offset = timedelta(days=3)
+    start_frame = tracker.history_size
+    for i in range(tracker.reanchor_threshold + 3):
+        frame_num = start_frame + i
+        ts = START + timedelta(seconds=frame_num * SECONDS_PER_FRAME) + bad_date_offset
+        out_ts, status = tracker.validate(frame_num, ts, is_valid=True)
+        # Must keep projecting on the original day, never re-anchor.
+        assert status == "anomaly_projected", f"frame {frame_num}: {status}"
+        assert out_ts.date() == START.date(), (
+            f"frame {frame_num} leaked corrupt date {out_ts.date()}"
+        )
+        assert "RE-ANCHORED" not in status
+
+    assert tracker.date_rejected_count >= tracker.reanchor_threshold
+
+
+def test_midnight_rollover_still_reanchors() -> None:
+    """A legitimate +1-day rollover (date+1, time wraps) must still re-anchor.
+
+    The date guard allows +-1 day of slack precisely so this case is unaffected.
+    """
+    tracker = _make_tracker()
+    # Build history near the end of the day so the rollover is realistic.
+    base = datetime(2026, 4, 12, 23, 59, 59)
+    for i in range(tracker.history_size):
+        ts = base + timedelta(seconds=i * SECONDS_PER_FRAME)
+        tracker.validate(i, ts, is_valid=True)
+
+    # A coherent contender one day ahead (date+1) — a real clock event, not
+    # corruption.  Offset by +1 day keeps it within the guard's slack.
+    offset = timedelta(days=1)
+    start_frame = tracker.history_size
+    saw_reanchor = False
+    for i in range(tracker.reanchor_threshold + 1):
+        frame_num = start_frame + i
+        ts = base + timedelta(seconds=frame_num * SECONDS_PER_FRAME) + offset
+        _, status = tracker.validate(frame_num, ts, is_valid=True)
+        if status == "RE-ANCHORED":
+            saw_reanchor = True
+            break
+    assert saw_reanchor, "a legitimate +1-day rollover must still re-anchor"
+    assert tracker.date_rejected_count == 0
+
+
 # -- Property 4: invalid OCR before history projects from seed -------------
 
 def test_invalid_before_any_history_projects_forward() -> None:

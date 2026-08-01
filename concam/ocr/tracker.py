@@ -49,6 +49,18 @@ class TrustButVerifyTracker:
         self.history_size = 5
         self.reanchor_threshold = 3
         self.anomaly_multiplier = 10
+        # Largest calendar-date jump (in days) a contender may have relative to
+        # the trusted timeline and still be eligible for re-anchoring.  A
+        # legitimate midnight rollover is +1 day (time wraps 23:59:59 -> 00:00:00),
+        # so 1 day of slack is allowed; anything larger is OCR date corruption
+        # (e.g. a confident year/day misread such as 2026-04-11 -> 2026-04-14 or
+        # 8026-04-11) and must never be promoted regardless of how
+        # seconds-delta-consistent the corrupt frames are with each other.
+        self.max_reanchor_date_delta_days = 1
+        # Count of contender reads rejected purely because their calendar date
+        # was implausibly far from the trusted timeline.  Surfaced by callers so
+        # date corruption never vanishes silently (no silent truncation).
+        self.date_rejected_count = 0
 
         self.current_timestamp: Optional[_dt.datetime] = None
         self.prev_timestamp: Optional[_dt.datetime] = None
@@ -71,6 +83,22 @@ class TrustButVerifyTracker:
         is_huge_jump = actual_dt > (expected_dt * self.anomaly_multiplier)
         is_stuck = actual_dt < (expected_dt / 2)
         return not (is_backward or is_huge_jump or is_stuck)
+
+    def _date_delta_ok(
+        self, new_ts: _dt.datetime, ref_ts: _dt.datetime
+    ) -> bool:
+        """True iff ``new_ts``'s calendar date is within slack of ``ref_ts``'s.
+
+        The seconds-delta consistency checks in :meth:`_is_consistent_with_last`
+        only look at the *elapsed* time between reads, so a run of frames that
+        all share the *same wrong date* (a confident OCR year/day misread) is
+        internally consistent and would otherwise re-anchor onto garbage.  This
+        guard rejects any contender whose date is more than
+        ``max_reanchor_date_delta_days`` away from the trusted date, while still
+        admitting a legitimate midnight rollover (date + 1).
+        """
+        delta_days = abs((new_ts.date() - ref_ts.date()).days)
+        return delta_days <= self.max_reanchor_date_delta_days
 
     def _is_non_decreasing(self, new_ts: Optional[_dt.datetime]) -> bool:
         if self.prev_timestamp is None or new_ts is None:
@@ -148,6 +176,21 @@ class TrustButVerifyTracker:
             gap = (frame_num - last_frame) * self.seconds_per_frame
             self.current_timestamp = last_ts + _dt.timedelta(seconds=gap)
             status = "anomaly_projected"
+            # Defense-in-depth: a contender whose calendar date is implausibly
+            # far from the trusted date is OCR date corruption, not a real clock
+            # jump.  Refuse to build a contender from it (so it stays projected)
+            # regardless of how seconds-delta-consistent it is.  This also guards
+            # the raw-segment (4 fps) path, which never goes through
+            # ``run_ocr_stage``'s out-of-day gate.
+            if (
+                is_valid
+                and ocr_ts is not None
+                and not self._date_delta_ok(ocr_ts, last_ts)
+            ):
+                self.date_rejected_count += 1
+                if self.contender_timeline:
+                    self.contender_timeline.clear()
+                return self.current_timestamp, status
             if is_valid and ocr_ts is not None and self._is_non_decreasing(ocr_ts):
                 # Track whether this anomaly is the start of a new timeline.
                 if not self.contender_timeline:
