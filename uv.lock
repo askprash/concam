@@ -384,6 +384,7 @@ review = [
 [package.dev-dependencies]
 dev = [
     { name = "hypothesis" },
+    { name = "matplotlib" },
     { name = "pytest" },
 ]
 
@@ -414,6 +415,7 @@ provides-extras = ["ocr", "dev", "review"]
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.151.12" },
+    { name = "matplotlib", specifier = ">=3.8" },
     { name = "pytest", specifier = ">=9.0.3" },
 ]
 

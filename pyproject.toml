@@ -42,4 +42,9 @@ packages = ["concam"]
 dev = [
     "hypothesis>=6.151.12",
     "pytest>=9.0.3",
+    # tests/test_projection_alignment.py imports scripts/projection_alignment_analyze.py,
+    # which imports matplotlib at module scope.  Without it here the whole suite fails
+    # at *collection* (not as a skip), so the dev env must carry it even though
+    # matplotlib is otherwise only needed by the `review` extra.
+    "matplotlib>=3.8",
 ]
