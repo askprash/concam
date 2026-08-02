@@ -1,12 +1,33 @@
 #!/usr/bin/env python3
-"""Re-key human labels onto the episode IDs produced by the OCR-fix reprocess.
+"""Re-key human labels onto the episode IDs produced by a reprocess.
 
-Episode IDs are positional: the store stage assigns 1..N in ``episodes.jsonl``
-order.  The OCR date fix restores the detection hours that used to be lost
-after the first date misread, so a reprocessed day gains episodes *in the
-middle* of the day and every later episode shifts up.  ``labels/*.json`` key on
-a bare ``episode_id``, so without remapping a label silently starts describing
-a different aircraft pass.
+!! READ THIS BEFORE USING -- verified 2026-08-01, after the archive-wide
+!! OCR-fix reprocess:
+!!
+!!   The labels in labels/*.json are NOT keyed to episodes.jsonl.  They are
+!!   keyed to the PUBLIC MANIFEST episode IDs, which enumerate every projected
+!!   flight pass (e.g. 2026-04-03: 497 manifest passes vs 20 detector
+!!   episodes).  scripts/build_public_bundle.py assigns those IDs from
+!!   ``per_tid_frames``, which is derived from projections.jsonl alone --
+!!   detections only overlay ``score``/``pixel_line`` onto frames that already
+!!   exist, and the static-mask filter zeroes scores without renumbering.
+!!
+!!   Since the reprocess regenerated OCR and detections but NEVER touched
+!!   projections, the manifest ID space is invariant across it.  This was
+!!   verified by rebuilding each manifest from the pre-fix detections and
+!!   diffing: 2026-04-03 gave 497/497 and 2026-04-08 gave 599/599 identical
+!!   episode_id -> (transponder_id, onset) mappings.
+!!
+!!   So the OCR-fix reprocess required NO label remapping, and running this
+!!   script with --apply against that reprocess would have CORRUPTED valid
+!!   labels by translating them out of a space they were never in.  Its
+!!   ID-space guard is what caught this: every file tripped it.
+!!
+!! This script therefore applies only to labels genuinely keyed on
+!! episodes.jsonl positional IDs.  Confirm the key space first.
+
+Episode IDs in episodes.jsonl are positional: the store stage assigns 1..N in
+file order, so any change to the detection set renumbers them.
 
 The stable identity of an episode is ``(transponder_id, onset)`` -- the same
 natural key scripts/build_reliable_label_set.py already uses to reconcile the
